@@ -1,0 +1,66 @@
+{
+    "chainId": 56,
+    "description": "Deposit into lending pool",
+    "auto": {
+        "approval": {}
+        "call": {
+            "target": "0x0000000000000000000000000000000000000000",
+            "targetName": "Aggregator contract",
+            "expect": {
+                "function": "approve(address,uint256)",
+                "params": []
+            }
+ <                   }
+    }
+    "calls": [
+        {
+            "target": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+            "targetName": "WBNB Token",
+            "function": "approve(address,uint256)",
+            "params": [
+                {
+                    "name": "spender",
+                    "description": "Spender address",
+                    "value": "0x93abec4edd3bae7ccd36d91ddc2b10b320bd826e"
+                },
+                {
+                    "name": "amount",
+                    "description": "Spending amount",
+                    "value": "1000000000000000000",
+                    "valueDisplay": "1.0 WBNB"
+                }
+            ]
+        },
+        {
+            "target": "0x93abec4edd3bae7ccd36d91ddc2b10b320bd826e",
+            "targetName": "Trava Lending Pool Core",
+            "function": "deposit(address,uint256,uint16)",
+            "eth": "1000000000000000000",
+            "expect": {
+                "function": "balanceOf(address)",
+                "params": ['__USER_ADDRESS__'],
+                "expect": "INCREASE",
+                "vpos": "0",
+                "value": "500000000000000000"
+            },
+            "params": [
+                {
+                    "name": "reserve",
+                    "description": "Reserve asset address",
+                    "value": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                },
+                {
+                    "name": "amount",
+                    "description": "Amount",
+                    "value": "1000000000000000000",
+                    "valueDisplay": "1.0 WBNB"
+                },
+                {
+                    "name": "referralCode",
+                    "description": "",
+                    "value": "0"
+                }
+            ]
+        }
+    ]
+}
