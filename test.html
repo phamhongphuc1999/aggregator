@@ -1,0 +1,56 @@
+<html>
+<head>
+    <title>Aggregator Test</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.2/css/buttons.bootstrap4.min.css">
+    <style>
+.table.card-text tr > td:first-child {
+    background-color: #eee;
+    text-align: center;
+}
+    </style>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.1/js/bootstrap.min.js"></script>
+</head>
+<body class="container-fluid bg-primary">
+    <div class="row mt-3">
+        <div class="col">
+            <div class="card bg-light mb-3">
+                <h5 id="10_title" class="card-header">DIY - </h5>
+                <div id="10" class="card-body">
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-light mb-3">
+                <h5 id="11_title" class="card-header">Automatic - </h5>
+                <div id="11" class="card-body">
+                </div>
+            </div>
+        </div>
+    </div>
+    <hr>
+    <div class="row mt-3">
+        <div class="col">
+            <div class="card bg-light mb-3">
+                <h5 id="20_title" class="card-header">DIY - </h5>
+                <div id="20" class="card-body">
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-light mb-3">
+                <h5 id="21_title" class="card-header">Automatic - </h5>
+                <div id="21" class="card-body">
+                </div>
+            </div>
+        </div>
+    </div>
+    <hr>
+    <div class="text-center">
+        <a onclick="debugEn()" class="btn btn-warning mb-3">Debug</a>
+    </div>
+    <hr>
+</body>
+<script crossorigin type="module" src="test.js"></script>
+</html>

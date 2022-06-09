@@ -1,66 +1,87 @@
 {
     "chainId": 56,
-    "description": "Deposit into lending pool",
+    "block": 18474809,
+    "timestamp": 1654586750,
+    "validUntil": 4102423261,
+    "description": "Deposit into Staking vault",
+    "explorer": "https://bscscan.com",
+    "assets": [
+        {
+            "token": "0x1Fdde5c9397f1Ed8a4dDa0385236d9ba417c046c",
+            "value": "100000000000"
+        }
+    ],
     "auto": {
-        "approval": {}
-        "call": {
-            "target": "0x0000000000000000000000000000000000000000",
-            "targetName": "Aggregator contract",
-            "expect": {
-                "function": "approve(address,uint256)",
-                "params": []
-            }
- <                   }
-    }
+        "approval": {
+            "asset": "0x1Fdde5c9397f1Ed8a4dDa0385236d9ba417c046c",
+            "value": "100000000000",
+            "valueDisplay": "100.0 TOD",
+            "fee": "100000000000",
+            "feeDisplay": "0.0001",
+            "in": true
+        },
+        "out": [],
+        "target": "0x7A7A05F16fb0E3Bf1540145ba6D6C19D18806ead",
+        "targetName": "Aggregator contract",
+        "method": "aggregate(tuple(address target,bytes data,uint256 value)[] calls,tuple(tuple(address target,bytes data,uint256 value) call,uint8 expecting,uint256 vpos,uint256 value)[] expect,tuple(address asset,uint256 amount)[] tins,tuple(address asset,uint256 amount)[] touts)",
+        "version": 0,
+        "calls": null
+    },
     "calls": [
         {
-            "target": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
-            "targetName": "WBNB Token",
-            "function": "approve(address,uint256)",
+            "target": "0x1Fdde5c9397f1Ed8a4dDa0385236d9ba417c046c",
+            "targetName": "TOD Token",
+            "method": "approve(address,uint256)",
             "params": [
                 {
                     "name": "spender",
                     "description": "Spender address",
-                    "value": "0x93abec4edd3bae7ccd36d91ddc2b10b320bd826e"
+                    "value": "0xC00F7D6915e348cb404E15B73294Dab046f46C49"
                 },
                 {
                     "name": "amount",
                     "description": "Spending amount",
-                    "value": "1000000000000000000",
-                    "valueDisplay": "1.0 WBNB"
+                    "value": "100000000000",
+                    "valueDisplay": "100.0 TOD"
                 }
-            ]
+            ],
+            "fee": "100000000000",
+            "feeDisplay": "0.0001"
         },
         {
-            "target": "0x93abec4edd3bae7ccd36d91ddc2b10b320bd826e",
-            "targetName": "Trava Lending Pool Core",
-            "function": "deposit(address,uint256,uint16)",
-            "eth": "1000000000000000000",
+            "target": "0xC00F7D6915e348cb404E15B73294Dab046f46C49",
+            "targetName": "TraDAO Staking",
+            "method": "stake(address,uint256,bool)",
+            "eth": "0",
             "expect": {
-                "function": "balanceOf(address)",
-                "params": ['__USER_ADDRESS__'],
+                "target": "0x68e7129481b5Ea68Cc822Ccd7A6163F0A6db626C",
+                "targetName": "xTOD Token",
+                "method": "balanceOf(address)",
+                "params": ["__ACCOUNT__"],
                 "expect": "INCREASE",
                 "vpos": "0",
-                "value": "500000000000000000"
+                "value": "61530168521280599807"
             },
             "params": [
                 {
-                    "name": "reserve",
-                    "description": "Reserve asset address",
-                    "value": "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                    "name": "to",
+                    "description": "Destionation",
+                    "value": "__ACCOUNT__"
                 },
                 {
                     "name": "amount",
                     "description": "Amount",
-                    "value": "1000000000000000000",
-                    "valueDisplay": "1.0 WBNB"
+                    "value": "100000000000",
+                    "valueDisplay": "100.0 TOD"
                 },
                 {
-                    "name": "referralCode",
-                    "description": "",
-                    "value": "0"
+                    "name": "claim",
+                    "description": "Claim",
+                    "value": true
                 }
-            ]
+            ],
+            "fee": "100000000000",
+            "feeDisplay": "0.0001"
         }
     ]
 }
