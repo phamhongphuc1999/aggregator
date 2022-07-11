@@ -76,7 +76,7 @@ const processCall = (call) => {
             params: call.params.map((param, i) => ({
                 value: param,
                 display: param,
-                comment: call.descs?.params[i]
+                comment: (call.descs?.params ?? [])[i] ?? ''
             })),
             descs: ''
         }
@@ -126,8 +126,11 @@ export async function process(strategy, maps = {}) {
             calls: acalls,
             expects: expects,
             transfers: [ins, outs],
-            call: Object.assign(call, { tx: call.encode() })
+            call
         };
+        try {
+            auto.call.tx = call.encode();
+        } catch(err) {}
     }
 
     //
