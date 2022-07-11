@@ -6,15 +6,19 @@
   "main": "strategyen.js",
   "type": "module",
   "dependencies": {
+    "@uniswap/sdk": "^3.0.3",
     "ethers": "^5.5.0",
-    "node-fetch": "^3.0.0",
-    "ethers-multisend": "^2.0.0"
+    "ethers-multisend": "^2.0.0",
+    "node-fetch": "^3.0.0"
   },
   "devDependencies": {
     "mocha": "^7.2.0"
   },
   "scripts": {
     "test": "mocha"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "author": "buikhoa40",
   "license": "Proprietary"
