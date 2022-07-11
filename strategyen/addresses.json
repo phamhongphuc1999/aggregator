@@ -1,0 +1,14 @@
+{
+	"56": {
+		"aggregator": "0x308D85243Bbc67cd3D595f0b4FE4a5AF473BcE50",
+		"swap.router": "0x10ed43c718714eb63d5aa57b78b54704e256024e",
+		"swap.factory": "0xca143ce32fe78f1f7019d7d551a6402fc5350c73",
+		"token.usd": [
+			"0xe9e7cea3dedca5984780bafc599bd69add087d56",
+			"0x55d398326f99059ff775485246999027b3197955",
+			"0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3",
+			"0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d"
+		],
+		"token.eth": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"
+	}
+}

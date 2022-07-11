@@ -1,0 +1,16 @@
+.env	
+.DS_Store
+cache/
+artifacts/
+coverage*
+.vscode/*
+node_modules/
+.env
+yarn-error.log
+yarn.lock
+nohup.out
+docs/
+.openzeppelin
+*.log
+a.json
+test.json

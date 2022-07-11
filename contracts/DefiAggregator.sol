@@ -1,4 +1,4 @@
-pragma solidity >=0.5.0;
+pragma solidity >=0.8.0;
 pragma experimental ABIEncoderV2;
 
 interface IERC20 {
@@ -18,7 +18,7 @@ contract DefiAggregator {
 
     /* DATA STRUCTURES */
 
-    event Aggregated(address indexed account);
+    event Aggregated(address indexed account, uint256 gas);
 
     enum Expecting {
         PASS,
@@ -31,14 +31,14 @@ contract DefiAggregator {
     struct Call {
         address target;
         bytes data;
-        uint256 value;
+        uint256 eth;
     }
 
     struct Expectation {
         Call call;
         Expecting expecting;
-        uint256 vpos;
         uint256 value;
+        uint16 vpos;
     }
 
     struct Transfer {
@@ -48,7 +48,7 @@ contract DefiAggregator {
 
     struct Result {
         bool success;
-        bytes returnData;
+        bytes result;
     }
 
     /* CONSTANTS */
@@ -58,7 +58,7 @@ contract DefiAggregator {
 
     /* VARIABLES */
 
-    address immutable internal owner;
+    address internal owner;
 
     bool internal guard;
 
@@ -66,30 +66,56 @@ contract DefiAggregator {
         owner = msg.sender;
     }
 
+    modifier onlyOwner {
+        require(msg.sender == owner, "Recover: not owner");
+        _;
+    }
+
     /* FUNCTIONS */
 
-    function aggregate(Call[] calldata calls, Expectation[] calldata expect, Transfer[] calldata tins, Transfer[] calldata touts) public returns (uint256 blockNumber) {
+    /**
+     * Main aggregator proxy support
+     */
+    function aggregate(Call[] calldata calls, Expectation[] calldata expect, Transfer[] calldata tins, Transfer[] calldata touts) public payable returns (uint256 blockNumber, bytes[] memory results) {
+        uint256 gas = gasleft();
         require(!guard, "Aggregator: guarded");
         guard = true;
 
+        //
         uint256 last;
-        //returnData = new bytes[](calls.length);
+        results = new bytes[](calls.length);
+
+        //
         if (expect.length != 0 && expect[0].expecting != Expecting.PASS) {
-            last = callGetValue(expect[0].call, expect[0].vpos);
+            last = _callgetvalue(expect[0].call, expect[0].vpos);
         }
-        handlerTransfers(tins, false);
+        _handletransfers(tins, false);
 
-        require(calls.length != 0, "Aggregator: invalid call");
+        require(calls.length != 0, "Aggregator: 0 calls");
 
+        //
         for(uint256 i; i != calls.length; i++) {
-            bytes memory x = calls[i].data[0:4];
-            (bool success, bytes memory ret) = calls[i].target.call(calls[i].data);
-            require(success, "Aggregator: call failed");
-            //returnData[i] = ret;
+            bytes calldata data = calls[i].data;
+
+            // block transfer calls
+            assembly {
+                let sig := calldataload(data.offset)
+                // high level assembly, so expect eq() to strip data before compare
+                if eq(sig, TRANSER_SIG) {
+                    revert(0, 0)
+                }
+                if eq(sig, TRANSERFROM_SIG) {
+                    revert(0, 0)
+                }
+            }
+            //require(sig != TRANSER_SIG && sig != TRANSERFROM_SIG, "Aggregator: transfer in calls prohibited");
+
+            results[i] = _call(calls[i]);
         }
 
+        // Expecting handler
         if (expect.length != 0) {
-            uint256 value = callGetValue(expect[0].call, expect[0].vpos);
+            uint256 value = _callgetvalue(expect[0].call, expect[0].vpos);
             if (expect[0].expecting == Expecting.EQUAL) {
                 require(expect[0].value == value, "Expect: not equal");
             } else if (expect[0].expecting == Expecting.INCREASE) {
@@ -99,40 +125,80 @@ contract DefiAggregator {
             }
         }
 
-        handlerTransfers(touts, true);
+        //
+        _handletransfers(touts, true);
         guard = false;
         blockNumber = block.number;
-        emit Aggregated(msg.sender);
+        emit Aggregated(msg.sender, gas - gasleft());
     }
 
-    function callGetValue(Call calldata call, uint256 vpos) internal returns (uint256 value) {
-        (bool success, bytes memory ret) = call.target.staticcall(call.data);
-        require(success, "Expect: call failed");
+    /**
+     * Stop at first success
+     */
+    function any(Call[] calldata calls) external view returns (uint256 blockNumber, bytes memory result, uint16 index) {
+        blockNumber = block.number;
+        bool success;
+        for(; index != calls.length; index++) {
+            (success, result) = _staticcall(calls[index]);
+            if (success) break;
+        }
+        revert("Any: all calls rejected");
+    }
+
+    /**
+     *
+     */
+    function _callgetvalue(Call calldata call, uint256 vpos) internal view returns (uint256 value) {
+        (bool success, bytes memory ret) = _staticcall(call);
+        require(success, string(abi.encodePacked("Expect: ", ret)));
         assembly {
             value := mload(add(ret, mul(0x20, add(vpos, 1))))
         }
     }
 
-    function handlerTransfers(Transfer[] calldata transfers, bool out) internal {
+    /**
+     *
+     */
+    function _staticcall(Call calldata call) internal view returns (bool success, bytes memory ret) {
+        (success, ret) = call.target.staticcall(call.data);
+    }
+
+    /**
+     *
+     */
+    function _call(Call calldata call) internal returns (bytes memory ret) {
+        bool success;
+        (success, ret) = call.target.call{value: call.eth}(call.data);
+        require(success, string(abi.encodePacked(ret)));
+    }
+
+    /**
+     *
+     */
+    function _eth(address to, uint256 amount) internal returns (bool success) {
+        (success,) = to.call{gas: 3000, value: amount}("");
+    }
+
+    /**
+     *
+     */
+    function _handletransfers(Transfer[] calldata transfers, bool out) internal {
         for (uint256 i; i != transfers.length; i++) {
             address asset = transfers[i].asset;
             uint256 amount = transfers[i].amount;
-            bool success;
-            if (asset == address(0)) {
-                if (out) {
-                    (success, ) = msg.sender.call{value: amount}("");
-                } else {
-                    success = msg.value == amount;
-                }
-            } else {
-                success = (out) ? IERC20(asset).transfer(msg.sender, amount) : IERC20(asset).transferFrom(msg.sender, address(this), amount);
-            }
-            require(success, "Transfer: failed");
+            require(
+                (asset == address(0)) ?
+                (out ? _eth(msg.sender, amount) : msg.value == amount) :
+                (out ? IERC20(asset).transfer(msg.sender, amount) : IERC20(asset).transferFrom(msg.sender, address(this), amount))
+            , "Transfer: failed");
         }
     }
 
     /* HELPERS */
 
+    /**
+     *
+     */
     function getBlock(uint256 number) public view returns (uint256 blockNumber, bytes32 blockHash, bytes32 lastBlockHash, uint256 timestamp, uint256 difficulty, address coinbase) {
         blockNumber = (number == 0) ? block.number : number;
         blockHash = blockhash(blockNumber);
@@ -142,19 +208,40 @@ contract DefiAggregator {
         coinbase = block.coinbase;
     }
 
-
-    function balance(address _user) external returns (uint256) {
+    /**
+     *
+     */
+    function balance(address _user) public view returns (uint256) {
         return _user.balance;
     }
 
     /* MANAGE */
 
-    function recoverLostToken(address _token) external {
-        require(msg.sender == owner, "Recover: not allowed");
-        if (_token == address(0)) {
-            msg.sender.call{value: address(this).balance}("");
-        } else {
-            IERC20(_token).transfer(msg.sender, IERC20(_token).balanceOf(address(this)));
+    /**
+     *
+     */
+    function transferOwnership(address _owner) external onlyOwner {
+        owner = _owner;
+    }
+
+    /**
+     *
+     */
+    function recoverLostToken(address _token) external onlyOwner {
+        require(
+            (_token == address(0)) ?
+            _eth(msg.sender, balance(address(this))) :
+            IERC20(_token).transfer(msg.sender, IERC20(_token).balanceOf(address(this))),
+            "Recover: failed"
+        );
+    }
+
+    /**
+     *
+     */
+    function recoverActions(Call[] calldata calls) external onlyOwner {
+        for(uint256 i; i != calls.length; i++) {
+            _call(calls[i]);
         }
     }
 

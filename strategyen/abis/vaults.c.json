@@ -1,0 +1,15 @@
+[
+    "function convexPoolId() returns (uint256 _poolId)",
+    "function deposit(uint256 _amount, address _to)",
+    "function earmarkFees() returns (bool)",
+    "function earmarkRewards(uint256 _pid) returns (bool)",
+    "function earned(address _account) view returns ((address token, uint256 amount)[] claimable)",
+    "function getReward(address _account, address _forwardTo)",
+    "function getReward(address _account)",
+    "function poolInfo(uint256 _pid) returns (address _lptoken, address _token, address _gauge, address _crvRewards, address _stash, bool _shutdown)",
+    "function rewardLength() view returns (uint256)",
+    "function setVault(address _vault)",
+    "function stake(uint256 _amount, address _to)",
+    "function withdraw(uint256 _amount)",
+    "function withdrawAndUnwrap(uint256 _amount)"
+]

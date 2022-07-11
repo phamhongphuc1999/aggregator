@@ -1,0 +1,23 @@
+[
+    "function attach(uint256 _tokenId)",
+    "function balanceOfNFT(uint256 _tokenId) view returns (uint256)",
+    "function balanceOfNFTAt(uint256 _tokenId, uint256 _t) view returns (uint256)",
+    "function checkpoint()",
+    "function create_lock(address _token, uint256 _value, uint256 _lock_duration) returns (uint256)",
+    "function create_lock_for(address _token, uint256 _value, uint256 _lock_duration, address _to) returns (uint256)",
+    "function deposit_for(uint256 _tokenId, uint256 _value)",
+    "function deposit_for_reward_distribution(uint256 _tokenId, uint256 _rewardValue)",
+    "function detach(uint256 _tokenId)",
+    "function getOwner() view returns (address)",
+    "function get_last_user_slope(uint256 _tokenId) view returns (int128)",
+    "function getveNFTOfUser(address _user) view returns (uint256[])",
+    "function increase_amount(uint256 _tokenId, uint256 _value)",
+    "function increase_unlock_time(uint256 _tokenId, uint256 _lock_duration)",
+    "function locked__end(uint256 _tokenId) view returns (uint256)",
+    "function merge(uint256 _from, uint256 _to)",
+    "function totalSupplyAtT(uint256 t) view returns (uint256)",
+    "function user_point_history__ts(uint256 _tokenId, uint256 _idx) view returns (uint256)",
+    "function votingPowerOfUser(address _user) view returns (uint256)",
+    "function votingPowerOfUserAt(address _user, uint256 _t) view returns (uint256)",
+    "function withdraw(uint256 _tokenId)"
+]
