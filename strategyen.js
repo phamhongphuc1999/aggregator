@@ -6,23 +6,24 @@ import actions from './actions/index.js';
 import { ts, debug, getAddress, invalidTokens } from './helpers.js';
 import { ethers } from 'ethers';
 
+const OA = Object.assign;
+
 /**
- *
- * @param {Object} steps
+ * Get all helper
+ * @param {Array} steps
  * @param {string} func
  * @param {number} count
  * @returns
  */
 const all = async function (steps, func = 'calls', count = 0) {
-    const seq = false;
+    const seq = true;
     //
     const get = async (info) => {
         const id = (info.id ?? info.strategy_id), action = (info.method ?? info.methods[0]),
             get = actions[action][func],
             step = count++;
-        //.map((call, i, arr) => Object.assign(call, { ...((arr.length-1) != i) && { check: null } })
         return (id && action && get) ? (await get(id, state.maps)).map(
-            (call) => Object.assign(call, { step, action })
+            (call) => OA(call, { step, action })
         ) : [];
     };
     //
@@ -40,70 +41,64 @@ const all = async function (steps, func = 'calls', count = 0) {
 };
 
 /**
- * format
- * @param {*} call
- * @param {*} call
- * @returns
- */
-const formatParam = (param, call) => {
-    if (ethers.utils.isAddress(param)) {
-        return param.slice(0,8)+'...'+param.slice(-6);
-    } else if (false) {
-
-    }
-    return call
-};
-
-
-/**
- *
+ * process single call
  * @param {Call} call
  * @returns Call
  */
 const processCall = (call) => {
-    Object.assign(call,
+    OA(call,
         {
             ...(call.check?.encode) && {
-                check: Object.assign(call.check, {
+                check: OA(call.check, {
                     encoded: call.check.encode()
                 })
             },
             tx: {
-                ...call.encode(state.maps.account),
+                ...call.get(state.maps.account),
                 ...(!isNaN(state.maps.nonce)) && { nonce: state.maps.nonce++ }
             },
-            title: call.descs?.title ?? '',
+            title: call.descs.title ?? '',
             params: call.params.map((param, i) => ({
                 value: param,
-                display: param,
-                comment: (call.descs?.params ?? [])[i] ?? ''
+                display: (call.descs.values ?? [])[i] ?? formatParam(param) ?? param,
+                comment: (call.descs.params ?? [])[i] ?? ''
             })),
-            descs: ''
+            descs: undefined
         }
     );
     return call;
 };
 
 /**
+ * @typedef {Object} Strategy
+ */
+
+/**
+ * @typedef {Object} StrategyExecs
+ */
+
+/**
  * Generate complete execution data based on strategy steps
- * @param {*} strategy
- * @returns {*} calls
+ * @param {Strategy} strategy
+ * @params {Object} maps
+ * @returns {StrategyExecs}
  */
 export async function process(strategy, maps = {}) {
     // initialize variables
-    Object.assign(state.maps, maps);
+    OA(state.maps, maps);
     const starttime = Date.now();
     let [auto, ins, outs] = [null, [], []];
 
     // Generate manual call/params and checks
-    const calls = await Promise.all(
-        (await all(strategy.steps))
-        .map(processCall)
-        .map(call => call.meta())
-    );
+    const calls = (await Promise.all(
+            (await all(strategy.steps))
+            .map(call => call.meta())
+        ))
+        .map(processCall);
 
     // Generate auto call/params and expectation
-    const acalls = await all(strategy.steps, 'autoCalls');
+    const acalls = (await all(strategy.steps, 'autoCalls'))
+        .map((call, i, arr) => OA(call, { ...(arr.length-1 != i) && { check: null } }));
 
     // Generate necessary Checks
     const autoExpects = async () => {
@@ -114,23 +109,24 @@ export async function process(strategy, maps = {}) {
     if (acalls && acalls.length) {
         const expects = await autoExpects(strategy);
         const eth = (ins.filter((e) => invalidTokens.includes(e[0]))[0] ?? [, '0'])[1];
-        const call = funcs.aggregate.call.update({
-            target: getAddress(),
-            calls: acalls.map(call => call.encode()),
-            expects: expects.map(check => check.encode()),
-            ins,
-            outs,
-            eth
-        });
         auto = {
             calls: acalls,
             expects: expects,
             transfers: [ins, outs],
-            call
+            call: funcs.aggregate.call.update({
+                target: getAddress(),
+                calls: acalls.map(call => call.encode()),
+                expects: expects.map(check => check.encode()),
+                ins,
+                outs,
+                eth
+            })
         };
         try {
-            auto.call.tx = call.encode();
-        } catch(err) {}
+            auto.call.tx = auto.call.encode();
+        } catch(err) {
+            debug(err.message, err.stack, auto.call.method, auto.call.params);
+        }
     }
 
     //

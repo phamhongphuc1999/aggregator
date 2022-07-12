@@ -1,7 +1,7 @@
 {
   "name": "@ais-ltd/strategyen",
   "repository": "git://github.com/ais-ltd/aggregator.git",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "BRicher Automatic Strategy Encoder",
   "main": "strategyen.js",
   "type": "module",
@@ -12,6 +12,7 @@
     "node-fetch": "^3.0.0"
   },
   "devDependencies": {
+    "@types/node": "^18.0.3",
     "mocha": "^7.2.0"
   },
   "scripts": {

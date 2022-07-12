@@ -71,6 +71,10 @@ contract DefiAggregator {
         _;
     }
 
+    function name() external pure returns (string memory) {
+        return "BRicher Automatic Aggregator";
+    }
+
     /* FUNCTIONS */
 
     /**

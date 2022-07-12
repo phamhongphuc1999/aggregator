@@ -5,7 +5,7 @@ import { View } from '../common.js';
  */
 
 const aggregate = {
-    call: new Call(null, 'aggregate((address,bytes,uint256)[],((address,bytes,uint256),uint8,uint256,uint16)[],(address,uint256)[],(address,uint256)[])', ['__calls__', '__expects__', '__ins__', '__outs__'], '__eth__', { title: 'Aggregate Calls Executor', params: [] }),
+    call: new Call(null, 'aggregate((address,bytes,uint256)[],((address,bytes,uint256),uint8,uint256,uint16)[],(address,uint256)[],(address,uint256)[])', ['__calls__', '__expects__', '__ins__', '__outs__'], '__eth__', { title: 'Execute Aggregated Calls', params: [] }),
     any: new View('any((address,bytes,uint256)[])', ['__calls__'], 'uint256,bytes,uint16', 1)
 };
 

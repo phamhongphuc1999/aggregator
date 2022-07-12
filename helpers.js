@@ -93,8 +93,7 @@ const parseAmount = async (amount, token = null) => ethers.BigNumber.isBigNumber
 
 export { ts, invalidTokens, toBN, isBN, parseAmount };
 
-//
-
+// no async needed
 const getDecimals = (token) => getToken(token).decimals ?? contract(token).decimals();
 
 export { getDecimals };
@@ -186,3 +185,7 @@ const ran = async function (get = ()=>null) {
 };
 
 export { debug };
+
+const serialize = (obj) => JSON.stringify(obj, (key, value) => key.startsWith('_') ? undefined : value, "\t");
+
+export { serialize };

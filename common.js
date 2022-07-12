@@ -1,6 +1,6 @@
 import ethers from 'ethers';
 import state from './state.js';
-import { contract, getSigner, getToken, debug } from './helpers.js';
+import { contract, toBN, isBN, getSigner, getDecimals, getToken, debug } from './helpers.js';
 
 ethers.BigNumber.prototype.toJSON = function () { return this.toString() };
 ethers.logger.warn = function () {};
@@ -33,9 +33,10 @@ const methodName = (str) => str.slice(0, str.indexOf('('));
  * @param {*} check
  * @returns class
  */
-function Call (target, method = '', params = [], eth = '0', descs = { title: '' }, check = null, inputs = null) {
+function Call (target, method = '', params = [], eth = '0', descs = {title:'',params:[]}, check = null, inputs = null) {
     if (!target) target = '__target__';
     if (method instanceof Array) method = `${method[0]}(${method[1] instanceof Array ? method[1].join(',') : method[1]})`;
+    if (!descs) descs = {};
     return Object.assign(this, {
         target,
         method,
@@ -50,16 +51,18 @@ function Call (target, method = '', params = [], eth = '0', descs = { title: '' 
 };
 Call.prototype = {
     name() {
-        return methodName(this.method)
+        return methodName(this.method);
     },
     update(maps = {}, params = this.params) {
+        // only saved once when updating
+        const _params = this.params.slice();
         // fill-in additional inputs
         Object.keys(this.inputs ?? {}).map((name) => (maps[name] === undefined) && (maps[name] = this.inputs[name].default));
         const [target, eth] = _update([this.target, this.eth], maps);
         const check = (this.check && this.check.update) ? this.check.update(maps) : null;
-        return Object.setPrototypeOf({...this, target, eth, check, params: _update(params, maps)}, Call.prototype);
+        return Object.setPrototypeOf({...this, ...(!this._params) && {_params}, _maps: maps, target, eth, check, params: _update(params, maps)}, Call.prototype);
     },
-    get(signer = getSigner()) {
+    contract(signer = getSigner()) {
         const [name, nonpay] = [this.name(), this.eth == '0' ? [] : null];
         const params = this.params.concat(nonpay ?? [ { value: this.eth } ]);
         let con = contract(this.target, [ `function ${this.method} ${nonpay ?? 'payable'}` ]);
@@ -76,27 +79,47 @@ Call.prototype = {
     async meta() {
         const con = contract(this.target, 'token');
         try {
-            this.targetName = getToken(this.target).name ?? await con.name();
+            this.targetName = await getToken(this.target).name ?? (this.target == getAddress() ? 'Automatic Aggregator' : null) ?? await con.name();
         } catch (err) {}
         try {
+            const trimAddress = (address) => address.slice(0,8)+'...'+address.slice(-6);
+            const printToken = async (amount, token) => ethers.utils.formatUnits(amount, await getDecimals(token))+' '+(await getToken(token)).symbol;
+
+            debug('------------->', this.method, this.params, this._params, this._maps);
+
+            //
+            this.descs.values = [];
+            for (let [i, val] of Object.entries(this.params)) {
+                if (typeof val === 'string' && val.startsWith('__')) break;
+                if (ethers.utils.isAddress(val)) {
+                    val = trimAddress(val);
+                } else if (isBN(this._params[i]) || this._params[i].toString().includes('amount')) {
+                    val = await printToken(toBN(val), this._maps.token ?? this._maps.otoken ?? this._maps.itoken ?? ethers.constants.AddressZero);
+                }
+                this.descs.values.push(val);
+            }
+
             //[this.fee, this.probe] = await Promise.all([con.estimate(), con.probe()]);
         } catch (err) {
-            debug('', this.method, err.code);
+            //debug('fee', this.method, err.code, err.stack);
         }
         return this;
     },
-    encode(from = null) {
+    get(from = null) {
         //const sig = ethers.utils.id(this.method).slice(0, 10);
         //const types = this.method.split(',');
-        const con = this.get();
+        const con = this.contract(null);
         const data = con.interface.encodeFunctionData(this.name(), this.params);
         return {
             to: this.target,
-            value: this.eth,
             data,
-            ...ethers.utils.isAddress(from) && {from},
+            value: this.eth,
+            ...(from) && {from},
             chainId: state.chainId
         };
+    },
+    encode() {
+        return Object.values(this.get()).slice(0,3);
     }
 };
 
@@ -127,7 +150,7 @@ View.prototype = {
     },
     update(maps = {}, index = this.index) {
         // clone
-        return Object.setPrototypeOf({...this, index, params: _update(this.params ?? [], maps)}, View.prototype);
+        return Object.setPrototypeOf({...this, _maps: maps, index, params: _update(this.params ?? [], maps)}, View.prototype);
     },
     contract(address = this.target) {
         return contract(address, [ `function ${this.method} view returns (${this.returns})` ]);
@@ -147,7 +170,7 @@ View.prototype = {
             res = await con.callStatic[this.name()].apply(con, params.concat([state.view.options]));
             res = (res.length && this.index != -1) ? res[this.index] : res;
         } catch (err) {
-            //debug('', err.code, [address, this.name(), params]);
+            //debug('view', err.code, [address, this.name(), params]);
             if (!maps) throw err;
         }
         return res;
@@ -187,7 +210,7 @@ function Check (view, expecting = Expecting.PASS, value = '0', vtype = ethers.Bi
 };
 Check.prototype = {
     update(maps = {}, value = this.value) {
-        return Object.setPrototypeOf({...this, value: _update([value], maps)[0], view: this.view.update(maps)}, Check.prototype);
+        return Object.setPrototypeOf({...this, _maps: maps, value: _update([value], maps)[0], view: this.view.update(maps)}, Check.prototype);
     },
     /**
      * Evaluate a check/expectation

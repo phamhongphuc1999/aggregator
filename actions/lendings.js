@@ -28,7 +28,7 @@ async function aave_available (maps = {}, abi = 'lendings.a') {
             ).mul(toPow(decimals)).div(price)
             .mul(parseInt(state.slippage.borrow * 1e4)).div(1e4);
         } catch (err) {
-        debug('', maps, [err.message, err.stack]);
+        debug('aave', maps, [err.message, err.stack]);
     }
     return toBN(0);
 };
@@ -52,7 +52,7 @@ async function comp_available (maps = {}, abi = 'lendings.c') {
                     toBN(maps.amount).mul(cfactor).div(toPow(18))
                 ).mul(parseInt(state.slippage.borrow * 1e4)).div(1e4);
     } catch (err) {
-        debug('', [maps.target, maps], [err.message, err.stack]);
+        debug('comp', [maps.target, maps], [err.message, err.stack]);
     }
     return toBN(0);
 };
@@ -104,7 +104,7 @@ async function comp_ref (index, maps = {}) {
             };
         }
     } catch(err) {
-        debug('', [err.message, err.stack]);
+        debug('ref', [err.message, err.stack]);
     }
     // target is normal
     return this;

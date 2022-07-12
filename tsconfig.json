@@ -1,0 +1,12 @@
+{
+	"include": ["*.js","abis.json","actions/*.js"],
+    "compilerOptions": {
+    	"target": "es6",
+    	"lib": ["es2015"],
+        "allowJs": true,
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "outDir": "./",
+        "declarationMap": true
+    }
+}
