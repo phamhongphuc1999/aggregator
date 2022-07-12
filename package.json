@@ -1,15 +1,15 @@
 {
   "name": "@ais-ltd/strategyen",
   "repository": "git://github.com/ais-ltd/aggregator.git",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "BRicher Automatic Strategy Encoder",
   "main": "strategyen.js",
   "type": "module",
   "dependencies": {
     "@uniswap/sdk": "^3.0.3",
+    "axios": "^0.27.2",
     "ethers": "^5.5.0",
-    "ethers-multisend": "^2.0.0",
-    "node-fetch": "^3.0.0"
+    "ethers-multisend": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^18.0.3",

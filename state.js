@@ -1,4 +1,4 @@
-import { env } from 'process';
+const env = {};
 
 // default state
 export default {

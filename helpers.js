@@ -1,4 +1,4 @@
-import ethers from 'ethers';
+import * as ethers from 'ethers';
 import config from './config.js';
 import funcs from './actions/funcs.js';
 import state from './state.js';

@@ -1,4 +1,4 @@
-import ethers from 'ethers';
+import * as ethers from 'ethers';
 import state from './state.js';
 import { contract, toBN, isBN, getSigner, getDecimals, getToken, debug } from './helpers.js';
 
@@ -25,19 +25,19 @@ const methodName = (str) => str.slice(0, str.indexOf('('));
 
 /**
  * Contract call holder
- * @param {*} target
- * @param {*} method
- * @param {*} params
- * @param {*} eth
- * @param {*} descs
- * @param {*} check
+ * @param {string=} target
+ * @param {string} method
+ * @param {Array} params
+ * @param {number} eth
+ * @param {Object} descs
+ * @param {Check} check
  * @returns class
  */
 function Call (target, method = '', params = [], eth = '0', descs = {title:'',params:[]}, check = null, inputs = null) {
     if (!target) target = '__target__';
     if (method instanceof Array) method = `${method[0]}(${method[1] instanceof Array ? method[1].join(',') : method[1]})`;
     if (!descs) descs = {};
-    return Object.assign(this, {
+    Object.assign(this, {
         target,
         method,
         params,
@@ -48,6 +48,7 @@ function Call (target, method = '', params = [], eth = '0', descs = {title:'',pa
         targetName: '',
         fee: '0'
     });
+    return this;
 };
 Call.prototype = {
     name() {
@@ -125,10 +126,11 @@ Call.prototype = {
 
 /**
  * View only call holder
- * @param {*} method
- * @param {*} params
- * @param {*} returns
- * @param {*} index
+ * @param {string} method
+ * @param {Array} params
+ * @param {index=} returns
+ * @param {number=} index
+ * @param {target=} target
  * @returns class
  */
 function View (method = '', params = [], returns = '', index = -1, target = ethers.constants.AddressZero) {
@@ -136,13 +138,14 @@ function View (method = '', params = [], returns = '', index = -1, target = ethe
     if (method instanceof Function) {
         this.get = method;
     }
-    return Object.assign(this, {
+    Object.assign(this, {
         method,
         params,
         returns,
         index,
         target
     });
+    return this;
 };
 View.prototype = {
     name() {
@@ -193,20 +196,20 @@ const Expecting = {
 
 /**
  * Expectation wrapper
- * @param {*} view
- * @param {*} expecting
- * @param {*} value
- * @param {*} vpos
+ * @param {View} view
+ * @param {Expecting} expecting
+ * @param {string} value
  * @param {*} vtype
  * @returns class
  */
 function Check (view, expecting = Expecting.PASS, value = '0', vtype = ethers.BigNumber) {
-    return Object.assign(this, {
+    Object.assign(this, {
         view,
         expecting,
         value,
         vtype
     });
+    return this;
 };
 Check.prototype = {
     update(maps = {}, value = this.value) {

@@ -1,5 +1,5 @@
-import ethers from 'ethers';
-import fetch from 'node-fetch';
+import * as ethers from 'ethers';
+import axios from 'axios';
 import state from '../state.js';
 import { Call, Check, View, approve } from '../common.js';
 import { contract, toBN, getDecimals, invalidTokens, debug } from '../helpers.js';
@@ -59,7 +59,7 @@ async function comp_available (maps = {}, abi = 'lendings.c') {
 
 async function token_get_pool (api_url, token) {
     // find target by our own api
-    let res = await (await fetch(api_url)).json();
+    let res = (await axios.get(api_url, { responseType: 'json' })).data;
     res = res['lendings'] ?? res;
     res = res['reserves_list'] ?? res;
     res = res[token];

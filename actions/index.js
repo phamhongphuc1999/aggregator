@@ -1,15 +1,17 @@
-import swapsdk from '@uniswap/sdk';
+//import swapsdk from '@uniswap/sdk';
 import state from '../state.js';
 import funcs from './funcs.js';
 import { Call, approve, transfer } from '../common.js';
 import { contract, ts, invalidTokens, toBN, parseAmount, getAddress, findContract, findSwapPair, findSwapPath, debug } from '../helpers.js';
 
 // init uniswap sdk
+/*
 if (swapsdk) {
     swapsdk.ChainId = state.chainId;
     swapsdk.FACTORY_ADDRESS = getAddress('swap.factory');
     swapsdk.WETH[state.chainId] = new swapsdk.Token(state.chainId, getAddress('token.eth'), 18, 'WETH', 'Wrapped');
 }
+*/
 
 /**
  * splitted function

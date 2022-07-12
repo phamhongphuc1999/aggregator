@@ -1,8 +1,10 @@
 {
-	"include": ["*.js","abis.json","actions/*.js"],
+	"include": ["strategyen.js", "common.js", "helpers.js"],
     "compilerOptions": {
     	"target": "es6",
-    	"lib": ["es2015"],
+    	"lib": [
+    		"es2015"
+    	],
         "allowJs": true,
         "declaration": true,
         "emitDeclarationOnly": true,
