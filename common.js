@@ -25,12 +25,13 @@ const methodName = (str) => str.slice(0, str.indexOf('('));
 
 /**
  * Contract call holder
- * @param {string=} target
+ * @param {string} target
  * @param {string} method
  * @param {Array} params
- * @param {number} eth
- * @param {Object} descs
- * @param {Check} check
+ * @param {number=} eth
+ * @param {Object=} descs
+ * @param {Check=} check
+ * @param {Array=} inputs
  * @returns class
  */
 function Call (target, method = '', params = [], eth = '0', descs = {title:'',params:[]}, check = null, inputs = null) {
@@ -75,7 +76,7 @@ Call.prototype = {
     },
     /**
      * Get metadata of call/target
-     * @returns Call
+     * @returns class
      */
     async meta() {
         const con = contract(this.target, 'token');
@@ -86,8 +87,7 @@ Call.prototype = {
             const trimAddress = (address) => address.slice(0,8)+'...'+address.slice(-6);
             const printToken = async (amount, token) => ethers.utils.formatUnits(amount, await getDecimals(token))+' '+(await getToken(token)).symbol;
 
-            debug('------------->', this.method, this.params, this._params, this._maps);
-
+            //debug('------------->', this.method, this.params, this._params, this._maps);
             //
             this.descs.values = [];
             for (let [i, val] of Object.entries(this.params)) {
@@ -102,10 +102,14 @@ Call.prototype = {
 
             //[this.fee, this.probe] = await Promise.all([con.estimate(), con.probe()]);
         } catch (err) {
-            //debug('fee', this.method, err.code, err.stack);
+            debug('fee', this.method, err.code, err.stack);
         }
         return this;
     },
+    /**
+     * Get transaction info
+     * @returns transaction
+     */
     get(from = null) {
         //const sig = ethers.utils.id(this.method).slice(0, 10);
         //const types = this.method.split(',');
@@ -161,10 +165,10 @@ View.prototype = {
     /**
      * Get view value
      * @param {address} target
-     * @param {object} maps
+     * @param {Object} maps
      * @returns any
      */
-    async get(target = this.target, maps = {}) {
+    async get(maps = {}, target = this.target) {
         const ms = Date.now();
         const con = this.contract(target);
         const params = _update(this.params ?? [], maps ?? {});
@@ -173,7 +177,7 @@ View.prototype = {
             res = await con.callStatic[this.name()].apply(con, params.concat([state.view.options]));
             res = (res.length && this.index != -1) ? res[this.index] : res;
         } catch (err) {
-            //debug('view', err.code, [address, this.name(), params]);
+            (false) && debug('view', err.code, [address, this.name(), params]);
             if (!maps) throw err;
         }
         return res;
@@ -223,7 +227,7 @@ Check.prototype = {
      */
     async eval(target, maps = {}) {
         let match = false;
-        const ret = await this.view.get(target, maps);
+        const ret = await this.view.get(maps, target);
         if (ret == null) return match;
         switch (this.vtype) {
         }
@@ -255,14 +259,16 @@ Check.prototype = {
     }
 };
 
-// default calls
+export { Call, Expecting, Check, View };
 
+// Get approve call
 const approve = (token, spender, amount = '__amount__', name='approve', check='allowance') =>
     new Call(token, name + '(address,uint256)', [spender, amount], '0', { title: 'Approve token spending', params: ['Spender', 'Amount'] }, new Check(
         new View(check + '(address,address)', ['__account__', spender], 'uint256', -1, token),
         Expecting.EQUAL,
         amount
     ));
+// Get transfer call
 const transfer = (token, to, amount = '__amount__') =>
     new Call(token, 'transfer(address,uint256)', [to, amount], 0, { title: 'Transfer token', params: ['Receiver', 'Amount'] }, new Check(
         getBalanceView(to, token),
@@ -270,12 +276,11 @@ const transfer = (token, to, amount = '__amount__') =>
         amount
     ));
 
-// token views
-
-const getBalanceEth = (account) => new View('balance(address)', [ account ], ['uint256']).get(getAddress());
+// get ETH balance
+const getBalanceEth = (account) => new View('balance(address)', [ account ], ['uint256']).get({}, getAddress());
+// get balance view
 const getBalanceView = (account, token = ethers.constants.AddressZero) => new View('balanceOf(address)', [ account ], ['uint256'], -1, token);
-const getBalance = (account, token) => getBalanceView(account, null).get(token);
-
-export { Call, Expecting, Check, View };
+// get ERC balance
+const getBalance = (account, token) => getBalanceView(account, null).get({}, token);
 
 export { approve, transfer, getBalance, getBalanceEth };

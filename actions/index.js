@@ -1,27 +1,20 @@
-//import swapsdk from '@uniswap/sdk';
+//import * as swapsdk from '@uniswap/sdk';
 import state from '../state.js';
 import funcs from './funcs.js';
 import { Call, approve, transfer } from '../common.js';
 import { contract, ts, invalidTokens, toBN, parseAmount, getAddress, findContract, findSwapPair, findSwapPath, debug } from '../helpers.js';
 
-// init uniswap sdk
-/*
-if (swapsdk) {
-    swapsdk.ChainId = state.chainId;
-    swapsdk.FACTORY_ADDRESS = getAddress('swap.factory');
-    swapsdk.WETH[state.chainId] = new swapsdk.Token(state.chainId, getAddress('token.eth'), 18, 'WETH', 'Wrapped');
-}
-*/
-
-/**
- * splitted function
- */
+// get pair tokens
 const findPairTokens = async (pair) => {
     const con = contract(pair, 'swaps');
     return (await Promise.all([con.token0(), con.token1()])).map(e => e.toLowerCase())
 };
 
+/**
+ * Action definitions
+ */
 const actions = {
+    /** @type Action */
     swaps: {
         abis: [],
         calls: async function (id, maps = {}, parent = {}) {
@@ -33,7 +26,7 @@ const actions = {
             }
             const calls = [
                 approve(token, target, maps.amount),
-                new Call(target, funcs.swaps.call.method, [maps.amount, out, path, maps.account, ts() + state.timeout.swaps], 0, funcs.swaps.call.desc)
+                new Call(target, funcs.swaps.call.method, [maps.amount, out, path, maps.account, ts() + state.timeout.swaps], 0, funcs.swaps.call.descs)
             ].map(call => call.update(maps));
             //
             maps.amount = out;
@@ -63,6 +56,7 @@ const actions = {
             return [ins, outs];
         }
     },
+    /** @type Action */
     providinglps: {
         abis: [],
         calls: async function (id, maps = {}, parent = {}) {
@@ -83,7 +77,7 @@ const actions = {
                 }));
                 amounts[1] = calls[1].params[1];
             } catch (err) {
-                debug('lps:', 'm', err.message);
+                debug('lps:', err.message);
                 // both  tokens provided
                 amounts[0] = maps.amount;
                 amounts[1] = (await findSwapPath(target, token, otoken, maps.amount))[1];
@@ -91,7 +85,7 @@ const actions = {
             calls.push.apply(calls, [
                 approve(token, target, amounts[0]),
                 approve(otoken, target, amounts[1]),
-                new Call(target, funcs.providinglps.call.method, [token, otoken, amounts[0], amounts[1], amounts[0], amounts[1], maps.account, ts() + state.timeout.swaps], 0, funcs.providinglps.call.desc)
+                new Call(target, funcs.providinglps.call.method, [token, otoken, amounts[0], amounts[1], amounts[0], amounts[1], maps.account, ts() + state.timeout.swaps], 0, funcs.providinglps.call.descs)
             ].map(call => call.update(maps)));
             //maps.amount = toBN(0);
             return calls;
@@ -115,7 +109,7 @@ const actions = {
                 }));
                 amounts[1] = calls[1].params[1];
             } catch (err) {
-                debug('lps:', 'a', err.message);
+                debug('lps(auto):', err.message);
                 //
                 pair = await findSwapPair(target, token, otoken);
                 amounts[0] = maps.amount;
@@ -133,6 +127,7 @@ const actions = {
             return [ins, outs];
         }
     },
+    /** @type Action */
     vaults: {
         abis: [],
         calls: async function (id, maps = {}, parent = {}) {
@@ -166,6 +161,7 @@ const actions = {
             return [ins, outs];
         }
     },
+    /** @type Action */
     lendings: {
         abis: [],
         calls: async function (id, maps = {}, parent = {}) {
@@ -200,6 +196,7 @@ const actions = {
             return [ins, outs];
         }
     },
+    /** @type Action */
     borrows: {
         abis: [],
         calls: async function (id, maps = {}, parent = {}) {
@@ -214,7 +211,7 @@ const actions = {
                 (def.target) && ({ target } = def);
                 //
                 [maps.target, maps.token, maps.itarget, maps.itoken] = [target, otoken, calls[calls.length-1].target, token];
-                maps.amount = await def.available.get(maps);
+                maps.amount = await def.available.get(maps, target);
                 calls.push.apply(calls, [
                     call.update(maps)
                 ]);
@@ -241,3 +238,10 @@ const actions = {
 };
 
 export default actions;
+
+// init uniswap sdk
+if (typeof swapsdk === 'object') {
+    swapsdk.ChainId = state.chainId;
+    swapsdk.FACTORY_ADDRESS = getAddress('swap.factory');
+    swapsdk.WETH[state.chainId] = new swapsdk.Token(state.chainId, getAddress('token.eth'), 18, 'WETH', 'Wrapped');
+}

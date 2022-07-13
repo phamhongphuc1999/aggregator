@@ -863,7 +863,7 @@ const addresses = {
 			"0x1af3f329e8be154074d8769d1ffa4ee058b1dbc3",
 			"0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d"
 		],
-		"token.eth": "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c"
+		"token.eth": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
 	}
 };
 const chains = [
@@ -1003,6 +1003,14 @@ const chains = [
         "infoURL": "https://ubiqsmart.com"
     }
 ];
+const configs = {
+  "RECORDS": [
+    {
+      "_id": "investments",
+      "methods": "{ \"lendings\" : \"Deposit\", \"vaults\" : \"Stake\", \"swaps\" : \"Swap\", \"providinglps\" : \"Add Liquidity Pair\", \"borrows\" : \"Borrow\" }"
+    }
+  ]
+};
 const methods = {"lendings":"Deposit","vaults":"Stake","swaps":"Swap","providinglps":"Add Liquidity Pair","borrows":"Borrow"};
 const tokens = {
 	"": {
@@ -1836,4 +1844,18 @@ const tokens = {
 		"name": "Oraichain Token"
 	}
 };
-export default { abis, addresses, chains, methods, tokens }
+const tsconfig = {
+	"include": ["strategyen.js", "common.js", "helpers.js"],
+    "compilerOptions": {
+    	"target": "es6",
+    	"lib": [
+    		"es2015"
+    	],
+        "allowJs": true,
+        "declaration": true,
+        "emitDeclarationOnly": true,
+        "outDir": "./",
+        "declarationMap": true
+    }
+};
+export default { abis, addresses, chains, configs, methods, tokens, tsconfig }

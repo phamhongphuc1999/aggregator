@@ -53,10 +53,7 @@ const processCall = (call) => {
                     encoded: call.check.encode()
                 })
             },
-            tx: {
-                ...call.get(state.maps.account),
-                ...(!isNaN(state.maps.nonce)) && { nonce: state.maps.nonce++ }
-            },
+            tx: call.get(state.maps.account, (++state.maps.nonce ?? null)),
             title: call.descs.title ?? '',
             params: call.params.map((param, i) => ({
                 value: param,
@@ -140,4 +137,11 @@ export async function process(strategy, maps = {}) {
         calls,
         auto
     };
+}
+
+//
+for (const [name, val] of Object.entries({
+    aggregator: getAddress()
+})) {
+    (!state.maps[name]) && (state.maps[name] = val);
 }
