@@ -15,7 +15,7 @@ async function aave_available (maps = {}, target, abi = 'lendings.a') {
     try {
         const [ap, [total, debt, available, threshold, ltv, hf], idecimals, decimals] = await Promise.all([con.getAddressesProvider(), con.getUserAccountData(maps.account), getDecimals(maps.itoken), getDecimals(maps.token)]);
         //
-        const oracle = con.attach(await Promise.any(this.oracles.map(view => view.get({}, ap))));
+        const oracle = con.attach(await Promise.any(this.oracles.map(view => view.get(false, ap))));
         const [idata] = await this.tokens[0]
             .update({ token: maps.itoken }, 0)
             .get({}, maps.itarget ?? maps.target);

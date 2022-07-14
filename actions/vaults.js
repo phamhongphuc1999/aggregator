@@ -49,7 +49,7 @@ export default [
         detect: [
             new View('user_point_history__ts(uint256,uint256)', ['1', '1'], 'uint256')
         ],
-        token: [ new View(() => '0x0391be54e72f7e001f6bbc331777710b4f2999ef') ],
+        token: [ { get: () => '0x0391be54e72f7e001f6bbc331777710b4f2999ef' } ],
         deposit: new Call(null, 'create_lock(address,uint256,uint256)', ['0x0391be54e72f7e001f6bbc331777710b4f2999ef', '__amount__', '__lock__'], '0', { title: 'Lock token to gain voting power and rewards', params: ['Token', 'Amount', 'Lock duration'] }, {}, {lock: { default: '0', title: 'Lock duration specifier', descs: '0,30,180,365' }}),
     },
     {

@@ -15,3 +15,4 @@ docs/
 *.log
 a.json
 test.json
+error.json

@@ -14,7 +14,7 @@ const findPairTokens = async (pair) => {
  * Action definitions
  */
 const actions = {
-    /** @type Action */
+    /** @type {Action} */
     swaps: {
         abis: [],
         calls: async function (id, maps = {}, parent = {}) {
@@ -56,7 +56,7 @@ const actions = {
             return [ins, outs];
         }
     },
-    /** @type Action */
+    /** @type {Action} */
     providinglps: {
         abis: [],
         calls: async function (id, maps = {}, parent = {}) {
@@ -127,7 +127,7 @@ const actions = {
             return [ins, outs];
         }
     },
-    /** @type Action */
+    /** @type {Action} */
     vaults: {
         abis: [],
         calls: async function (id, maps = {}, parent = {}) {
@@ -161,7 +161,7 @@ const actions = {
             return [ins, outs];
         }
     },
-    /** @type Action */
+    /** @type {Action} */
     lendings: {
         abis: [],
         calls: async function (id, maps = {}, parent = {}) {
@@ -196,7 +196,7 @@ const actions = {
             return [ins, outs];
         }
     },
-    /** @type Action */
+    /** @type {Action} */
     borrows: {
         abis: [],
         calls: async function (id, maps = {}, parent = {}) {

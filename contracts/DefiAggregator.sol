@@ -137,16 +137,28 @@ contract DefiAggregator {
     }
 
     /**
+     * Simpler multicall for views
+     */
+    function all(Call[] calldata calls) external view returns (uint256 blockNumber, bytes[] memory results) {
+        bool success;
+        for(uint256 i; i != calls.length; i++) {
+            (success, results[i]) = _staticcall(calls[i]);
+            require(success, "All: ");
+        }
+        blockNumber = block.number;
+    }
+
+    /**
      * Stop at first success
      */
     function any(Call[] calldata calls) external view returns (uint256 blockNumber, bytes memory result, uint16 index) {
-        blockNumber = block.number;
         bool success;
         for(; index != calls.length; index++) {
             (success, result) = _staticcall(calls[index]);
             if (success) break;
         }
         revert("Any: all calls rejected");
+        blockNumber = block.number;
     }
 
     /**
@@ -157,6 +169,31 @@ contract DefiAggregator {
         require(success, string(abi.encodePacked("Expect: ", ret)));
         assembly {
             value := mload(add(ret, mul(0x20, add(vpos, 1))))
+        }
+    }
+
+    /**
+     *
+     */
+    function _tostring(uint256 value) internal pure returns (bytes memory buffer) {
+        if (value == 0) {
+            buffer = new bytes(1);
+        } else {
+            unchecked {
+                // Inspired by OraclizeAPI's implementation - MIT licence (oraclizeAPI_0.4.25.sol)
+                uint256 temp = value / 10;
+                uint256 digits = 1;
+                while (temp != 0) {
+                    digits++;
+                    temp /= 10;
+                }
+                buffer = new bytes(digits);
+                while (value != 0) {
+                    digits--;
+                    buffer[digits] = bytes1(uint8(48 + (value % 10)));
+                    value /= 10;
+                }
+            }
         }
     }
 

@@ -20,7 +20,9 @@
         "archive": [
             "https://speedy-nodes-nyc.moralis.io/2ab951c0550908cbd73d21f4/eth/mainnet/archive"
         ],
+        "avgBlockTime": 12,
         "explorer": {
+            "url": "https://etherscan.io",
             "api_url": "https://api.etherscan.io/api",
             "api_key": "2MHE4CTGBBYHK56GM52PBEH1HSGQNSBA47"
         }
@@ -95,7 +97,9 @@
         "archive": [
             "https://speedy-nodes-nyc.moralis.io/2ab951c0550908cbd73d21f4/bsc/mainnet/archive"
         ],
+        "avgBlockTime": 3,
         "explorer": {
+            "url": "https://bscscan.com",
             "api_url": "https://api.bscscan.com/api",
             "api_key": "BI4KGXG8B75WEK1D22MH73NYQMZJR5EV6T"
         }

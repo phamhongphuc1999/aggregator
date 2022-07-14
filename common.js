@@ -1,6 +1,6 @@
 import * as ethers from 'ethers';
 import state from './state.js';
-import { contract, toBN, isBN, getSigner, getDecimals, getToken, debug } from './helpers.js';
+import { contract, toBN, isBN, getSigner, getDecimals, getToken, debug, invalidTokens } from './helpers.js';
 
 ethers.BigNumber.prototype.toJSON = function () { return this.toString() };
 ethers.logger.warn = function () {};
@@ -51,7 +51,7 @@ function Call (target, method = '', params = [], eth = '0', descs = {title:'',pa
     });
     return this;
 };
-Call.prototype = {
+Call.prototype = Object.freeze({
     name() {
         return methodName(this.method);
     },
@@ -126,7 +126,7 @@ Call.prototype = {
     encode() {
         return Object.values(this.get()).slice(0,3);
     }
-};
+});
 
 /**
  * View only call holder
@@ -138,10 +138,7 @@ Call.prototype = {
  * @returns class
  */
 function View (method = '', params = [], returns = '', index = -1, target = ethers.constants.AddressZero) {
-    // passthrough function
-    if (method instanceof Function) {
-        this.get = method;
-    }
+    //if (method instanceof Function) this.get = method;
     Object.assign(this, {
         method,
         params,
@@ -151,7 +148,7 @@ function View (method = '', params = [], returns = '', index = -1, target = ethe
     });
     return this;
 };
-View.prototype = {
+View.prototype = Object.freeze({
     name() {
         return methodName(this.method);
     },
@@ -185,18 +182,18 @@ View.prototype = {
     encode(address = this.target, maps = {}) {
         return this.method ?
             [address, this.contract(address).interface.encodeFunctionData(this.name(), _update(this.params, maps)), '0'] :
-            null;
+            [invalidTokens[0], [], '0'];
     }
-};
+});
 
 // enum constant = nulls
-const Expecting = {
+const Expecting = Object.freeze({
     PASS: 0,
     EQUAL: 1,
     INCREASE: 2,
     DECREASE: 3,
     MORETHAN: 4
-};
+});
 
 /**
  * Expectation wrapper
@@ -215,7 +212,7 @@ function Check (view, expecting = Expecting.PASS, value = '0', vtype = ethers.Bi
     });
     return this;
 };
-Check.prototype = {
+Check.prototype = Object.freeze({
     update(maps = {}, value = this.value) {
         return Object.setPrototypeOf({...this, _maps: maps, value: _update([value], maps)[0], view: this.view.update(maps)}, Check.prototype);
     },
@@ -257,7 +254,7 @@ Check.prototype = {
         // view should be already updated
         return [this.view.encode(), isFinite(this.expecting) ? this.expecting : Expect[this.expecting], this.value, (this.view.index == -1) ? 0 : this.view.index];
     }
-};
+});
 
 export { Call, Expecting, Check, View };
 
