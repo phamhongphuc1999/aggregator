@@ -1,28 +1,45 @@
 /**
- * helper functions
+ * Helper functions
+ *
+ * @typedef {address} string
+ * @typedef {ethers.BigNumber|string} bn
  */
-export function contract(address: any, abi?: string): ethers.ethers.Contract;
+export function contract(address: any, abi?: string): any;
 /**
- * Return valid swap path and expected out amounts
- * @param {*} router
- * @param {*} from
- * @param {*} to
- * @param {*} amount
- * @param {*} final
+ * Return first valid swap path and expected out amounts
+ * @param {address} router
+ * @param {address} from
+ * @param {address} to
+ * @param {bn=} amount
+ * @param {boolean=} final
+ * @returns [path, amounts]
+ */
+export function findSwapPath(router: address, from: address, to: address, amount?: bn | undefined, final?: boolean | undefined): any;
+export function findSwapPair(router: any, token: any, otoken: any): Promise<any>;
+/**
+ * find contract definition (onchain)
+ * @param {address} target
+ * @param {string} type
+ * @param {Object} maps
  * @returns
  */
-export function findSwapPath(router: any, from: any, to: any, amount?: any, final?: any): any;
-export function findSwapPair(router: any, token: any, otoken: any): Promise<any>;
-export function findContract(target: any, type?: string, maps?: {}): Promise<any>;
-import * as ethers from "ethers";
+export function findContract(target: address, type?: string, maps?: any): Promise<any>;
+/**
+ * Helper functions
+ */
+export type string = address;
+/**
+ * Helper functions
+ */
+export type bn = ethers.BigNumber | string;
 export function ts(): number;
-export const invalidTokens: string[];
-export const toBN: typeof ethers.ethers.BigNumber.from;
-export const isBN: typeof ethers.ethers.BigNumber.isBigNumber;
-export function parseAmount(amount: any, token?: any): Promise<ethers.ethers.BigNumber>;
+export const invalidAddresses: any[];
+export const toBN: any;
+export const isBN: any;
+export function parseAmount(amount: any, token?: any): Promise<any>;
 export function getDecimals(token: any): any;
 export function getABI(name: any): any;
-export function getChain(id?: string | number): {
+export function getChain(id?: any): {
     name: string;
     chainId: number;
     shortName: string;
@@ -56,14 +73,32 @@ export function getChain(id?: string | number): {
         api_key: string;
     };
 };
-export function getAddress(name?: string, id?: string | number): any;
-export function getToken(address?: string): any;
-export function getProvider(id?: string | number): any;
-export function getSigner(id?: number): ethers.ethers.Wallet;
-export function getScanApi(maps?: {}, id?: string | number): string;
+export function getAddress(name?: string, id?: any): any;
+export function getToken(address?: any): any;
+/**
+ * Return, cache provider and fixes
+ * @param {number=} id
+ * @returns ethers.providers.Provider
+ */
+export function getProvider(id?: number | undefined): any;
+export function getSigner(id?: number): any;
+/**
+ * Get transaction simulation/backtracing API instance
+ * @param {Object} maps
+ * @param {number} id
+ */
+export function getScanApi(maps?: any, id?: number): any;
 export namespace types {
-    const bignumber: typeof ethers.ethers.BigNumber;
+    const bignumber: any;
 }
-export function cached(get?: () => any, type?: Object, name?: string, expire?: number): Promise<any>;
+/**
+ * Simple object cache
+ * @param {Function} get
+ * @param {prototype} type
+ * @param {string} name
+ * @param {number} expire
+ * @returns
+ */
+export function cached(get?: Function, type?: prototype, name?: string, expire?: number): Promise<any>;
 export function debug(...args: any[]): void;
 export function serialize(obj: any): string;

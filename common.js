@@ -1,6 +1,6 @@
 import * as ethers from 'ethers';
 import state from './state.js';
-import { contract, toBN, isBN, getSigner, getDecimals, getToken, debug, invalidTokens } from './helpers.js';
+import { contract, toBN, isBN, getSigner, getDecimals, getToken, debug, invalidAddresses } from './helpers.js';
 
 ethers.BigNumber.prototype.toJSON = function () { return this.toString() };
 ethers.logger.warn = function () {};
@@ -182,7 +182,7 @@ View.prototype = Object.freeze({
     encode(address = this.target, maps = {}) {
         return this.method ?
             [address, this.contract(address).interface.encodeFunctionData(this.name(), _update(this.params, maps)), '0'] :
-            [invalidTokens[0], [], '0'];
+            [invalidAddresses[0], [], '0'];
     }
 });
 

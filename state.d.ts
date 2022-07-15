@@ -1,5 +1,5 @@
 declare namespace _default {
-    const chainId: string | number;
+    const chainId: any;
     namespace maps {
         const account: string;
         const amount: string;

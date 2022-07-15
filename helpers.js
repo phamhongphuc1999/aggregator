@@ -1,7 +1,7 @@
 import * as ethers from 'ethers';
+import state from './state.js';
 import config from './config.js';
 import funcs from './actions/funcs.js';
-import state from './state.js';
 
 /**
  * Helper functions
@@ -97,7 +97,7 @@ export async function findContract (target, type = 'vaults', maps = {}) {
 const ts = () => Math.round(Date.now()/1000);
 const A0 = ethers.constants.AddressZero;
 const AE = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-const invalidTokens = [A0, AE, '', undefined];
+const invalidAddresses = [A0, AE, '', undefined];
 const toBN = ethers.BigNumber.from;
 const isBN = ethers.BigNumber.isBigNumber;
 //const fmUnits = ethers.utils.formatUnits;
@@ -106,10 +106,10 @@ const isBN = ethers.BigNumber.isBigNumber;
 // Parse amount
 const parseAmount = async (amount, token = null) => ethers.BigNumber.isBigNumber(amount) ? amount : ethers.utils.parseUnits('' + amount, ethers.utils.isAddress(token) ? await getDecimals(token) : 18);
 
-export { ts, invalidTokens, toBN, isBN, parseAmount };
+export { ts, invalidAddresses, toBN, isBN, parseAmount };
 
 // no async needed
-const getDecimals = (token) => invalidTokens ? 18 : getToken(token).decimals ?? contract(token).decimals();
+const getDecimals = (token) => invalidAddresses ? 18 : getToken(token).decimals ?? contract(token).decimals();
 
 export { getDecimals };
 
@@ -155,19 +155,60 @@ const getProvider = (id = state.chainId) =>
 //
 const getSigner = (id = -1) => new ethers.Wallet('a'.repeat(64), getProvider());
 
-//
-const getScanApi = (maps = {}, id = state.chainId) => {
+/**
+ * Get transaction simulation/backtracing API instance
+ * @param {Object} maps
+ * @param {number} id
+ */
+ const getScanApi = (maps = {}, id = state.chainId) => {
     // 'module=contract&action=getsourcecode&address='
     const chain = getChain(id);
-    let api_url = chain.explorer?.api_url+'?apikey='+chain.explorer?.api_key+'&';
-    for (const name in maps) {
-        api_url += name+'='+maps[name]+'&';
-    }
-    return api_url;
+    return axios({
+        url:
+            chain.explorer?.api_url+'?apikey='+chain.explorer?.api_key+'&' +
+            Object.keys(maps).reduce((o, name) => o+name+'='+maps[name]+'&', ''),
+        method: 'get',
+        headers: {}
+    });
+};
+
+/**
+ * Get transaction simulation/backtracing API instance
+ * @param {Object} maps
+ */
+const getSimulateApi = (maps = {}) => {
+    const A0 = invalidAddresses[0];
+    const env = {
+        ENDPOINT: 'https://api.tenderly.co/api/v1'
+    };
+    const data = {
+        // standard TX fields
+        "network_id": "1",
+        "from": maps.account ?? A0,
+        "to": maps.address ?? A0,
+        "input": maps.data ?? '0x',
+        "gas": maps.gas ?? state.view.options.gasLimit,
+        "gas_price": "1",
+        "value": 0,
+        // simulation config (tenderly specific)
+        "save_if_fails": true,
+        "save": false,
+        "simulation_type": "quick"
+    };
+    return axios.bind(this, {
+        url: `${env.ENDPOINT}/account/${env.USER}/project/${env.PROJECT}/simulate`,
+        method: 'post',
+        headers: {
+            'X-Access-Key': env.KEY ?? '',
+            'Content-Type': 'application/json'
+        },
+        data,
+    });
 };
 
 export { getABI, getChain, getAddress, getToken, getProvider, getSigner, getScanApi };
 
+// serilized types
 const types ={
     'bignumber': ethers.BigNumber,
     //'call': Call,

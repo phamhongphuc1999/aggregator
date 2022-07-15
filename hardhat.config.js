@@ -11,7 +11,7 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 const key = process.env.KEY || 'aa'.repeat(32);
 
 /**
- * @type import('hardhat/config').HardhatUserConfig
+ * @type {import('hardhat/config').HardhatUserConfig}
  */
 module.exports = {
   solidity: {

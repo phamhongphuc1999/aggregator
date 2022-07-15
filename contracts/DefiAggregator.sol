@@ -19,6 +19,7 @@ contract DefiAggregator {
     /* DATA STRUCTURES */
 
     event Aggregated(address indexed account, uint256 gas);
+    event StaticCheck();
 
     enum Expecting {
         PASS,
@@ -71,19 +72,38 @@ contract DefiAggregator {
         _;
     }
 
+    modifier onlyStatic() {
+        try this.staticCheck() {
+            revert("Prohibited");
+        } catch {}
+        _;
+    }
+
+    modifier nonReentrant() {
+        require(!guard, "Aggregator: guarded");
+        guard = true;
+        _;
+        guard = false;
+    }
+
+    function staticCheck() external {
+        require(msg.sender == address(this));
+        emit StaticCheck();
+    }
+
     function name() external pure returns (string memory) {
-        return "BRicher Automatic Aggregator";
+        return "Strategy Automatic Aggregator";
     }
 
     /* FUNCTIONS */
 
     /**
      * Main aggregator proxy support
+     * Issues:
+     * - Working with ETH or evens tokens still dangerous
      */
-    function aggregate(Call[] calldata calls, Expectation[] calldata expect, Transfer[] calldata tins, Transfer[] calldata touts) public payable returns (uint256 blockNumber, bytes[] memory results) {
+    function aggregate(Call[] calldata calls, Expectation[] calldata expect, Transfer[] calldata tins, Transfer[] calldata touts) public payable nonReentrant returns (uint256 blockNumber, bytes[] memory results) {
         uint256 gas = gasleft();
-        require(!guard, "Aggregator: guarded");
-        guard = true;
 
         //
         uint256 last;
@@ -104,7 +124,7 @@ contract DefiAggregator {
             // block transfer calls
             assembly {
                 let sig := calldataload(data.offset)
-                // high level assembly, so expect eq() to strip data before compare
+                // actually high level assembly, so expect eq() to strip data before compare
                 if eq(sig, TRANSER_SIG) {
                     revert(0, 0)
                 }
@@ -114,7 +134,7 @@ contract DefiAggregator {
             }
             //require(sig != TRANSER_SIG && sig != TRANSERFROM_SIG, "Aggregator: transfer in calls prohibited");
 
-            results[i] = _call(calls[i]);
+            results[i] = _call(calls[i], i);
         }
 
         // Expecting handler
@@ -131,7 +151,8 @@ contract DefiAggregator {
 
         //
         _handletransfers(touts, true);
-        guard = false;
+
+        //
         blockNumber = block.number;
         emit Aggregated(msg.sender, gas - gasleft());
     }
@@ -139,60 +160,60 @@ contract DefiAggregator {
     /**
      * Simpler multicall for views
      */
-    function all(Call[] calldata calls) external view returns (uint256 blockNumber, bytes[] memory results) {
+    /*
+    function all(Call[] calldata calls) external view onlyStatic returns (uint256 blockNumber, bytes[] memory results) {
         bool success;
         for(uint256 i; i != calls.length; i++) {
             (success, results[i]) = _staticcall(calls[i]);
-            require(success, "All: ");
+            require(success, string(abi.encode("All: failed at ", _tostring(i), ": ", results[i])));
         }
         blockNumber = block.number;
     }
+    */
 
     /**
-     * Stop at first success
+     * Stop at first success, no state got saved, only parallel calls allowed
      */
     function any(Call[] calldata calls) external view returns (uint256 blockNumber, bytes memory result, uint16 index) {
         bool success;
+        blockNumber = block.number;
         for(; index != calls.length; index++) {
             (success, result) = _staticcall(calls[index]);
             if (success) break;
         }
         revert("Any: all calls rejected");
-        blockNumber = block.number;
     }
 
     /**
-     *
+     * Get view value
      */
     function _callgetvalue(Call calldata call, uint256 vpos) internal view returns (uint256 value) {
         (bool success, bytes memory ret) = _staticcall(call);
-        require(success, string(abi.encodePacked("Expect: ", ret)));
+        require(success, string(abi.encodePacked("View: ", ret)));
         assembly {
             value := mload(add(ret, mul(0x20, add(vpos, 1))))
         }
     }
 
     /**
-     *
+     * Inspired by OraclizeAPI's implementation - MIT licence (oraclizeAPI_0.4.25.sol)
      */
     function _tostring(uint256 value) internal pure returns (bytes memory buffer) {
         if (value == 0) {
-            buffer = new bytes(1);
-        } else {
-            unchecked {
-                // Inspired by OraclizeAPI's implementation - MIT licence (oraclizeAPI_0.4.25.sol)
-                uint256 temp = value / 10;
-                uint256 digits = 1;
-                while (temp != 0) {
-                    digits++;
-                    temp /= 10;
-                }
-                buffer = new bytes(digits);
-                while (value != 0) {
-                    digits--;
-                    buffer[digits] = bytes1(uint8(48 + (value % 10)));
-                    value /= 10;
-                }
+            return new bytes(1);
+        }
+        unchecked {
+            uint256 temp = value / 10;
+            uint256 digits = 1;
+            while (temp != 0) {
+                digits++;
+                temp /= 10;
+            }
+            buffer = new bytes(digits);
+            while (value != 0) {
+                digits--;
+                buffer[digits] = bytes1(uint8(48 + (value % 10)));
+                value /= 10;
             }
         }
     }
@@ -207,10 +228,10 @@ contract DefiAggregator {
     /**
      *
      */
-    function _call(Call calldata call) internal returns (bytes memory ret) {
+    function _call(Call calldata call, uint256 i) internal returns (bytes memory ret) {
         bool success;
         (success, ret) = call.target.call{value: call.eth}(call.data);
-        require(success, string(abi.encodePacked(ret)));
+        require(success, string(abi.encodePacked(_tostring(i), ret)));
     }
 
     /**
@@ -231,7 +252,10 @@ contract DefiAggregator {
                 (asset == address(0)) ?
                 (out ? _eth(msg.sender, amount) : msg.value == amount) :
                 (out ? IERC20(asset).transfer(msg.sender, amount) : IERC20(asset).transferFrom(msg.sender, address(this), amount))
-            , "Transfer: failed");
+            , out ? "TransferOut: failed" : "TransferIn: failed");
+        }
+        if (out && address(this).balance != 0) {
+            _eth(msg.sender, address(this).balance);
         }
     }
 
@@ -282,7 +306,7 @@ contract DefiAggregator {
      */
     function recoverActions(Call[] calldata calls) external onlyOwner {
         for(uint256 i; i != calls.length; i++) {
-            _call(calls[i]);
+            _call(calls[i], i);
         }
     }
 

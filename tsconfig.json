@@ -1,5 +1,6 @@
 {
-	"include": ["strategyen.js", "common.js", "helpers.js"],
+	"include": ["strategyen.js"],
+	"exclude": [],
     "compilerOptions": {
     	"target": "es6",
     	"lib": [
@@ -9,6 +10,6 @@
         "declaration": true,
         "emitDeclarationOnly": true,
         "outDir": "./",
-        "declarationMap": true
+        "declarationMap": false
     }
 }

@@ -2,7 +2,7 @@ import * as ethers from 'ethers';
 import axios from 'axios';
 import state from '../state.js';
 import { Call, Check, View, approve } from '../common.js';
-import { contract, toBN, getAddress, getDecimals, invalidTokens, debug } from '../helpers.js';
+import { contract, toBN, getAddress, getDecimals, invalidAddresses, debug } from '../helpers.js';
 
 const toPow = (n) => toBN(10).pow(n);
 
@@ -42,7 +42,7 @@ async function comp_available (maps = {}, target, abi = 'lendings.c') {
     const con = contract(maps.target, abi);
     try {
         debug('--------->', maps.target, target, maps.token);
-        let token = invalidTokens[0];
+        let token = invalidAddresses[0];
         try {
             token = await con.underlying();
         } catch(err) {}
@@ -66,12 +66,15 @@ async function comp_available (maps = {}, target, abi = 'lendings.c') {
 
 async function token_get_pool (api_url, token) {
     // find target by our own api
-    token = token.toLowerCase();
-    let res = (await axios.get(api_url, { responseType: 'json' })).data;
-    res = res['lendings'] ?? res;
-    res = res['reserves_list'] ?? res;
-    res = res[ (token == getAddress('token.eth')) ? invalidTokens[0] : token ];
-    return res ? (res['cToken'] ?? res['vToken'] ?? res) : invalidTokens[0];
+    try {
+        token = token.toLowerCase();
+        let res = (await axios.get(api_url, { responseType: 'json' })).data;
+        res = res['lendings'] ?? res;
+        res = res['reserves_list'] ?? res;
+        res = res[ (token == getAddress('token.eth')) ? invalidAddresses[0] : token ];
+        if (res) return res['cToken'] ?? res['vToken'] ?? res;
+    } catch (err) {}
+    return invalidAddresses[0];
 };
 
 /**
@@ -86,7 +89,7 @@ async function comp_ref (index, maps = {}) {
                 const def = {...this};
                 //
                 if (target = await token_get_pool(this.tokensUrl+maps.target, maps.itoken ?? maps.token)) {
-                    const obj = invalidTokens.concat([getAddress('token.eth')])
+                    const obj = invalidAddresses.concat([getAddress('token.eth')])
                         .includes(maps.token.toLowerCase()) ? this.ether : this;
                     Object.assign(def, {
                         deposit: obj.deposit.update({target}),

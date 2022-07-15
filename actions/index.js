@@ -2,7 +2,7 @@
 import state from '../state.js';
 import funcs from './funcs.js';
 import { Call, approve, transfer } from '../common.js';
-import { contract, ts, invalidTokens, toBN, parseAmount, getAddress, findContract, findSwapPair, findSwapPath, debug } from '../helpers.js';
+import { contract, ts, invalidAddresses, toBN, parseAmount, getAddress, findContract, findSwapPair, findSwapPath, debug } from '../helpers.js';
 
 // get pair tokens
 const findPairTokens = async (pair) => {
@@ -139,7 +139,7 @@ const actions = {
                 const { token, deposit:call } = def;
                 [maps.target, maps.token, maps.amount] = [target, token, await parseAmount(maps.amount, token)];
                 //
-                invalidTokens.includes(token) ? (maps.eth = maps.amount) : calls.push(approve(token, target, maps.amount).update(maps));
+                invalidAddresses.includes(token) ? (maps.eth = maps.amount) : calls.push(approve(token, target, maps.amount).update(maps));
                 calls.push(call.update(maps));
             }
             //maps.amount = toBN(0);
@@ -174,7 +174,7 @@ const actions = {
                 (def.target) && ({ target } = def);
                 [maps.target, maps.token, maps.amount] = [target, token, await parseAmount(maps.amount, token)];
                 //
-                invalidTokens.includes(token) ? (maps.eth = maps.amount) : calls.push(approve(token, target, maps.amount).update(maps));
+                invalidAddresses.includes(token) ? (maps.eth = maps.amount) : calls.push(approve(token, target, maps.amount).update(maps));
                 calls.push(call.update(maps));
             }
             //maps.amount = toBN(0);

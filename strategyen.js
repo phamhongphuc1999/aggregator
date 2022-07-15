@@ -3,7 +3,7 @@
 import state from './state.js';
 import funcs from './actions/funcs.js';
 import actions from './actions/index.js';
-import { ts, debug, getAddress, parseAmount, invalidTokens } from './helpers.js';
+import { ts, debug, getAddress, parseAmount, invalidAddresses } from './helpers.js';
 
 const OA = Object.assign;
 
@@ -14,8 +14,12 @@ const allowAsync = false;
 export { allowAsync };
 
 /**
+ * @typedef {import('./common.js').Call} Call
+ */
+
+/**
  * Get all helper
- * @param {Array} steps
+ * @param {Object[]} steps
  * @param {string} func
  * @param {number} count
  * @returns
@@ -80,7 +84,7 @@ const processCall = (call) => {
  * @params {Object} maps
  * @returns {StrategyExecs}
  */
-export async function process(strategy, maps = {}, merge = true, quick = true) {
+export async function process(strategy, maps = {}, merge = true, quick = false) {
     // initialize variables
     OA(state.maps, maps);
     const starttime = Date.now();
@@ -101,14 +105,23 @@ export async function process(strategy, maps = {}, merge = true, quick = true) {
     if (acalls && acalls.length) {
         // only last check needed
         const checks = [ acalls[acalls.length-1].check ];
-        const eth = (ins.filter((e) => invalidTokens.includes(e[0]))[0] ?? [, '0'])[1];
+        const eth = (ins.filter((e) => invalidAddresses.includes(e[0]))[0] ?? [, '0'])[1];
         try {
             if ((temp = Object.keys(strategy.strategy?.capital)).length) {
                 for (const token of temp) {
                     let i = 0;
-                    (!invalidTokens.includes(token)) && ins.push([
+                    (!invalidAddresses.includes(token)) && ins.push([
                         token,
-                        await parseAmount(state.maps['amount'+(++i)], token)
+                        await parseAmount(state.maps['amount'+(++i)] ?? state.maps['amount'], token)
+                    ]);
+                }
+            }
+            if ((temp = Object.keys(strategy.steps[strategy.steps.length-1].reward_tokens)).length) {
+                for (const token of temp) {
+                    let i = 0;
+                    (!invalidAddresses.includes(token)) && ins.push([
+                        token,
+                        '0'
                     ]);
                 }
             }
@@ -147,7 +160,7 @@ export async function process(strategy, maps = {}, merge = true, quick = true) {
 
 // Error directory
 const Error = Object.freeze({
-    UNKNOWN: '', // general failure
+    UNKNOWN: 'unknown', // general failure
     PROVIDER: 'provider', // includes fee
     FUND: 'fund', // missing funds
     SLIPPAGE: 'slippage', // for swaps and borrows
@@ -155,8 +168,8 @@ const Error = Object.freeze({
 
 // Suggested actions dictionary
 const Suggest = Object.freeze({
-    NONE: '', // no action suggested
-    REEXEC: 'reexec', // call process()
+    NONE: 'none', // no action suggested
+    REEXEC: 'reexec', // call process() and re-do
     INPUT: 'input', // alter some inputs
     NETWORK: 'network', // alter network condition
     FREEZE: 'freeze', // stop execution
@@ -166,21 +179,34 @@ export { Error, Suggest };
 
 /**
  * Process and returns useful directions related to the error
- * @param {Error} err
- * @param {Call} call
+ * @param {any} err
+ * @param {Call|Call[]} callx
  * @returns
  */
-export async function processError(err, call = null) {
+export async function processError(err, callx = null) {
     const code = err.error?.data?.code ?? err.error?.code ?? 0;
     const reason = err.error?.date?.message ?? err.reason ?? '';
     const reason_parts = reason.split(/:|,|;/).map(e => e.trim());
+    // determine
+    let index = -1;
+    if (callx && callx.length) {
+        index = 0;
+        if ([''].includes(reason_parts[0] ?? '')) {
+        }
+        callx = callx[index];
+    }
+    //
+    const at = {
+        step: callx?.step ?? 0,
+        title: callx?.title ?? '',
+        ...(index != -1) && { call: index },
+        contract: callx?.target ?? null,
+        function: callx?.method ?? '',
+    };
     //const stack = JSON.parse(err.error?.stack ?? '{}');
     //console.error(stack);
     const stack = [];
-    const at = {
-        contract: null,
-        function: ''
-    };
+    //
     let error = Error.UNKNOWN;
     let suggest = Suggest.NONE;
 

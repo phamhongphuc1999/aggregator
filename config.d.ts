@@ -2,8 +2,10 @@ declare namespace _default {
     export { abis };
     export { addresses };
     export { chains };
+    export { configs };
     export { methods };
     export { tokens };
+    export { tsconfig };
 }
 export default _default;
 declare const abis: {
@@ -67,6 +69,12 @@ declare const chains: ({
         api_key: string;
     };
 })[];
+declare namespace configs {
+    const RECORDS: {
+        _id: string;
+        methods: string;
+    }[];
+}
 declare namespace methods {
     const lendings: string;
     const vaults: string;
@@ -906,3 +914,15 @@ declare const tokens: {
         name: string;
     };
 };
+declare namespace tsconfig {
+    const include: string[];
+    namespace compilerOptions {
+        const target: string;
+        const lib: string[];
+        const allowJs: boolean;
+        const declaration: boolean;
+        const emitDeclarationOnly: boolean;
+        const outDir: string;
+        const declarationMap: boolean;
+    }
+}
