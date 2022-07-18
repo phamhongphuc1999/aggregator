@@ -5,6 +5,10 @@ import { contract, toBN, isBN, getSigner, getDecimals, getToken, debug, invalidA
 ethers.BigNumber.prototype.toJSON = function () { return this.toString() };
 ethers.logger.warn = function () {};
 
+/**
+ * @typedef {Object} Transaction
+ */
+
 //
 const _update = (params, maps) => {
     const keys = Object.keys(maps);
@@ -32,7 +36,7 @@ const methodName = (str) => str.slice(0, str.indexOf('('));
  * @param {Object=} descs
  * @param {Check=} check
  * @param {Array=} inputs
- * @returns class
+ * @return {Object}
  */
 function Call (target, method = '', params = [], eth = '0', descs = {title:'',params:[]}, check = null, inputs = null) {
     if (!target) target = '__target__';
@@ -76,7 +80,7 @@ Call.prototype = Object.freeze({
     },
     /**
      * Get metadata of call/target
-     * @returns class
+     * @return {Object}
      */
     async meta() {
         const con = contract(this.target, 'token');
@@ -108,7 +112,7 @@ Call.prototype = Object.freeze({
     },
     /**
      * Get transaction info
-     * @returns transaction
+     * @return {Transaction}
      */
     get(from = null) {
         //const sig = ethers.utils.id(this.method).slice(0, 10);
@@ -135,7 +139,7 @@ Call.prototype = Object.freeze({
  * @param {index=} returns
  * @param {number=} index
  * @param {target=} target
- * @returns class
+ * @return {Object}
  */
 function View (method = '', params = [], returns = '', index = -1, target = ethers.constants.AddressZero) {
     //if (method instanceof Function) this.get = method;
@@ -163,7 +167,7 @@ View.prototype = Object.freeze({
      * Get view value
      * @param {address} target
      * @param {Object} maps
-     * @returns any
+     * @return any
      */
     async get(maps = {}, target = this.target) {
         const ms = Date.now();
@@ -201,7 +205,7 @@ const Expecting = Object.freeze({
  * @param {Expecting} expecting
  * @param {string} value
  * @param {*} vtype
- * @returns class
+ * @return {Object}
  */
 function Check (view, expecting = Expecting.PASS, value = '0', vtype = ethers.BigNumber) {
     Object.assign(this, {
@@ -220,7 +224,7 @@ Check.prototype = Object.freeze({
      * Evaluate a check/expectation
      * @param {address} target
      * @param {object} maps
-     * @returns boolean
+     * @return {boolean}
      */
     async eval(target, maps = {}) {
         let match = false;
@@ -248,7 +252,7 @@ Check.prototype = Object.freeze({
     },
     /**
      * Encode to use in aggregated calls
-     * @returns array tuple
+     * @return array tuple
      */
     encode() {
         // view should be already updated

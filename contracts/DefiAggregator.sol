@@ -26,7 +26,8 @@ contract DefiAggregator {
         EQUAL,
         INCREASE,
         DECREASE,
-        MORETHAN
+        MORETHAN,
+        FAIL
     }
 
     struct Call {
@@ -138,16 +139,7 @@ contract DefiAggregator {
         }
 
         // Expecting handler
-        if (expect.length != 0) {
-            uint256 value = _callgetvalue(expect[0].call, expect[0].vpos);
-            if (expect[0].expecting == Expecting.EQUAL) {
-                require(expect[0].value == value, "Expect: not equal");
-            } else if (expect[0].expecting == Expecting.INCREASE) {
-                require((value - last) == expect[0].value, "Expect: condition not met");
-            } else if (expect[0].expecting == Expecting.DECREASE) {
-                require((last - value) == expect[0].value, "Expect: condition not met");
-            }
-        }
+        _handleexpect();
 
         //
         _handletransfers(touts, true);
@@ -165,7 +157,7 @@ contract DefiAggregator {
         bool success;
         for(uint256 i; i != calls.length; i++) {
             (success, results[i]) = _staticcall(calls[i]);
-            require(success, string(abi.encode("All: failed at ", _tostring(i), ": ", results[i])));
+            require(success, string(abi.encodePacked("All: failed at ", _tostring(i), ": ", results[i])));
         }
         blockNumber = block.number;
     }
@@ -181,7 +173,7 @@ contract DefiAggregator {
             (success, result) = _staticcall(calls[index]);
             if (success) break;
         }
-        revert("Any: all calls rejected");
+        revert("Any: all: rejected");
     }
 
     /**
@@ -189,10 +181,17 @@ contract DefiAggregator {
      */
     function _callgetvalue(Call calldata call, uint256 vpos) internal view returns (uint256 value) {
         (bool success, bytes memory ret) = _staticcall(call);
-        require(success, string(abi.encodePacked("View: ", ret)));
+        _require(success, "View", -1, ret);
         assembly {
             value := mload(add(ret, mul(0x20, add(vpos, 1))))
         }
+    }
+
+    /**
+     *
+     */
+    function _require(bool pass, string name, uint256 index, bytes memory data) internal pure {
+        require(pass, string(abi.encodePacked(name, ": ", _tostring(index), ": ", data)));
     }
 
     /**
@@ -231,8 +230,17 @@ contract DefiAggregator {
     function _call(Call calldata call, uint256 i) internal returns (bytes memory ret) {
         bool success;
         (success, ret) = call.target.call{value: call.eth}(call.data);
-        require(success, string(abi.encodePacked(_tostring(i), ret)));
+        _require(success, "Aggregate", i, ret);
     }
+
+    /**
+     *
+     */
+     function _transfer(address token, address from, address to, uint256 amount) internal returns (bool) {
+         return (from == address(0)) ?
+            IERC20(token).transfer(to, (amount == 0) ? IERC20(token).balanceOf(address(this)) : amount) :
+            IERC20(token).transferFrom(from, to, amount);
+     }
 
     /**
      *
@@ -244,18 +252,32 @@ contract DefiAggregator {
     /**
      *
      */
+    function _handleexpect(Expectation calldata expect) internal view {
+            uint256 value = _callgetvalue(expect[0].call, expect[0].vpos);
+        if (expect[0].expecting == Expecting.EQUAL) {
+            require(expect[0].value == value, _concat("Expect", value, ""));
+        } else if (expect[0].expecting == Expecting.INCREASE) {
+            require((value - last) == expect[0].value, _concat("Expect", value, ""));
+        } else if (expect[0].expecting == Expecting.DECREASE) {
+            require((last - value) == expect[0].value, _concat("Expect", value, ""));
+        }
+    }
+
+    /**
+     *
+     */
     function _handletransfers(Transfer[] calldata transfers, bool out) internal {
         for (uint256 i; i != transfers.length; i++) {
             address asset = transfers[i].asset;
             uint256 amount = transfers[i].amount;
-            require(
+            _require(
                 (asset == address(0)) ?
                 (out ? _eth(msg.sender, amount) : msg.value == amount) :
-                (out ? IERC20(asset).transfer(msg.sender, amount) : IERC20(asset).transferFrom(msg.sender, address(this), amount))
-            , out ? "TransferOut: failed" : "TransferIn: failed");
+                (out ? _transfer(asset, address(0), msg.sender, amount) : _transfer(asset, msg.sender, address(this), amount))
+            , out ? "TransferOut" : "TransferIn", i, "");
         }
-        if (out && address(this).balance != 0) {
-            _eth(msg.sender, address(this).balance);
+        if (out && balance(address(this)) != 0) {
+            _eth(msg.sender, balance(address(this)));
         }
     }
 
@@ -296,7 +318,7 @@ contract DefiAggregator {
         require(
             (_token == address(0)) ?
             _eth(msg.sender, balance(address(this))) :
-            IERC20(_token).transfer(msg.sender, IERC20(_token).balanceOf(address(this))),
+            _transfer(_token, address(this), msg.sender, 0),
             "Recover: failed"
         );
     }

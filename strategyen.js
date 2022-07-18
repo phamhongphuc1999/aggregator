@@ -14,7 +14,11 @@ const allowAsync = false;
 export { allowAsync };
 
 /**
- * @typedef {import('./common.js').Call} Call
+ * @typedef {Object} Call
+ * @typedef {Object} View
+ * @typedef {Object} Check
+ * @typedef {Object} Strategy
+ * @typedef {Object} StrategyExecs
  */
 
 /**
@@ -69,14 +73,6 @@ const processCall = (call) => {
     );
     return call;
 };
-
-/**
- * @typedef {Object} Strategy
- */
-
-/**
- * @typedef {Object} StrategyExecs
- */
 
 /**
  * Generate complete execution data based on strategy steps
@@ -175,7 +171,16 @@ const Suggest = Object.freeze({
     FREEZE: 'freeze', // stop execution
 });
 
-export { Error, Suggest };
+// Error prefixs
+const Prefixs = Object.freeze([
+    'Aggregate',
+    'Expect',
+    'View',
+    'TransferIn',
+    'TransferOut'
+]);
+
+export { Error, Suggest, Prefixs };
 
 /**
  * Process and returns useful directions related to the error
@@ -185,16 +190,25 @@ export { Error, Suggest };
  */
 export async function processError(err, callx = null) {
     const code = err.error?.data?.code ?? err.error?.code ?? 0;
-    const reason = err.error?.date?.message ?? err.reason ?? '';
-    const reason_parts = reason.split(/:|,|;/).map(e => e.trim());
+    let reason = err.error?.date?.message ?? err.reason ?? '';
+    let reason_parts = reason.split(/:|,|;/).map(e => e.trim());
+    //const stack = JSON.parse(err.error?.stack ?? '{}');
+    //console.error(stack);
+    const stack = [];
+    let error = Error.UNKNOWN;
+    let suggest = Suggest.NONE;
+
     // determine
     let index = -1;
     if (callx && callx.length) {
         index = 0;
-        if ([''].includes(reason_parts[0] ?? '')) {
+        if (Prefixs.includes(reason_parts[0] ?? '')) {
+            index = parseInt(reason_parts[1]);
         }
+        reason = reason_parts[2] ?? reason_parts[1] ?? reason_parts[0] ?? '.';
         callx = callx[index];
     }
+
     //
     const at = {
         step: callx?.step ?? 0,
@@ -203,19 +217,17 @@ export async function processError(err, callx = null) {
         contract: callx?.target ?? null,
         function: callx?.method ?? '',
     };
-    //const stack = JSON.parse(err.error?.stack ?? '{}');
-    //console.error(stack);
-    const stack = [];
-    //
-    let error = Error.UNKNOWN;
-    let suggest = Suggest.NONE;
 
-    if (err.method == 'estimateGas') {
+    //
+    if (err.code == 4001) {
+        [error, reason, reason_parts] = [Error.PROVIDER, 'Transaction request canceled.', []];
+    } else if (err.method == 'estimateGas') {
         // Request still in preflight
         // Need simulation API to determine stack trace
         suggest = Suggest.REEXEC;
     }
 
+    //
     return {
         suggest, // action
         error, // predefined error
@@ -233,3 +245,5 @@ for (const [name, val] of Object.entries({
 })) {
     (!state.maps[name]) && (state.maps[name] = val);
 }
+
+export { getAddress, invalidAddresses };

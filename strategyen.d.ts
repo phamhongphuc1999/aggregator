@@ -1,10 +1,4 @@
 /**
- * @typedef {Object} Strategy
- */
-/**
- * @typedef {Object} StrategyExecs
- */
-/**
  * Generate complete execution data based on strategy steps
  * @param {Strategy} strategy
  * @params {Object} maps
@@ -32,9 +26,11 @@ export function processError(err: any, callx?: Call | Call[]): Promise<{
     reason_parts: any;
     stack: any[];
 }>;
+export type Call = any;
+export type View = any;
+export type Check = any;
 export type Strategy = any;
 export type StrategyExecs = any;
-export type Call = typeof import("./common.js").Call;
 /** @type {boolean} */
 export const allowAsync: boolean;
 export const Error: Readonly<{
@@ -50,3 +46,7 @@ export const Suggest: Readonly<{
     NETWORK: string;
     FREEZE: string;
 }>;
+export const Prefixs: readonly string[];
+import { getAddress } from "./helpers.js";
+import { invalidAddresses } from "./helpers.js";
+export { getAddress, invalidAddresses };

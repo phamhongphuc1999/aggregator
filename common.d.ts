@@ -1,3 +1,4 @@
+export type Transaction = any;
 /**
  * Contract call holder
  * @param {string} target
@@ -7,7 +8,7 @@
  * @param {Object=} descs
  * @param {Check=} check
  * @param {Array=} inputs
- * @returns class
+ * @return {Object}
  */
 export function Call(target: string, method?: string, params?: any[], eth?: number | undefined, descs?: any | undefined, check?: typeof Check | undefined, inputs?: any[] | undefined): any;
 export const Expecting: Readonly<{
@@ -23,7 +24,7 @@ export const Expecting: Readonly<{
  * @param {Expecting} expecting
  * @param {string} value
  * @param {*} vtype
- * @returns class
+ * @return {Object}
  */
 export function Check(view: typeof View, expecting?: Readonly<{
     PASS: number;
@@ -39,7 +40,7 @@ export function Check(view: typeof View, expecting?: Readonly<{
  * @param {index=} returns
  * @param {number=} index
  * @param {target=} target
- * @returns class
+ * @return {Object}
  */
 export function View(method?: string, params?: any[], returns?: number | undefined, index?: number | undefined, target?: any): any;
 export function approve(token: any, spender: any, amount?: string, name?: string, check?: string): any;
