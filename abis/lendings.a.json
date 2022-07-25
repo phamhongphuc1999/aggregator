@@ -39,6 +39,8 @@
     "function setUserUseReserveAsCollateral(address asset, bool useAsCollateral)",
     "function swapBorrowRateMode(address asset, uint256 rateMode)",
     "function withdraw(address asset, uint256 amount, address to) returns (uint256)",
+
+
     "event AddressSet(bytes32 id, address indexed newAddress, bool hasProxy)",
     "event ConfigurationAdminUpdated(address indexed newAddress)",
     "event EmergencyAdminUpdated(address indexed newAddress)",
@@ -72,6 +74,8 @@
     "function setPoolAdmin(address admin)",
     "function setPriceOracle(address priceOracle)",
     "function transferOwnership(address newOwner)",
+
+
     "event Approval(address indexed owner, address indexed spender, uint256 value)",
     "event BorrowAllowanceDelegated(address indexed fromUser, address indexed toUser, address asset, uint256 amount)",
     "event Transfer(address indexed from, address indexed to, uint256 value)",
@@ -91,5 +95,12 @@
     "function WETH() view returns (address)",
     "function getAssetPrice(address asset) view returns (uint256)",
     "function setAssetPrice(address asset, uint256 price)",
-    "function getPriceOracle(uint256 pid) view returns (address)"
+    "function getPriceOracle(uint256 pid) view returns (address)",
+
+
+    "function decimals() view returns (uint8)",
+    "function description() view returns (string)",
+    "function getRoundData(uint80 _roundId) view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
+    "function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
+    "function version() view returns (uint256)"
 ]

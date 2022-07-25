@@ -24,13 +24,14 @@ export function contract (address, abi = 'token') {
  * @param {boolean=} final
  * @returns [path, amounts]
  */
-export function findSwapPath (router, from, to, amount = toBN(0), final = true) {
+export function findSwapPath (router, from, to, amount = toBN(1), final = true) {
     const con = contract(router, 'swaps');
     const tokens = [getAddress('token.usd'), getAddress('token.eth')];
     const fnpath = [tokens[0][0], tokens[1]];
     // try: direct, via weth, via usds, via mix of both (ordered)
     const paths = [[], [tokens[1]], ...tokens[0].map(e => [e]), fnpath, fnpath.reverse() ].map(path => [from, ...path, to]);
     //swapsdk.Trade.bestTradeExactIn(apairs, new swapsdk.TokenAmount(new swapsdk.Token(), maps.amount.toHexString()), new swapsdk.Token(), { maxHops: 3, maxNumResults: 1 })[0];
+    (toBN(amount).eq(0)) && (amount = toBN(1));
     return Promise.any(paths.map(async (path) => {
         const amounts = await con.getAmountsOut(amount, path);
         return [path.map(e => e.toLowerCase()), final ? amounts[amounts.length - 1] : amounts];
@@ -84,6 +85,7 @@ export async function findContract (target, type = 'vaults', maps = {}) {
             }
             token = (token ?? '').toLowerCase();
         } catch (err) {
+            // straight to console
             console.error(`No ${type} matched for ${target} (${err.message})`);
             return null;
         }
@@ -247,7 +249,8 @@ export { types, cached };
 
 // general debugging
 const debug = function () {
-    console.error.apply(console, arguments);-0
+    (typeof arguments[0] === 'string') && (arguments[0] += ':');
+    console.error.apply(console, arguments);
 };
 
 // debug run duration

@@ -16,7 +16,7 @@ const _update = (params, maps) => {
         let name;
         if (typeof item == 'string') {
             return keys.includes( name = item.split('__').join('').toLowerCase() ) ? maps[name] : item;
-        } else if (item instanceof Array) {
+        } else if (Array.isArray(item)) {
             return item.map(ra);
         }
         return item;
@@ -38,9 +38,9 @@ const methodName = (str) => str.slice(0, str.indexOf('('));
  * @param {Array=} inputs
  * @return {Object}
  */
-function Call (target, method = '', params = [], eth = '0', descs = {title:'',params:[]}, check = null, inputs = null) {
+function Call (target, method = '', params = [], eth = '0', descs = {title:'',params:[]}, check = null, inputs = undefined) {
     if (!target) target = '__target__';
-    if (method instanceof Array) method = `${method[0]}(${method[1] instanceof Array ? method[1].join(',') : method[1]})`;
+    if (Array.isArray(method)) method = `${method[0]}(${Array.isArray(method[1]) ? method[1].join(',') : method[1]})`;
     if (!descs) descs = {};
     Object.assign(this, {
         target,
@@ -59,6 +59,12 @@ Call.prototype = Object.freeze({
     name() {
         return methodName(this.method);
     },
+    /**
+     * Update
+     * @param {Object|string} maps
+     * @param {Object=} params
+     * @returns {Call}
+     */
     update(maps = {}, params = this.params) {
         // only saved once when updating
         const _params = this.params.slice();
@@ -80,33 +86,41 @@ Call.prototype = Object.freeze({
     },
     /**
      * Get metadata of call/target
-     * @return {Object}
+     * @return {Call}
      */
     async meta() {
         const con = contract(this.target, 'token');
         try {
             this.targetName = await getToken(this.target).name ?? (this.target == getAddress() ? 'Automatic Aggregator' : null) ?? await con.name();
         } catch (err) {}
+        //
         try {
             const trimAddress = (address) => address.slice(0,8)+'...'+address.slice(-6);
-            const printToken = async (amount, token) => ethers.utils.formatUnits(amount, await getDecimals(token))+' '+(await getToken(token)).symbol;
+            const printToken = async (amount, token) =>
+                (amount.eq(ethers.constants.MaxUint256) ? 'MAX' : ethers.utils.formatUnits(amount, await getDecimals(token)))+' '+(await getToken(token)).symbol;
+            const formatParam = async (val, i) => {
+                if (typeof val === 'string' && val.startsWith('__')) {
+                    val = val.slice(2, val.lastIndexOf('__'));
+                } else if (ethers.utils.isAddress(val)) {
+                    val = trimAddress(val);
+                } else if (isBN(this._params[i]) || (this._params[i] ?? '').toString().match(/amount|in|out/)) {
+                    const token = this._maps.token ?? this._maps.otoken ?? this._maps.itoken ?? ethers.constants.AddressZero;
+                    val = await printToken(toBN(val), token);
+                } else if (Array.isArray(val)) {
+                    val = (await Promise.all(val.map(formatParam))).join(', ');
+                }
+                return val.toString();
+            };
 
             //debug('------------->', this.method, this.params, this._params, this._maps);
-            //
-            this.descs.values = [];
-            for (let [i, val] of Object.entries(this.params)) {
-                if (typeof val === 'string' && val.startsWith('__')) break;
-                if (ethers.utils.isAddress(val)) {
-                    val = trimAddress(val);
-                } else if (isBN(this._params[i]) || this._params[i].toString().includes('amount')) {
-                    val = await printToken(toBN(val), this._maps.token ?? this._maps.otoken ?? this._maps.itoken ?? ethers.constants.AddressZero);
-                }
-                this.descs.values.push(val);
-            }
+
+            this.descs.values = await Promise.all(Object.entries(this.params).map(
+                ([i, val]) => formatParam(val, i)
+            ));
 
             //[this.fee, this.probe] = await Promise.all([con.estimate(), con.probe()]);
         } catch (err) {
-            debug('fee', this.method, err.code, err.stack);
+            debug('meta', this.method, err.message, err.stack);
         }
         return this;
     },
@@ -136,7 +150,7 @@ Call.prototype = Object.freeze({
  * View only call holder
  * @param {string} method
  * @param {Array} params
- * @param {index=} returns
+ * @param {string=} returns
  * @param {number=} index
  * @param {target=} target
  * @return {Object}
@@ -158,7 +172,7 @@ View.prototype = Object.freeze({
     },
     update(maps = {}, index = this.index) {
         // clone
-        return Object.setPrototypeOf({...this, _maps: maps, index, params: _update(this.params ?? [], maps)}, View.prototype);
+        return Object.setPrototypeOf({...this, _maps: maps, index, target: _update([this.target], maps)[0], params: _update(this.params ?? [], maps)}, View.prototype);
     },
     contract(address = this.target) {
         return contract(address, [ `function ${this.method} view returns (${this.returns})` ]);
@@ -207,12 +221,13 @@ const Expecting = Object.freeze({
  * @param {*} vtype
  * @return {Object}
  */
-function Check (view, expecting = Expecting.PASS, value = '0', vtype = ethers.BigNumber) {
+function Check (view, expecting = Expecting.PASS, value = '0', vtype = ethers.BigNumber, last = null) {
     Object.assign(this, {
         view,
         expecting,
         value,
-        vtype
+        vtype,
+        last
     });
     return this;
 };
@@ -229,24 +244,26 @@ Check.prototype = Object.freeze({
     async eval(target, maps = {}) {
         let match = false;
         const ret = await this.view.get(maps, target);
-        if (ret == null) return match;
-        switch (this.vtype) {
-        }
-        switch (this.expecting) {
-            case Expect.EQUAL:
+        if (ret != null) {
+            switch (this.vtype) {
+                default:
+            }
+            switch (this.expecting) {
+                case Expect.EQUAL:
+                    match = ret == this.value || (ret=toBN(ret)) && ret.eq(this.value);
+                break;
+                case Expect.INCREASE:
+                    match = toBN(ret);
+                break;
+                case Expect.DECREASE:
 
-            break;
-            case Expect.INCREASE:
+                break;
+                case Expect.MORETHAN:
 
-            break;
-            case Expect.DECREASE:
-
-            break;
-            case Expect.MORETHAN:
-
-            break;
-            default:
-                match = true;
+                break;
+                default:
+                    match = true;
+            }
         }
         return match;
     },
@@ -276,6 +293,9 @@ const transfer = (token, to, amount = '__amount__') =>
         Expecting.INCREASE,
         amount
     ));
+// Get allowance view
+const allowance = (token, owner = '__account__', spender = '__to__') =>
+    new View('allowance(address,address)', [owner, spender], 'uint256', -1, token);
 
 // get ETH balance
 const getBalanceEth = (account) => new View('balance(address)', [ account ], ['uint256']).get({}, getAddress());
@@ -284,4 +304,4 @@ const getBalanceView = (account, token = ethers.constants.AddressZero) => new Vi
 // get ERC balance
 const getBalance = (account, token) => getBalanceView(account, null).get({}, token);
 
-export { approve, transfer, getBalance, getBalanceEth };
+export { approve, transfer, getBalance, allowance, getBalanceEth, getBalanceView };

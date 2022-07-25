@@ -1,8 +1,0 @@
-{
-  "RECORDS": [
-    {
-      "_id": "investments",
-      "methods": "{ \"lendings\" : \"Deposit\", \"vaults\" : \"Stake\", \"swaps\" : \"Swap\", \"providinglps\" : \"Add Liquidity Pair\", \"borrows\" : \"Borrow\" }"
-    }
-  ]
-}

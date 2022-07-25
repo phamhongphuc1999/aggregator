@@ -1,13 +1,26 @@
 //import * as swapsdk from '@uniswap/sdk';
 import state from '../state.js';
 import funcs from './funcs.js';
-import { Call, approve, transfer } from '../common.js';
+import { approve, transfer } from '../common.js';
 import { contract, ts, invalidAddresses, toBN, parseAmount, getAddress, findContract, findSwapPair, findSwapPath, debug } from '../helpers.js';
 
 // get pair tokens
 const findPairTokens = async (pair) => {
     const con = contract(pair, 'swaps');
     return (await Promise.all([con.token0(), con.token1()])).map(e => e.toLowerCase())
+};
+
+//
+const setAmount = (maps, val) => ([maps._amount, maps.amount] = [maps.amount, val]);
+
+//
+const cutAmount = (out, pct = 0.0) => toBN(out).mul(toBN(parseInt((1.0 - pct) * 10000))).div(toBN(10).pow(4))
+
+//
+const lpAmount = async (pair, amounts) => {
+    const con = contract(pair, 'swaps');
+    const [ts, [r0, r1]] = await Promise.all([con.totalSupply(), con.getReserves()]);
+    return ((a, b) => a.gt(b) ? b : a).apply(null, [amounts[0].mul(ts).div(r0), amounts[1].mul(ts).div(r1)]);
 };
 
 /**
@@ -21,39 +34,35 @@ const actions = {
             let [cid, target, token, otoken] = id.split('_');
             let [path, out] = await findSwapPath(target, token, otoken, maps.amount = await parseAmount(maps.amount, token));
             //
-            if (state.slippage?.swaps) {
-                out = out.mul(toBN(parseInt((1.0 - state.slippage.swaps) * 10000))).div(toBN(10).pow(4));
-            }
+            (state.slippage?.swaps) && (out = cutAmount(out, state.slippage.swaps));
             const calls = [
                 approve(token, target, maps.amount),
-                new Call(target, funcs.swaps.call.method, [maps.amount, out, path, maps.account, ts() + state.timeout.swaps], 0, funcs.swaps.call.descs)
+                funcs.swaps.call.update({...maps, target}, [maps.amount, out, path, maps.account, ts() + state.timeout.swaps])
             ].map(call => call.update(maps));
             //
-            maps.amount = out;
+            setAmount(maps, out);
             return calls;
         },
-        autoCalls: async function (id, maps = {}, parent = {}) {
+        auto: async function (id, maps = {}, parent = {}) {
             let [cid, target, token, otoken] = id.split('_');
-            const calls = [];
-            const [path, outs] = await findSwapPath(target, token, otoken, maps.amount = await parseAmount(maps.amount, token), false);
+            const [calls, ins, outs] = [[], [], []];
+            const [path, aouts] = await findSwapPath(target, token, otoken, maps.amount = await parseAmount(maps.amount, token), false);
             const pairs = await Promise.all(path.map((address, i) => i != 0 && findSwapPair(target, path[i-1], address)));
             const token0s = await Promise.all(pairs.map((pair, i) => i != 0 && contract(pair, 'swaps').token0()));
             //
             for (let i = 1; i != path.length; i++) {
                 const im = i-1;
-                const amounts = [outs[im], outs[im]];
-                amounts[(token0s[i].toLowerCase() == path[i]) ? 0 : 1] = outs[i];
+                const amounts = [aouts[im], aouts[im]];
+                amounts[(token0s[i].toLowerCase() == path[i]) ? 0 : 1] = aouts[i];
+                maps.target = pairs[i];
                 calls.push.apply(calls, [
-                    transfer(path[im], pairs[i], maps.amount),
-                    new Call(pairs[i], funcs.swaps.auto.method, [amounts[0], amounts[1], getAddress(), []], 0, funcs.swaps.auto.desc).update(maps)
+                    transfer(path[im], maps.target, maps.amount),
+                    funcs.swaps.auto.update(maps, [amounts[0], amounts[1], getAddress(), []])
                 ]);
             }
             //
-            maps.amount = outs[outs.length-1];
+            setAmount(maps, aouts[aouts.length-1]);
             return calls;
-        },
-        autoTransfers: async function (id, ins = [], outs = []) {
-            return [ins, outs];
         }
     },
     /** @type {Action} */
@@ -77,63 +86,69 @@ const actions = {
                 }));
                 amounts[1] = calls[1].params[1];
             } catch (err) {
-                debug('lps:', err.message);
+                debug('lps:', err.stack);
                 // both  tokens provided
                 amounts[0] = maps.amount;
                 amounts[1] = (await findSwapPath(target, token, otoken, maps.amount))[1];
             }
+            //
+            const amountx = amounts.map((e) => cutAmount(e, state.slippage?.providinglps ?? 0.00001));
+            amounts.forEach((e, i) => (maps['amount'+i] = e));
+            //
             calls.push.apply(calls, [
                 approve(token, target, amounts[0]),
                 approve(otoken, target, amounts[1]),
-                new Call(target, funcs.providinglps.call.method, [token, otoken, amounts[0], amounts[1], amounts[0], amounts[1], maps.account, ts() + state.timeout.swaps], 0, funcs.providinglps.call.descs)
+                funcs.providinglps.call.update({...maps, target}, [token, otoken, amounts[0], amounts[1], amountx[0], amountx[1], maps.account, ts() + state.timeout.swaps])
             ].map(call => call.update(maps)));
-            //maps.amount = toBN(0);
+            //
+            setAmount(maps, await lpAmount(await findSwapPair(target, token, otoken), amountx));
             return calls;
         },
-        autoCalls: async function (id, maps = {}, parent = {}) {
+        auto: async function (id, maps = {}, parent = {}) {
             let [cid, target, token, otoken] = id.split('_');
             //
             maps.amount = await parseAmount(maps.amount, token);
-            let pair;
-            const calls = [];
+            const [calls, ins, outs] = [[], [], []];
             const amounts = ['0', '0'];
+            let pair;
             try {
                 // one input token
                 pair = otoken;
                 const tokens = await findPairTokens(otoken);
                 otoken = tokens[(token == tokens[0]) ? 1 : 0];
+                // inaccurate split due to unaccounted fee!
+                amounts[0] = toBN(maps.amount).div(2);
                 //
-                calls.push.apply(calls, await actions.swaps.autoCalls(`_${target}_${token}_${otoken}`, {
+                calls.push.apply(calls, await actions.swaps.auto(`_${target}_${token}_${otoken}`, {
                     account: maps.account,
                     amount: toBN(maps.amount).sub(amounts[0])
                 }));
                 amounts[1] = calls[1].params[1];
             } catch (err) {
-                debug('lps(auto):', err.message);
+                debug('lps.auto:', err.stack);
                 //
                 pair = await findSwapPair(target, token, otoken);
-                amounts[0] = maps.amount;
+                amounts[0] = toBN(maps.amount);
                 amounts[1] = (await findSwapPath(target, token, otoken, maps.amount))[1];
             }
+            //
             calls.push.apply(calls, [
                 transfer(token, pair, amounts[0]),
                 transfer(otoken, pair, amounts[1]),
-                new Call(pair, funcs.providinglps.auto.method, [getAddress()], 0, funcs.providinglps.auto.desc).update(maps)
+                funcs.providinglps.auto.update({...maps, target: pair}, [getAddress()])
             ]);
-            //maps.amount = toBN(0);
+            //
+            setAmount(maps, cutAmount(await lpAmount(pair, amounts), state.slippage?.providinglps ?? 0.00001));
             return calls;
-        },
-        autoTransfers: async function (id, ins = [], outs = []) {
-            return [ins, outs];
         }
     },
     /** @type {Action} */
     vaults: {
         abis: [],
-        calls: async function (id, maps = {}, parent = {}) {
+        calls: async function (id, maps = {}, parent = {}, auto = false) {
             let [cid, target] = id.split('_');
             //
-            const calls = [];
+            const [calls, ins, outs] = [[], [], []];
             const def = await findContract(target);
             if (def) {
                 const { token, deposit:call } = def;
@@ -141,32 +156,26 @@ const actions = {
                 //
                 invalidAddresses.includes(token) ? (maps.eth = maps.amount) : calls.push(approve(token, target, maps.amount).update(maps));
                 calls.push(call.update(maps));
+                if (!def.nodelegate) {
+                    ins.push([maps.token, maps.amount]);
+                    outs.push([def.token1 ?? def.token, '0']);
+                } else if (auto) {
+                    return null;
+                }
             }
             //maps.amount = toBN(0);
             return calls;
         },
-        autoCalls: function (id, maps = {}, parent = {}) {
+        auto: function (id, maps = {}, parent = {}) {
             return actions.vaults.calls(id, maps, parent, true);
-        },
-        autoTransfers: async function (id, ins = [], outs = []) {
-            const def = await findContract(id.split('_')[1]);
-            if (def) {
-                const { token } = def;
-                ins.push([token, '__amount__']);
-                if (otoken && def.nodelegate) {
-                    // 0 may means all
-                    outs.push([otoken, '0']);
-                }
-            }
-            return [ins, outs];
         }
     },
     /** @type {Action} */
     lendings: {
         abis: [],
-        calls: async function (id, maps = {}, parent = {}) {
+        calls: async function (id, maps = {}, parent = {}, auto = false) {
             let [cid, target, token] = id.split('_');
-            const calls = [];
+            const [calls, ins, outs] = [[], [], []];
             const def = await findContract(target, 'lendings', { token });
             if (def) {
                 const { deposit:call } = def;
@@ -176,34 +185,30 @@ const actions = {
                 //
                 invalidAddresses.includes(token) ? (maps.eth = maps.amount) : calls.push(approve(token, target, maps.amount).update(maps));
                 calls.push(call.update(maps));
+                if (!def.nodelegate) {
+                    ins.push([maps.token, maps.amount]);
+                    outs.push([def.token1 ?? def.token, '0']);
+                } else if (auto) {
+                    return null;
+                }
             }
             //maps.amount = toBN(0);
             return calls;
         },
-        autoCalls: function (id, maps = {}, parent = {}) {
-            return actions.lendings.calls(id, maps, parent);
-        },
-        autoTransfers: async function (id, ins = [], outs = []) {
-            let [cid, target, token] = id.split('_');
-            const def = await findContract(target);
-            if (def) {
-                const { token:otoken } = def;
-                ins.push([token, '__amount__']);
-                if (otoken && def.nodelegate) {
-                    outs.push([otoken, '0']);
-                }
-            }
-            return [ins, outs];
+        auto: function (id, maps = {}, parent = {}) {
+            return actions.lendings.calls(id, maps, parent, true);
         }
     },
     /** @type {Action} */
     borrows: {
         abis: [],
-        calls: async function (id, maps = {}, parent = {}) {
+        calls: async function (id, maps = {}, parent = {}, auto = false) {
             let [cid, target, token, otoken] = id.split('_');
-            const [def, calls] = await Promise.all([
+            const [calls, def, ins, outs] = await Promise.all([
+                actions.lendings.calls(`${cid}_${target}_${token}`, maps),
                 findContract(target, 'lendings', { token: otoken }),
-                actions.lendings.calls(`${cid}_${target}_${token}`, maps)
+                [],
+                []
             ]);
             if (def && calls.length) {
                 const { borrow:call } = def;
@@ -212,15 +217,23 @@ const actions = {
                 //
                 [maps.target, maps.token, maps.itarget, maps.itoken] = [target, otoken, calls[calls.length-1].target, token];
                 maps.amount = await def.available.get(maps, target);
-                calls.push.apply(calls, [
-                    call.update(maps)
-                ]);
+                calls.push(call.update(maps));
+                if (!def.nodelegate) {
+                    ins.push([maps.token, maps.amount]);
+                    outs.push([def.token1 ?? def.token, '0']);
+                } else if (auto) {
+                    return null;
+                }
             }
             //maps.amount = toBN(0);
             return calls;
         },
-        autoCalls: async function (id, maps = {}, parent = {}) {
+        auto: function (id, maps = {}, parent = {}) {
             // Auto borrowing is still dangerous
+            return actions.borrows.calls(id, maps, parent, true);
+        }
+        /*
+        autoCalls: async function (id, maps = {}, parent = {}) {
             let [cid, target, token, otoken] = id.split('_');
             const calls = [];
             const def = await findContract(target, 'lendings', { token: otoken });
@@ -228,12 +241,9 @@ const actions = {
                 calls.push.apply(calls, await actions.lendings.autoCalls(`${cid}_${target}_${token}`, maps));
                 const { borrow:call } = def;
             }
-            //
             return [];
-        },
-        autoTransfers: async function (id, ins = [], outs = []) {
-            return [ins, outs];
         }
+        */
     }
 };
 

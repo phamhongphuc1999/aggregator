@@ -41,7 +41,7 @@ async function aave_available (maps = {}, target, abi = 'lendings.a') {
 async function comp_available (maps = {}, target, abi = 'lendings.c') {
     const con = contract(maps.target, abi);
     try {
-        debug('--------->', maps.target, target, maps.token);
+        //debug('--------->', maps.target, target, maps.token);
         let token = invalidAddresses[0];
         try {
             token = await con.underlying();
@@ -115,8 +115,8 @@ async function comp_ref (index, maps = {}) {
             };
         }
     } catch(err) {
-        console.error('--------------->', err);
-        debug('ref', [err.message, err.stack]);
+        //console.error('--------------->', err);
+        debug('ref', err.stack);
     }
     // target is normal
     return this;

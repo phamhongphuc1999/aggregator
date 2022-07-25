@@ -92,7 +92,12 @@
 		"function WETH() view returns (address)",
 		"function getAssetPrice(address asset) view returns (uint256)",
 		"function setAssetPrice(address asset, uint256 price)",
-		"function getPriceOracle(uint256 pid) view returns (address)"
+		"function getPriceOracle(uint256 pid) view returns (address)",
+		"function decimals() view returns (uint8)",
+		"function description() view returns (string)",
+		"function getRoundData(uint80 _roundId) view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
+		"function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
+		"function version() view returns (uint256)"
 	],
 	"lendings.ax": [
 		"event Borrow(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount, uint256 borrowRate, uint16 indexed referral)",
@@ -186,7 +191,12 @@
 		"function renounceOwnership()",
 		"function setAssetSources(address[] assets, address[] sources)",
 		"function setFallbackOracle(address fallbackOracle)",
-		"function transferOwnership(address newOwner)"
+		"function transferOwnership(address newOwner)",
+		"function decimals() view returns (uint8)",
+		"function description() view returns (string)",
+		"function getRoundData(uint80 _roundId) view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
+		"function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
+		"function version() view returns (uint256)"
 	],
 	"lendings.b": [],
 	"lendings.c": [
@@ -632,15 +642,19 @@
 		"function balanceOf(address account) view returns (uint256)",
 		"function decimals() view returns (uint8)",
 		"function decreaseAllowance(address spender, uint256 subtractedValue) returns (bool)",
+		"function increaseAllowance(address spender, uint256 addedValue) returns (bool)",
 		"function getOwner() view returns (address)",
 		"function owner() view returns (address)",
 		"function approved() view returns (address)",
-		"function increaseAllowance(address spender, uint256 addedValue) returns (bool)",
 		"function mint(uint256 amount) returns (bool)",
 		"function name() view returns (string)",
 		"function symbol() view returns (string)",
 		"function totalSupply() view returns (uint256)",
-		"function transferOwnership(address newOwner)"
+		"function transferOwnership(address newOwner)",
+		"function burn(uint256 amount)",
+		"function withdraw(uint256 amount)",
+		"function DOMAIN_SEPARATOR() view returns (bytes32)",
+		"function permit(address owner, address spender, uint256 amount, uint256 deadline, uint8 v, bytes32 r, bytes32 s)"
 	],
 	"trava": [
 		"event Borrow()",

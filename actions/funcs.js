@@ -1,4 +1,4 @@
-import { View } from '../common.js';
+import { Call, Check, View } from '../common.js';
 
 /**
  * Abstract app specific function call definitions
@@ -10,42 +10,29 @@ const aggregate = {
 };
 
 const swaps = {
-    call: {
-        method: 'swapExactTokensForTokens(uint256,uint256,address[],address,uint256)',
-        descs: { title: 'Universal Token Swap', params: ['Amount In', 'Amount Out Min', 'Path', 'Receiver', 'Deadline'] },
-        check: null
-    },
-    auto: {
-        method: 'swap(uint256,uint256,address,bytes)',
-        descs: { title: 'Automatic swap', params: ['Amount 0 Out', 'Amount 1 Out', 'Receiver', 'Data'] },
-        check: null
-    },
-    calle2: {
-        method: 'swapETHForExactTokens(uint256,address[],address,uint256)',
-        descs: { title: 'Shortcut to swap native to tokens', params: ['Amount Out', 'Path', 'Receiver', 'Deadline'] },
-        check: null
-    },
-    call2e: {
-        method: 'swapExactTokensForETH(uint256,uint256,address[],address,uint256)',
-        descs: { title: 'Shortcut to swap tokens to native', params: ['Amount In', 'Amount Out Min', 'Path', 'Receiver', 'Deadline'] },
-        check: null
-    }
+    call: new Call(null, 'swapExactTokensForTokens(uint256,uint256,address[],address,uint256)', ['__amount__', '__oamount__', '__path__', '__ts__'], '0', { title: 'Universal token swap', params: ['Amount In', 'Amount Out Min', 'Swap Path', 'Receiver', 'Deadline'] }, new Check(
+        new View()
+    )),
+    auto: new Call(null, 'swap(uint256,uint256,address,bytes)', [], '0', { title: 'Automatic swap', params: ['Amount 0 Out', 'Amount 1 Out', 'Receiver', 'Data'] }, new Check(
+        new View()
+    )),
+    call2e: new Call(null, 'swapExactTokensForETH(uint256,uint256,address[],address,uint256)', [], '0', { title: 'Shortcut to swap tokens to native', params: ['Amount In', 'Amount Out Min', 'Swap Path', 'Receiver', 'Deadline'] }, new Check(
+        new View()
+    )),
+    calle2: new Call(null, 'swapETHForExactTokens(uint256,address[],address,uint256)', [], '__amount__', { title: 'Shortcut to swap native to tokens', params: ['Amount Out', 'Swap Path', 'Receiver', 'Deadline'] }, new Check(
+        new View()
+    ))
 };
 
 const providinglps = {
-    call: {
-        method: 'addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)',
-        descs: { title: 'Add liquidity', params: ['Token A', 'Token B', 'Amount A Desired', 'Amount B Desired', 'Amount A Min', 'Amount B Min', 'Receiver', 'Deadline'] },
-        check: null
-    },
-    auto: {
-        method: 'mint(address)',
-        descs: { title: 'Automatic add liquidity', params: ['Receiver'] },
-        check: null
-    }
+    call: new Call(null, 'addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256)', ['__token__', '__otoken__', '__amount__', '__amount1__', '__amount__', '__amount1__', '__account__', '__ts__'], '0', { title: 'Add liquidity', params: ['Token A', 'Token B', 'Amount A Desired', 'Amount B Desired', 'Amount A Min', 'Amount B Min', 'Receiver', 'Deadline'] }, new Check(
+        new View()
+    )),
+    auto: new Call(null, 'mint(address)', [], '0', { title: 'Automatic add liquidity', params: ['Receiver'] }, new Check(
+        new View()
+    ))
 };
 
-import { Call } from '../common.js';
 import lendings from './lendings.js';
 import vaults from './vaults.js';
 

@@ -32,6 +32,8 @@
     "function setReserveInterestRateStrategyAddress(address asset, address rateStrategyAddress)",
     "function setUserUseReserveAsCollateral(address asset, bool useAsCollateral)",
     "function withdraw(address asset, uint256 amount, address to) returns (uint256)",
+
+
     "event AddressSet(uint256 providerId, bytes32 id, address indexed newAddress, bool hasProxy)",
     "event ConfigurationAdminUpdated(uint256 providerId, address indexed newAddress)",
     "event EmergencyAdminUpdated(uint256 providerId, address indexed newAddress)",
@@ -60,6 +62,8 @@
     "function setLendingPoolImpl(uint256 providerId, address pool)",
     "function setLendingRateOracle(uint256 providerId, address lendingRateOracle)",
     "function setPriceOracle(uint256 providerId, address priceOracle)",
+
+
     "event Approval(address indexed owner, address indexed spender, uint256 value)",
     "event BorrowAllowanceDelegated(address indexed fromUser, address indexed toUser, address asset, uint256 amount)",
     "event Transfer(address indexed from, address indexed to, uint256 value)",
@@ -77,6 +81,8 @@
     "function totalSupply() view returns (uint256)",
     "function transfer(address recipient, uint256 amount) returns (bool)",
     "function transferFrom(address sender, address recipient, uint256 amount) returns (bool)",
+
+
     "event AssetSourceUpdated(address indexed asset, address indexed source)",
     "event FallbackOracleUpdated(address indexed fallbackOracle)",
     "event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)",
@@ -90,5 +96,12 @@
     "function renounceOwnership()",
     "function setAssetSources(address[] assets, address[] sources)",
     "function setFallbackOracle(address fallbackOracle)",
-    "function transferOwnership(address newOwner)"
+    "function transferOwnership(address newOwner)",
+
+
+    "function decimals() view returns (uint8)",
+    "function description() view returns (string)",
+    "function getRoundData(uint80 _roundId) view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
+    "function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
+    "function version() view returns (uint256)"
 ]

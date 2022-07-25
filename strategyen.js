@@ -1,9 +1,20 @@
+/**
+ * Automatic Strategy Encoder
+ * For use with data from ScoringAPI of trava.finance (BRicher project)
+ *
+ *
+ *
+ *
+ */
+
+
 'use strict'
 
 import state from './state.js';
 import funcs from './actions/funcs.js';
 import actions from './actions/index.js';
-import { ts, debug, getAddress, parseAmount, invalidAddresses } from './helpers.js';
+import { approve, allowance } from './common.js';
+import { ts, toBN, debug, getAddress, getToken, parseAmount, invalidAddresses } from './helpers.js';
 
 const OA = Object.assign;
 
@@ -29,27 +40,31 @@ export { allowAsync };
  * @returns
  */
 const all = async function (steps, func = 'calls', count = 0) {
-    //
+    // merge calls helper
     const get = async (info) => {
-        const id = (info.id ?? info.strategy_id), action = (info.method ?? info.methods[0]),
-            get = actions[action][func],
+        const
+            id = (info.id ?? info.strategy_id), action = (info.method ?? info.methods[0]),
             step = count++;
-        return (id && action && get) ? (await get(id, state.maps)).map(
-            (call) => OA(call, { step, action })
-        ) : [];
+        let get = actions[action][func];
+        if (id && action && get && (get = await get(id, state.maps))) {
+            return get.map((call) => OA(call, { step, action }));
+        }
+        return [];
     };
-    //
-    let arr = [];
+    // do it sequential or in parallel
     try {
-        if (!allowAsync) {
-            for (const step of steps) arr = arr.concat(await get(step));
+        if (allowAsync) {
+            return (await Promise.all(steps.map(get))).reduce((calls, items) => calls.concat(items), []);
         } else {
-            arr = (await Promise.all(steps.map(get))).reduce((arr, calls) => arr.concat(calls), []);
+            let calls = [];
+            for (const step of steps) calls = calls.concat(await get(step));
+            return calls;
         }
     } catch(err) {
         debug(func, err.message, err.stack);
     }
-    return arr;
+    //
+    return [];
 };
 
 /**
@@ -57,21 +72,79 @@ const all = async function (steps, func = 'calls', count = 0) {
  * @param {Call} call
  * @returns Call
  */
-const processCall = (call) => {
-    OA(call,
-        {
-            //...(call.check?.encode) && { check: OA(call.check, { encoded: call.check.encode() }) },
-            tx: call.get(state.maps.account, (++state.maps.nonce ?? null)),
-            title: call.descs.title ?? '',
-            params: call.params.map((param, i) => ({
-                value: param,
-                display: (call.descs.values ?? [])[i] ?? formatParam(param) ?? param,
-                comment: (call.descs.params ?? [])[i] ?? ''
-            })),
-            descs: undefined
+const formatCall = async (call, notx = false) => {
+    const formatParam = (val) => {
+        return ''+val;
+    };
+    //
+    try {
+        let tx;
+        if (notx !== true) {
+            call = await call.meta();
+            tx = call.get(state.maps.account, (++state.maps.nonce ?? null));
         }
-    );
+        //
+        OA(call,
+            {
+                //...(call.check?.encode) && { check: OA(call.check, { encoded: call.check.encode() }) },
+                tx,
+                title: call.descs.title ?? '',
+                params: call.params.map((param, i) => ({
+                    value: param,
+                    display: (call.descs.values ?? [])[i] ?? formatParam(param) ?? param,
+                    comment: (call.descs.params ?? [])[i] ?? ''
+                })),
+                descs: undefined
+            }
+        );
+    } catch (err) {
+        debug('format', err.message, err.stack);
+    }
+    //
     return call;
+};
+
+/**
+ * Merge approve calls
+ * @param {Call[]} calls
+ * @returns Call
+ */
+const mergeApproves = async (calls) => {
+    try {
+        const method = approve().method;
+        const approves = (await Promise.all(calls
+            .filter(call => call.method === method)
+            .filter((call, i, arr) => {
+                let found = arr.findIndex((e, i) => e.target == call.target);
+                if (found !== -1 && found != i && (found = arr[found].params)) {
+                    found[1] = found[1].add(call.params[1]);
+                    return false;
+                }
+                return true;
+            })
+            .map(async call =>
+                OA(call, {_allowance: await allowance(call.target, state.maps.account, call.params[0]).get()}))
+            ))
+            .filter(call => {
+                if (call._allowance.gte(toBN(call.params[1]))) {
+                    return false;
+                } else if (state.config.approveMax) {
+                    call.params[1] = toBN('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
+                }
+                return true;
+            });
+        //
+        approves.forEach(call => {
+            call.step = -1;
+            call.action = 'approve';
+        });
+        // lodash would be useful here
+        return approves.concat(calls.filter(call => call.method !== method));
+    } catch (err) {
+        debug('approves', err.message, err.stack);
+    }
+    //
+    return calls;
 };
 
 /**
@@ -82,61 +155,76 @@ const processCall = (call) => {
  */
 export async function process(strategy, maps = {}, merge = true, quick = false) {
     // initialize variables
-    OA(state.maps, maps);
+    maps = {...state.maps, ...maps};
+    const autoTarget = getAddress();
+    // run analysis
     const starttime = Date.now();
     let [auto, ins, outs] = [null, [], []];
     let temp;
 
+    OA(state.maps, maps);
     // Generate manual call/params and checks
     const calls = (await Promise.all(
-            (await all(strategy.steps))
-            .map(call => call.meta())
-        ))
-        .map(processCall);
+            (await mergeApproves(await all(strategy.steps)))
+            .map(formatCall)
+        ));
 
-    // Generate auto call/params and expectation
-    const acalls = quick ? null : (await all(strategy.steps, 'autoCalls'));
+    OA(state.maps, maps);
+    // Generate auto (aggregated) call/params and expectation
+    const acalls = quick ? null : (await all(strategy.steps, 'auto'));
 
     // encode auto calls for use with aggregator
     if (acalls && acalls.length) {
-        // only last check needed
-        const checks = [ acalls[acalls.length-1].check ];
-        const eth = (ins.filter((e) => invalidAddresses.includes(e[0]))[0] ?? [, '0'])[1];
         try {
-            if ((temp = Object.keys(strategy.strategy?.capital)).length) {
-                for (const token of temp) {
-                    let i = 0;
-                    (!invalidAddresses.includes(token)) && ins.push([
-                        token,
-                        await parseAmount(state.maps['amount'+(++i)] ?? state.maps['amount'], token)
-                    ]);
+            // only last check is needed
+            const checks = [];
+            const eth = (ins.filter((e) => invalidAddresses.includes(e[0]))[0] ?? [, '0'])[1];
+            //
+            for (const call of acalls.slice().reverse()) {
+                if (call.check && call.check.encode) {
+                    checks.push(call.check);
+                    break;
                 }
             }
-            if ((temp = Object.keys(strategy.steps[strategy.steps.length-1].reward_tokens)).length) {
-                for (const token of temp) {
-                    let i = 0;
-                    (!invalidAddresses.includes(token)) && ins.push([
-                        token,
-                        '0'
-                    ]);
-                }
-            }
-            auto = {
-                calls: acalls.map((call, i, arr) => OA(call, { ...(arr.length-1 != i) && { check: null } })),
-                checks,
-                transfers: [ins, outs],
-                call: funcs.aggregate.call.update({
-                    target: getAddress(),
-                    calls: acalls.map(call => call.encode()),
-                    checks: checks.map(check => check.encode()),
-                    ins,
-                    outs,
-                    eth
-                })
+            // Standardize transfers
+            const processTransfer = async (token, i) => {
+                //if(!invalidAddresses.includes(token))
+                const amount = await parseAmount(maps['amount'+i] ?? maps['amount'], token);
+                return {
+                    token,
+                    amount,
+                    tx: approve(token, autoTarget, amount).get(state.maps.account),
+                    ...getToken(token)
+                };
             };
-            auto.call.tx = auto.call.encode();
+            const toArray = (e) => Object.values(e).slice(0,2);
+            // ins
+            if (strategy.strategy?.capital) {
+                ins = await Promise.all(Object.keys(strategy.strategy?.capital ?? {}).map(processTransfer));
+            }
+            // outs
+            if (true) {
+                outs = [];
+            }
+            const call = funcs.aggregate.call.update({
+                target: autoTarget,
+                calls: acalls.map(call => call.encode()),
+                checks: checks.map(check => check.encode()),
+                ins: ins.map(toArray),
+                outs: ins.map(toArray),
+                eth
+            });
+            //
+            acalls.forEach((call, i, arr) => OA(call, { ...(arr.length-1 != i) && { check: null } }));
+            auto = {
+                calls: await Promise.all(acalls.map(call => formatCall(call, true))),
+                checks,
+                transfers: {ins, outs},
+                call,
+                tx: call.get(autoTarget) ?? null
+            };
         } catch(err) {
-            debug('encode', err.message, err.stack);
+            debug('auto', err.message, err.stack);
         }
     }
 
@@ -167,8 +255,8 @@ const Suggest = Object.freeze({
     NONE: 'none', // no action suggested
     REEXEC: 'reexec', // call process() and re-do
     INPUT: 'input', // alter some inputs
-    NETWORK: 'network', // alter network condition
-    FREEZE: 'freeze', // stop execution
+    WAIT: 'wait', // please wait and alter network condition
+    STOP: 'stop', // stop execution
 });
 
 // Error prefixs
@@ -189,6 +277,7 @@ export { Error, Suggest, Prefixs };
  * @returns
  */
 export async function processError(err, callx = null) {
+    //
     const code = err.error?.data?.code ?? err.error?.code ?? 0;
     let reason = err.error?.date?.message ?? err.reason ?? '';
     let reason_parts = reason.split(/:|,|;/).map(e => e.trim());
@@ -225,6 +314,10 @@ export async function processError(err, callx = null) {
         // Request still in preflight
         // Need simulation API to determine stack trace
         suggest = Suggest.REEXEC;
+    } else {
+        if (reason_parts.filter(e => e.match(/insufficient|enough/i)).length) {
+            error = Error.SLIPPAGE;
+        }
     }
 
     //
@@ -240,10 +333,9 @@ export async function processError(err, callx = null) {
 };
 
 // default map values assign here
-for (const [name, val] of Object.entries({
-    aggregator: getAddress()
-})) {
-    (!state.maps[name]) && (state.maps[name] = val);
-}
+Object.entries({
+    aggregator: getAddress(),
+    ts: ts()
+}).forEach(([name, val]) => (!state.maps[name]) && (state.maps[name] = val));
 
 export { getAddress, invalidAddresses };

@@ -44,8 +44,8 @@ const arr=[];
 //fs.existsSync(file) ? require(file) : []
 let obj=await(await fetch(api_url)).json();
 if (!Object.keys(obj).length) throw new Error('!tokens');
-for (const prop in obj)
-	arr.push.apply(arr, obj[prop].map(e => ({...e, internal: prop.split('_')[0] == 'internal' })));
+for (const kind in obj)
+	arr.push.apply(arr, obj[kind].map(e => ({...e, internal: kind.split('_')[0] == 'internal' })));
 img_prefix=arr[0].img_url.slice(0, arr[0].img_url.indexOf(img_prefix));
 //
 obj={
@@ -84,7 +84,7 @@ console.error('\t config gen');
 const fs = require('fs');
 const files = fs.readdirSync('.').filter(e => e.endsWith('.json'));
 const save = 'config.js';
-const excludes = ['package','test','a'];
+const excludes = ['package','test','a', 'tsconfig'];
 
 let code = '', names = [];
 for (const file of files) {
