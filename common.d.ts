@@ -17,6 +17,8 @@ export const Expecting: Readonly<{
     INCREASE: number;
     DECREASE: number;
     MORETHAN: number;
+    FAIL: number;
+    NOTEQUAL: number;
 }>;
 /**
  * Expectation wrapper
@@ -32,18 +34,22 @@ export function Check(view: typeof View, expecting?: Readonly<{
     INCREASE: number;
     DECREASE: number;
     MORETHAN: number;
-}>, value?: string, vtype?: any): any;
+    FAIL: number;
+    NOTEQUAL: number;
+}>, value?: string, vtype?: any, last?: any): any;
 /**
  * View only call holder
  * @param {string} method
  * @param {Array} params
- * @param {index=} returns
+ * @param {string=} returns
  * @param {number=} index
  * @param {target=} target
  * @return {Object}
  */
-export function View(method?: string, params?: any[], returns?: number | undefined, index?: number | undefined, target?: any): any;
-export function approve(token: any, spender: any, amount?: string, name?: string, check?: string): any;
-export function transfer(token: any, to: any, amount?: string): any;
-export function getBalance(account: any, token: any): any;
-export function getBalanceEth(account: any): any;
+export function View(method?: string, params?: any[], returns?: string | undefined, index?: number | undefined, target?: any): any;
+export function approve(token?: string, spender?: string, amount?: string, name?: string, checkName?: string): any;
+export function transfer(token?: string, to?: string, amount?: string): any;
+export function getBalance(account?: string, token?: any): any;
+export function allowance(token?: string, owner?: string, spender?: string, name?: string): any;
+export function getBalanceEth(account?: string): any;
+export function getBalanceView(account?: string, token?: any): any;

@@ -1,7 +1,7 @@
 import * as ethers from 'ethers';
 import state from './state.js';
 import config from './config.js';
-import funcs from './actions/funcs.js';
+import functions from './actions/functions.js';
 
 /**
  * Helper functions
@@ -46,60 +46,70 @@ export async function findSwapPair (router, token, otoken) {
         ).getPair(token, otoken);
 };
 
+// get pair tokens
+export async function findPairInfo (pair) {
+    const con = contract(pair, 'swaps');
+    const res = await Promise.all([Promise.all([con.token0(), con.token1()]), con.getReserves()]);
+    res[0] = res[0].map(e => e.toLowerCase(e));
+    return res;
+};
+
 /**
  * find contract definition (onchain)
  * @param {address} target
- * @param {string} type
+ * @param {string} action
  * @param {Object} maps
  * @returns
  */
-export async function findContract (target, type = 'vaults', maps = {}) {
+export async function findContract (target, action = '', maps = {}) {
     //const findAbis = (match) => Object.keys(ABIS).filter((e) => e.match(new RegExp(match))).map(e => ABIS[e]);
     //const con = contract(address, findAbis(type).reduce((o, e) => o.concat(e), []));
     const key = target+'_'+maps.token;
-    let def = funcs[type], token, check, index;
+    let def = functions[action], tokens, check, index;
     if (def && def.length) {
         if (check = state.cache.def[key]) {
             return check;
         }
-        // only parallel detections, only valid method checks
-        const checks = def.reduce(
-            (arr, app) => {
-                arr.push.apply(arr, (app.detect.length ? app.detect : [app.detect])
-                    .map((detect, i) => new Promise((resolve, reject) =>
+        try {
+            // only parallel detections, only valid method checks
+            const checks = def.reduce(
+                (arr, app) => arr.concat(
+                    (app.detect.length ? app.detect : [app.detect]).map((detect, i) => new Promise((resolve, reject) =>
                         detect.get(maps, target).then(
                             (ret) => (ret == null) ? reject('') : resolve([app, ret, i])
                         ))
-                    )
-                );
-                return arr;
-            }
-        , []);
-        // find fallbackl definitions
-        try {
+                    ))
+            , []);
+            // find fallback definitions
             [def, check, index] = await Promise.any(checks);
-            (def.ref instanceof Function) && (def = await def.ref(index, { ...maps, target }));
-            for (token of def.token) {
-                if (token && token.get) token = await token.get(maps, target);
-                if (ethers.utils.isAddress(token)) break;
-            }
-            token = (token ?? '').toLowerCase();
+            (def.ref instanceof Function) && (def = await def.ref({ ...maps, target, index }));
+            // fetch designated tokens
+            tokens = (await Promise.all(
+                Object.entries(def.tokens).map(async ([name, view]) => {
+                    !name.includes('token') && (name += 'token');
+                    (view && view.get) && (view = (await view.get(maps, target) ?? '').toLowerCase());
+                    return [name, view];
+                })
+            )).reduce(
+                (obj, [name, view]) => ({...obj, [name]: view})
+            , {})
+            debug('find', key, def.title);
         } catch (err) {
             // straight to console
-            console.error(`No ${type} matched for ${target} (${err.message})`);
+            console.error(`No ${action} matched for ${target} (${err.message})`);
             return null;
         }
         //if (!con[detect.method]) throw Error('Method not in ABI');
         //if (err.code != 'UNPREDICTABLE_GAS_LIMIT') console.error(detect, err.code);
     }
-    return (state.cache.def[key] = { ...def, token, check });
+    return (state.cache.def[key] = { ...def, ...tokens, check });
 };
 
 // aliases
 const ts = () => Math.round(Date.now()/1000);
 const A0 = ethers.constants.AddressZero;
 const AE = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-const invalidAddresses = [A0, AE, '', undefined];
+const invalidAddresses = [A0, AE, '']; // undefined
 const toBN = ethers.BigNumber.from;
 const isBN = ethers.BigNumber.isBigNumber;
 //const fmUnits = ethers.utils.formatUnits;
@@ -111,7 +121,7 @@ const parseAmount = async (amount, token = null) => ethers.BigNumber.isBigNumber
 export { ts, invalidAddresses, toBN, isBN, parseAmount };
 
 // no async needed
-const getDecimals = (token) => invalidAddresses ? 18 : getToken(token).decimals ?? contract(token).decimals();
+const getDecimals = (token) => invalidAddresses ? 18 : getToken(token)?.decimals ?? contract(token).decimals();
 
 export { getDecimals };
 
@@ -127,13 +137,13 @@ const getChain = (id = state.chainId) => config.chains.filter(chain => chain.cha
 const getAddress = (name = 'aggregator', id = state.chainId) => config.addresses[id][name] ?? '';
 
 //
-const getToken = (address = A0) => config.tokens[address.toLowerCase()] ?? {};
+const getToken = (address = A0) => config.tokens[address.toLowerCase()] ?? null;
 
 
 /**
  * Return, cache provider and fixes
  * @param {number=} id
- * @returns ethers.providers.Provider
+ * @returns {ethers.providers.Provider}
  */
 const getProvider = (id = state.chainId) =>
     state.cache.provider[id] ?? (()=>{
@@ -146,7 +156,7 @@ const getProvider = (id = state.chainId) =>
             getChain(id).rpc[0].startsWith('wss:') ? 'WebSocketProvider' : 'JsonRpcBatchProvider'
         ]({
             url: getChain(id).rpc[0],
-            timeout: state.timeout?.network ?? 20000,
+            timeout: (state.timeout?.network ?? 20) * 1000,
             allowGzip: true
         }, network);
         // weird ethers.js bug make detectNetwork always null
@@ -154,8 +164,12 @@ const getProvider = (id = state.chainId) =>
         return (state.cache.provider[id] = provider);
     })();
 
-//
-const getSigner = (id = -1) => new ethers.Wallet('a'.repeat(64), getProvider());
+/**
+ * Get signer
+ * @param {number|string} id
+ * @returns {ethers.Wallet}
+ */
+const getSigner = (id = -1) => new ethers.Wallet((id.length == 64) ? id : 'a'.repeat(64), getProvider());
 
 /**
  * Get transaction simulation/backtracing API instance
@@ -249,8 +263,14 @@ export { types, cached };
 
 // general debugging
 const debug = function () {
+    (state.log.start === null) && (state.log.start = Date.now());
     (typeof arguments[0] === 'string') && (arguments[0] += ':');
+    //
     console.error.apply(console, arguments);
+    state.log.timestamps.push(Date.now());
+    state.log.entries.push(arguments);
+    //
+    return arguments;
 };
 
 // debug run duration

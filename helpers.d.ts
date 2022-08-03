@@ -16,14 +16,15 @@ export function contract(address: any, abi?: string): any;
  */
 export function findSwapPath(router: address, from: address, to: address, amount?: bn | undefined, final?: boolean | undefined): any;
 export function findSwapPair(router: any, token: any, otoken: any): Promise<any>;
+export function findPairInfo(pair: any): Promise<[[any, any], any]>;
 /**
  * find contract definition (onchain)
  * @param {address} target
- * @param {string} type
+ * @param {string} action
  * @param {Object} maps
  * @returns
  */
-export function findContract(target: address, type?: string, maps?: any): Promise<any>;
+export function findContract(target: address, action?: string, maps?: any): Promise<any>;
 /**
  * Helper functions
  */
@@ -53,6 +54,7 @@ export function getChain(id?: any): {
     faucets: string[];
     infoURL: string;
     archive?: undefined;
+    avgBlockTime?: undefined;
     explorer?: undefined;
 } | {
     name: string;
@@ -68,7 +70,9 @@ export function getChain(id?: any): {
     faucets: string[];
     infoURL: string;
     archive: string[];
+    avgBlockTime: number;
     explorer: {
+        url: string;
         api_url: string;
         api_key: string;
     };
@@ -78,10 +82,15 @@ export function getToken(address?: any): any;
 /**
  * Return, cache provider and fixes
  * @param {number=} id
- * @returns ethers.providers.Provider
+ * @returns {ethers.providers.Provider}
  */
-export function getProvider(id?: number | undefined): any;
-export function getSigner(id?: number): any;
+export function getProvider(id?: number | undefined): ethers.providers.Provider;
+/**
+ * Get signer
+ * @param {number|string} id
+ * @returns {ethers.Wallet}
+ */
+export function getSigner(id?: number | string): ethers.Wallet;
 /**
  * Get transaction simulation/backtracing API instance
  * @param {Object} maps

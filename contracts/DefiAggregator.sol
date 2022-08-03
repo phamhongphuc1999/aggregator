@@ -28,7 +28,8 @@ contract DefiAggregator {
         INCREASE,
         DECREASE,
         MORETHAN,
-        FAIL
+        FAIL,
+        NOTEQUAL
     }
 
     struct Call {
@@ -114,7 +115,7 @@ contract DefiAggregator {
      * Issues:
      * - Working with ETH or evens tokens still dangerous
      */
-    function aggregate(Call[] calldata calls, Expectation[] calldata expect, Transfer[] calldata tins, Transfer[] calldata touts) public payable guarded returns (uint256 blockNumber, bytes[] memory results) {
+    function aggregate(Call[] calldata calls, Expectation[] calldata expect, Transfer[] calldata ins) public payable guarded returns (uint256 blockNumber, bytes[] memory results) {
         uint256 gas = gasleft();
         uint256 last;
         results = new bytes[](calls.length);
@@ -122,7 +123,7 @@ contract DefiAggregator {
         if (verity) {
             uint256 offset;
             assembly {
-                offset := touts.offset
+                offset := ins.offset
                 offset := add(add(offset, mul(calldataload(offset), 0x40)), 0x20)
             }
             address signer = _verify(keccak256(msg.data[0 : offset]), msg.data[offset:]);
@@ -133,9 +134,9 @@ contract DefiAggregator {
         if (expect.length != 0 && expect[0].expecting != Expecting.PASS) {
             (, last) = _callgetvalue(expect[0].call, expect[0].vpos);
         }
-        _handletransfers(tins, false);
+        _handletransfers(ins);
 
-        _require(calls.length != 0, "Aggregator", 0, "params");
+        require(ins.length != 0 && calls.length != 0, "Aggregator: no transfers or calls");
 
         //
         for(uint256 i; i != calls.length; i++) {
@@ -158,7 +159,7 @@ contract DefiAggregator {
         _handleexpect(expect[0], last);
 
         //
-        _handletransfers(touts, true);
+        //_handletransfers(touts);
 
         //
         blockNumber = block.number;
@@ -226,7 +227,7 @@ contract DefiAggregator {
      */
     function _tostring(uint256 value) internal pure returns (bytes memory buffer) {
         if (value == 0) {
-            return new bytes(1);
+            return bytes("0");
         }
         unchecked {
             uint256 temp = value / 10;
@@ -279,42 +280,59 @@ contract DefiAggregator {
      */
     function _handleexpect(Expectation calldata expect, uint256 last) internal view {
         (bool success, uint256 value) = _callgetvalue(expect.call, expect.vpos);
-        if (expect.expecting == Expecting.EQUAL) {
-            _require(expect.value == value, "Expect", value, "");
-        } else if (expect.expecting == Expecting.INCREASE) {
-            _require((value - last) == expect.value, "Expect", value, "");
-        } else if (expect.expecting == Expecting.DECREASE) {
-            _require((last - value) == expect.value, "Expect", value, "");
+        bytes memory reason;
+        if (!success) {
+            success = expect.expecting == Expecting.FAIL;
+        } else {
+            if (expect.expecting == Expecting.EQUAL) {
+                success = expect.value == value;
+            } else if (expect.expecting == Expecting.INCREASE) {
+                success = (value - last) == expect.value;
+            } else if (expect.expecting == Expecting.DECREASE) {
+                success = (last - value) == expect.value;
+            } else if (expect.expecting == Expecting.MORETHAN) {
+                success = value >= expect.value;
+            } else if (expect.expecting == Expecting.NOTEQUAL) {
+                success = value != expect.value;
+            }
         }
+        // pass also
+        _require(success, "Expect", value, "failed");
     }
 
     /**
      *
      */
-    function _handletransfers(Transfer[] calldata transfers, bool out) internal {
+    function _handletransfers(Transfer[] calldata transfers) internal {
         for (uint256 i; i != transfers.length; i++) {
-            address asset = transfers[i].asset;
             uint256 amount = transfers[i].amount;
             bool success;
             bytes memory ret;
 
-            if (asset == address(0)) {
-                success = out ? _eth(msg.sender, amount) : msg.value == amount;
-            } else if (out) {
-                try IERC20(asset).transfer(msg.sender, (amount == 0) ? IERC20(asset).balanceOf(address(this)) : amount) returns (bool ok) {
-                    success = ok;
-                } catch (bytes memory ok) {
-                    ret = ok;
-                }
+            if (transfers[i].asset == address(0)) {
+                success = msg.value == amount;
+                ret = bytes(msg.value == 0 ? "no eth" : "not enough eth");
+
+            //    success = out ? _eth(msg.sender, amount) : msg.value == amount;
+            //} else if (out) {
+            //    try IERC20(asset).transfer(msg.sender, (amount == 0) ? IERC20(asset).balanceOf(address(this)) : amount) returns (bool ok) {
+            //        success = ok;
+            //    } catch (bytes memory ok) {
+            //        ret = ok;
+            //    }
+
             } else {
-                try IERC20(asset).transferFrom(msg.sender, address(this), amount) returns (bool ok) {
+                try IERC20(transfers[i].asset).transferFrom(msg.sender, address(this), amount) returns (bool ok) {
                     success = ok;
+                } catch Error(string memory ok) {
+                    ret = bytes(ok);
                 } catch (bytes memory ok) {
                     ret = ok;
                 }
             }
 
-            _require(success, out ? "TransferOut" : "TransferIn", i, ret);
+            //_require(success, out ? "TransferOut" : "TransferIn", i, ret);
+            _require(success, "TransferIn", amount, ret);
         }
     }
 
@@ -352,10 +370,9 @@ contract DefiAggregator {
     /**
      * Recover stuck tokens
      */
-    function recoverLostTokens(Transfer[] calldata outs) external onlyOwner {
-        _handletransfers(outs, true);
-        emit OwnerAction();
-    }
+    //function recoverLostTokens(Transfer[] calldata outs) external onlyOwner {
+    //    emit OwnerAction();
+    //}
 
     /**
      * Allow owner to send arbitrary calls to help users recover mishap actions

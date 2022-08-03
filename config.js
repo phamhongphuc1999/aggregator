@@ -1,4 +1,4 @@
-const abis = {
+const abis = Object.freeze({
 	"lendings.a": [
 		"event Borrow(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount, uint256 borrowRateMode, uint256 borrowRate, uint16 indexed referral)",
 		"event Deposit(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount, uint16 indexed referral)",
@@ -93,7 +93,6 @@ const abis = {
 		"function getAssetPrice(address asset) view returns (uint256)",
 		"function setAssetPrice(address asset, uint256 price)",
 		"function getPriceOracle(uint256 pid) view returns (address)",
-		"function decimals() view returns (uint8)",
 		"function description() view returns (string)",
 		"function getRoundData(uint80 _roundId) view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
 		"function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
@@ -192,7 +191,6 @@ const abis = {
 		"function setAssetSources(address[] assets, address[] sources)",
 		"function setFallbackOracle(address fallbackOracle)",
 		"function transferOwnership(address newOwner)",
-		"function decimals() view returns (uint8)",
 		"function description() view returns (string)",
 		"function getRoundData(uint80 _roundId) view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
 		"function latestRoundData() view returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)",
@@ -865,12 +863,15 @@ const abis = {
 		"function votingPowerOfUserAt(address _user, uint256 _t) view returns (uint256)",
 		"function withdraw(uint256 _tokenId)"
 	]
-};
-const addresses = {
+});
+const addresses = Object.freeze({
 	"56": {
-		"aggregator": "0x308D85243Bbc67cd3D595f0b4FE4a5AF473BcE50",
+		"0": "0x0000000000000000000000000000000000000000",
+		"aggregator": "0xfb4392e3431b9cc820362ad2b6a3fda4f8a7712d",
+		"aggregator_old": "0x308d85243bbc67cd3d595f0b4fe4a5af473bce50",
 		"swap.router": "0x10ed43c718714eb63d5aa57b78b54704e256024e",
 		"swap.factory": "0xca143ce32fe78f1f7019d7d551a6402fc5350c73",
+		"swap.fee": "2",
 		"token.usd": [
 			"0xe9e7cea3dedca5984780bafc599bd69add087d56",
 			"0x55d398326f99059ff775485246999027b3197955",
@@ -878,9 +879,13 @@ const addresses = {
 			"0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d"
 		],
 		"token.eth": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
+	},
+	"97": {
+		"0": "0x0000000000000000000000000000000000000000",
+		"aggregator": "0x76a49c82982d1b5910d9e696d2a7b5ce5e814a2f"
 	}
-};
-const chains = [
+});
+const chains = Object.freeze([
     {
         "name": "Ethereum Mainnet",
         "chainId": 1,
@@ -956,7 +961,7 @@ const chains = [
             "decimals": 18
         },
         "rpc": [
-        	"https://nd-233-026-729.p2pify.com/4d072eb4598e7a592b8d18c5ac7b2d61",
+            "https://nd-233-026-729.p2pify.com/4d072eb4598e7a592b8d18c5ac7b2d61",
             "wss://ws-nd-233-026-729.p2pify.com/4d072eb4598e7a592b8d18c5ac7b2d61",
             "https://bsc-dataseed1.binance.org",
             "https://bsc-dataseed2.binance.org",
@@ -1020,9 +1025,9 @@ const chains = [
         "faucets": [],
         "infoURL": "https://ubiqsmart.com"
     }
-];
-const methods = {"lendings":"Deposit","vaults":"Stake","swaps":"Swap","providinglps":"Add Liquidity Pair","borrows":"Borrow"};
-const tokens = {
+]);
+const methods = Object.freeze({"lendings":"Deposit","vaults":"Stake","swaps":"Swap","providinglps":"Add Liquidity Pair","borrows":"Borrow"});
+const tokens = Object.freeze({
 	"": {
 		"img_prefix": "https://storage.googleapis.com/token-c515a.appspot.com",
 		"chainId": "56"
@@ -1853,5 +1858,5 @@ const tokens = {
 		"img": "/tokens_v2/ORAI.png",
 		"name": "Oraichain Token"
 	}
-};
+});
 export default { abis, addresses, chains, methods, tokens }

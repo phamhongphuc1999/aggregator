@@ -11,18 +11,12 @@
 'use strict'
 
 import state from './state.js';
-import funcs from './actions/funcs.js';
+import functions from './actions/functions.js';
 import actions from './actions/index.js';
 import { approve, allowance } from './common.js';
-import { ts, toBN, debug, getAddress, getToken, parseAmount, invalidAddresses } from './helpers.js';
+import { ts, toBN, debug, getAddress, getToken, parseAmount, invalidAddresses, findContract, serialize, getProvider } from './helpers.js';
 
 const OA = Object.assign;
-
-// allow calls generation to be async
-/** @type {boolean} */
-const allowAsync = false;
-
-export { allowAsync };
 
 /**
  * @typedef {Object} Call
@@ -33,83 +27,57 @@ export { allowAsync };
  */
 
 /**
+ * Get
+ * @param {string} id
+ */
+export async function getStrategy(id) {
+    const api_url = state.config.apiBase+'/strategies/'+id;
+    return (await axios.get(api_url, { responseType: 'json' })).data;
+}
+
+/**
  * Get all helper
  * @param {Object[]} steps
  * @param {string} func
- * @param {number} count
+ * @param {Object} maps
+ * @param {number} i
  * @returns
  */
-const all = async function (steps, func = 'calls', count = 0) {
+async function allCalls (steps, func, maps) {
+    let calls = [];
     // merge calls helper
-    const get = async (info) => {
+    const get = async (step, i, get) => {
         const
-            id = (info.id ?? info.strategy_id), action = (info.method ?? info.methods[0]),
-            step = count++;
-        let get = actions[action][func];
-        if (id && action && get && (get = await get(id, state.maps))) {
-            return get.map((call) => OA(call, { step, action }));
-        }
-        return [];
+            starttime = Date.now(),
+            id = (step.id ?? step.strategy_id),
+            action = (step.method ?? step.methods[0]),
+            addprops = { action, step: i, ...(i == steps.length) && {lastStep: true} };
+        return (id && action && (get = actions[action][func]) && (get = await get(id, OA(maps, addprops))) && debug('get', action, Date.now() - starttime)) ?
+            get.map((call) => OA(call, addprops)) :
+            [];
     };
     // do it sequential or in parallel
     try {
-        if (allowAsync) {
-            return (await Promise.all(steps.map(get))).reduce((calls, items) => calls.concat(items), []);
+        if (state.config.allowAsync) {
+            calls = (await Promise.all(steps.map(get))).reduce((calls, items) => calls.concat(items), []);
         } else {
-            let calls = [];
-            for (const step of steps) calls = calls.concat(await get(step));
-            return calls;
+            let i = 0;
+            for (const step of steps) calls = calls.concat(await get(step, i++));
         }
     } catch(err) {
-        debug(func, err.message, err.stack);
+        debug('all.'+func, err.message, err.stack);
     }
     //
-    return [];
-};
-
-/**
- * process single call
- * @param {Call} call
- * @returns Call
- */
-const formatCall = async (call, notx = false) => {
-    const formatParam = (val) => {
-        return ''+val;
-    };
-    //
-    try {
-        let tx;
-        if (notx !== true) {
-            call = await call.meta();
-            tx = call.get(state.maps.account, (++state.maps.nonce ?? null));
-        }
-        //
-        OA(call,
-            {
-                //...(call.check?.encode) && { check: OA(call.check, { encoded: call.check.encode() }) },
-                tx,
-                title: call.descs.title ?? '',
-                params: call.params.map((param, i) => ({
-                    value: param,
-                    display: (call.descs.values ?? [])[i] ?? formatParam(param) ?? param,
-                    comment: (call.descs.params ?? [])[i] ?? ''
-                })),
-                descs: undefined
-            }
-        );
-    } catch (err) {
-        debug('format', err.message, err.stack);
-    }
-    //
-    return call;
+    return calls;
 };
 
 /**
  * Merge approve calls
- * @param {Call[]} calls
- * @returns Call
+ * @param {Promise<Call[]>} calls
+ * @returns {Promise<Call[]>}
  */
-const mergeApproves = async (calls) => {
+async function optimizeCalls (calls, maps) {
+    calls = await calls;
     try {
         const method = approve().method;
         const approves = (await Promise.all(calls
@@ -117,13 +85,12 @@ const mergeApproves = async (calls) => {
             .filter((call, i, arr) => {
                 let found = arr.findIndex((e, i) => e.target == call.target);
                 if (found !== -1 && found != i && (found = arr[found].params)) {
-                    found[1] = found[1].add(call.params[1]);
-                    return false;
+                    return (found[1] = found[1].add(call.params[1])) && false;
                 }
                 return true;
             })
             .map(async call =>
-                OA(call, {_allowance: await allowance(call.target, state.maps.account, call.params[0]).get()}))
+                OA(call, {_allowance: await (call.check?.view ?? allowance(call.target, maps.account, call.params[0])).get()}))
             ))
             .filter(call => {
                 if (call._allowance.gte(toBN(call.params[1]))) {
@@ -132,12 +99,8 @@ const mergeApproves = async (calls) => {
                     call.params[1] = toBN('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
                 }
                 return true;
-            });
-        //
-        approves.forEach(call => {
-            call.step = -1;
-            call.action = 'approve';
-        });
+            })
+            .map(call => OA(call, {step: -1, action: 'approve'}));
         // lodash would be useful here
         return approves.concat(calls.filter(call => call.method !== method));
     } catch (err) {
@@ -148,119 +111,195 @@ const mergeApproves = async (calls) => {
 };
 
 /**
+ * Format single call
+ * @param {Call} call
+ * @param {Object} maps
+ * @returns {Call}
+ */
+function formatCall (call, maps) {
+    const formatParam = (val) => { return ''+val; };
+    //
+    return OA(call, {
+        //...(call.check?.encode) && { check: OA(call.check, { encoded: call.check.encode() }) },
+        title: call.descs.title ?? '',
+        params: call.params.map((value, i) => ({
+            value,
+            display: call.descs?.values?.[i] ?? formatParam(value) ?? value,
+            comment: call.descs?.params?.[i] ?? '',
+            ...(call.descs?.editable == i) && { _value: value, editable: true }
+        })),
+        tx: call.get(maps.account, ++maps.nonce),
+        descs: undefined
+    });
+    //debug('format', err.message, err.stack);
+};
+
+/**
  * Generate complete execution data based on strategy steps
  * @param {Strategy} strategy
- * @params {Object} maps
- * @returns {StrategyExecs}
+ * @param {Object} maps
+ * @param {boolean} noauto
+ * @param {boolean} merge
+ * @returns {Promise<StrategyExecs>}
  */
-export async function process(strategy, maps = {}, merge = true, quick = false) {
-    // initialize variables
-    maps = {...state.maps, ...maps};
-    const autoTarget = getAddress();
+export async function process(strategy, maps = {}, noauto = false, merge = true) {
+    maps = Object.freeze(maps);
+    // result object
+    const res = {
+        id: strategy.id ?? strategy.strategy_id,
+        title: strategy.strategy?.name ?? strategy.name ?? '',
+        timestamp: ts(),
+        ran: 0,
+        expiry: ts() + state.timeout.execute,
+        calls: [],
+        auto: {},
+        ...(merge == true) && strategy
+    };
     // run analysis
     const starttime = Date.now();
-    let [auto, ins, outs] = [null, [], []];
+    const from = maps.retry?.realCall ?? maps.retry?.call ?? 0;
+    const transfers = {ins: [], out: []};
     let temp;
 
-    OA(state.maps, maps);
-    // Generate manual call/params and checks
-    const calls = (await Promise.all(
-            (await mergeApproves(await all(strategy.steps)))
-            .map(formatCall)
-        ));
 
-    OA(state.maps, maps);
+    // default map values
+    const addmaps = {
+        user: maps.account,
+        aggregator: getAddress(),
+        ts: ts(),
+        ...(maps.nonce === undefined && state.config.needNonce) && { nonce: await getProvider().getTransactionCount(maps.account) }
+    };
+
+    // initialize variables
+    const _maps = { ...state.maps, ...maps, ...addmaps, auto: true, account: addmaps.aggregator };
+
+    // Generate manual call/params and checks
     // Generate auto (aggregated) call/params and expectation
-    const acalls = quick ? null : (await all(strategy.steps, 'auto'));
+    [res.calls, res.auto.calls] = await Promise.all([
+        optimizeCalls(allCalls(strategy.steps, 'calls', temp={ ...state.maps, ...maps, ...addmaps }), temp),
+        noauto ? null : allCalls(strategy.steps, 'auto', _maps)
+    ]);
 
     // encode auto calls for use with aggregator
-    if (acalls && acalls.length) {
+    if (res.auto.calls && res.auto.calls.length) {
+        let eth = '0';
+        const target = getAddress();
+        //
+        if (true){
+            OA(_maps, maps);
+        }
         try {
-            // only last check is needed
-            const checks = [];
-            const eth = (ins.filter((e) => invalidAddresses.includes(e[0]))[0] ?? [, '0'])[1];
-            //
-            for (const call of acalls.slice().reverse()) {
-                if (call.check && call.check.encode) {
-                    checks.push(call.check);
-                    break;
-                }
-            }
+            // only last check is needed, must be a check available
+            res.auto.checks = [
+                res.auto.calls.slice().reverse().find(call =>
+                    call.check && call.check.encode
+                ).check
+            ];
             // Standardize transfers
             const processTransfer = async (token, i) => {
                 //if(!invalidAddresses.includes(token))
-                const amount = await parseAmount(maps['amount'+i] ?? maps['amount'], token);
+                // need a little optimization
+                const input_amount = (_maps.amount ?? [])[i] ?? _maps.amount ?? '1000';
+                debug('capital', token, input_amount);
+                //
+                const amount = await parseAmount(input_amount, token.target ?? token);
+                const tx = (token.target) ? token : approve(token, target, amount).update({ account: _maps.account });
+                const allowance = await tx.check?.view?.get() ?? toBN(0);
+                // send eth along
+                (invalidAddresses.includes(token)) && (eth = amount);
                 return {
                     token,
                     amount,
-                    tx: approve(token, autoTarget, amount).get(state.maps.account),
+                    tx: allowance.gte(amount) ? null : tx.get(_maps.account, ++_maps.nonce ?? null),
                     ...getToken(token)
                 };
             };
-            const toArray = (e) => Object.values(e).slice(0,2);
-            // ins
-            if (strategy.strategy?.capital) {
-                ins = await Promise.all(Object.keys(strategy.strategy?.capital ?? {}).map(processTransfer));
+            // tramsfer ins: from capital property and weth
+            if (temp = strategy.strategy?.capital ?? strategy.capital ?? {}) {
+                transfers.ins = await Promise.all(
+                    Object.keys(temp)
+                    // a custom approval needed
+                    .concat(_maps.approve ? [_maps.approve] : [])
+                    .map(processTransfer));
+                //transfers.ins.push();
             }
-            // outs
-            if (true) {
-                outs = [];
+            // transfer outs, NOT USED anymore, calls already has transfer or equivalent
+            if (temp = {}) {
+                transfers.outs = Object.keys(temp).map(processTransfer);
             }
-            const call = funcs.aggregate.call.update({
-                target: autoTarget,
-                calls: acalls.map(call => call.encode()),
-                checks: checks.map(check => check.encode()),
-                ins: ins.map(toArray),
-                outs: ins.map(toArray),
-                eth
-            });
             //
-            acalls.forEach((call, i, arr) => OA(call, { ...(arr.length-1 != i) && { check: null } }));
-            auto = {
-                calls: await Promise.all(acalls.map(call => formatCall(call, true))),
-                checks,
-                transfers: {ins, outs},
-                call,
-                tx: call.get(autoTarget) ?? null
-            };
+            res.auto.calls = res.auto.calls
+                .map((call, i, arr) => OA(call, { ...(arr.length-1 != i) && { check: null } }))
+                .map(call => formatCall(call, _maps))
+            res.auto.transfers = transfers;
+            res.auto.call = functions.aggregate.call.update({
+                target,
+                eth,
+                calls: res.auto.calls.map(call => Object.values(call.tx).slice(0,3)),
+                checks: res.auto.checks.map(check => check.encode()),
+                ins: transfers.ins.map(e => Object.values(e).slice(0,2)),
+                //outs: transfers.outs.map(e => Object.values(e).slice(0,2))
+            });
+            res.auto.call.tx = res.auto.call.get(_maps.account, ++_maps.nonce ?? NaN);
         } catch(err) {
             debug('auto', err.message, err.stack);
         }
+    } else {
+        res.auto = null;
     }
 
+    res.ran = Date.now() - starttime;
+    // calls/auto maps
+    res.maps = _maps;
+    temp = { account: addmaps.user, nonce: addmaps.nonce };
+    res.calls = (await Promise.all(res.calls.map(call => call.meta())))
+        .map(call => formatCall(call, temp));
+
     // final result
-    return {
-        id: strategy.id ?? strategy.strategy_id,
-        title: strategy.strategy?.name ?? '',
-        timestamp: ts(),
-        ran: Date.now() - starttime,
-        expiry: 360,
-        maps: state.maps,
-        calls,
-        auto,
-        ...(merge) && strategy
-    };
+    return res;
+};
+
+/**
+ * Check if automatic execution is available for a strategy
+ * @param {Strategy} strategy
+ * @returns {Promise<boolean>}
+ */
+export async function autoAvailability(strategy) {
+    //const starttime = Date.now();
+    let avail = true;
+    try {
+        const defs = await Promise.all((strategy.steps ?? []).map(step => {
+            const id = (step.id ?? step.strategy_id), action = (step.method ?? step.methods[0]);
+            const [, target, token] = id.split('_');
+            return (actions[action]?.find) ? findContract(target, action, { token }) : { delegate: true };
+        }));
+        avail = defs.filter((def) => def.delegate).length == defs.length;
+    } catch (err) {
+        debug('availablity', err.message);
+        avail = false;
+    }
+    return avail;
 };
 
 // Error directory
-const Error = Object.freeze({
+const ErrorType = Object.freeze({
     UNKNOWN: 'unknown', // general failure
     PROVIDER: 'provider', // includes fee
     FUND: 'fund', // missing funds
     SLIPPAGE: 'slippage', // for swaps and borrows
+    SLIPPAGE: 'app' // protocol specific faults
 });
 
 // Suggested actions dictionary
 const Suggest = Object.freeze({
-    NONE: 'none', // no action suggested
+    NONE: 'none', // no action suggested or 'wait', please wait and alter network condition
     REEXEC: 'reexec', // call process() and re-do
     INPUT: 'input', // alter some inputs
-    WAIT: 'wait', // please wait and alter network condition
-    STOP: 'stop', // stop execution
+    STOP: 'stop' // stop execution
 });
 
 // Error prefixs
-const Prefixs = Object.freeze([
+const AutoPrefixs = Object.freeze([
     'Aggregate',
     'Expect',
     'View',
@@ -268,7 +307,7 @@ const Prefixs = Object.freeze([
     'TransferOut'
 ]);
 
-export { Error, Suggest, Prefixs };
+export { ErrorType, Suggest, AutoPrefixs };
 
 /**
  * Process and returns useful directions related to the error
@@ -279,19 +318,24 @@ export { Error, Suggest, Prefixs };
 export async function processError(err, callx = null) {
     //
     const code = err.error?.data?.code ?? err.error?.code ?? 0;
-    let reason = err.error?.date?.message ?? err.reason ?? '';
+    /** @type {string} */
+    let reason = (err.error?.date?.message ?? err.reason ?? '').replace(/\u0000|\x00/g, '');
     let reason_parts = reason.split(/:|,|;/).map(e => e.trim());
+    if (reason_parts[0] == 'execution reverted') {
+        reason_parts.shift(0);
+    }
     //const stack = JSON.parse(err.error?.stack ?? '{}');
-    //console.error(stack);
+    //debug(stack);
+    /** @type {string[]} */
     const stack = [];
-    let error = Error.UNKNOWN;
+    let error = ErrorType.UNKNOWN;
     let suggest = Suggest.NONE;
 
     // determine
     let index = -1;
     if (callx && callx.length) {
         index = 0;
-        if (Prefixs.includes(reason_parts[0] ?? '')) {
+        if (AutoPrefixs.includes(reason_parts[0] ?? '')) {
             index = parseInt(reason_parts[1]);
         }
         reason = reason_parts[2] ?? reason_parts[1] ?? reason_parts[0] ?? '.';
@@ -300,42 +344,51 @@ export async function processError(err, callx = null) {
 
     //
     const at = {
+        /** @type {number} */
         step: callx?.step ?? 0,
-        title: callx?.title ?? '',
+        /** @type {number=} */
         ...(index != -1) && { call: index },
+        /** @type {string} */
+        title: callx?.title ?? '',
+        /** @type {string} */
         contract: callx?.target ?? null,
+        /** @type {string} */
         function: callx?.method ?? '',
     };
 
+    const contains = (spec) => reason_parts.filter(e => e.match(spec, 'i')).length > 0;
+
     //
     if (err.code == 4001) {
-        [error, reason, reason_parts] = [Error.PROVIDER, 'Transaction request canceled.', []];
+        [error, reason, reason_parts] = [ErrorType.PROVIDER, 'Transaction request canceled.', []];
     } else if (err.method == 'estimateGas') {
         // Request still in preflight
         // Need simulation API to determine stack trace
         suggest = Suggest.REEXEC;
     } else {
-        if (reason_parts.filter(e => e.match(/insufficient|enough/i)).length) {
-            error = Error.SLIPPAGE;
-        }
+    }
+
+    if (contains('liquidity|locked|paused|failed')) {
+        error = ErrorType.APP;
+    } else if (contains('insufficient|enough|small')) {
+        error = ErrorType.SLIPPAGE;
+    } else if (contains('transfer|allowance|sub-underflow')) {
+        error = ErrorType.FUND;
     }
 
     //
     return {
+        /** @type {string} */
         suggest, // action
+        /** @type {string} */
         error, // predefined error
-        code, // integer
+        /** @type {number} */
+        code, //
         at, // where fault is
         reason, // revert string
         reason_parts, // splitted
         stack // call stack from provider
     };
 };
-
-// default map values assign here
-Object.entries({
-    aggregator: getAddress(),
-    ts: ts()
-}).forEach(([name, val]) => (!state.maps[name]) && (state.maps[name] = val));
 
 export { getAddress, invalidAddresses };

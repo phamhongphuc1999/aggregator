@@ -2,13 +2,11 @@ declare namespace _default {
     export { abis };
     export { addresses };
     export { chains };
-    export { configs };
     export { methods };
     export { tokens };
-    export { tsconfig };
 }
 export default _default;
-declare const abis: {
+declare const abis: Readonly<{
     "lendings.a": string[];
     "lendings.ax": string[];
     "lendings.b": any[];
@@ -25,17 +23,24 @@ declare const abis: {
     "vaults.p": string[];
     "vaults.ve": string[];
     "vaults.vex": string[];
-};
-declare const addresses: {
+}>;
+declare const addresses: Readonly<{
     "56": {
+        "0": string;
         aggregator: string;
+        aggregator_old: string;
         "swap.router": string;
         "swap.factory": string;
+        "swap.fee": string;
         "token.usd": string[];
         "token.eth": string;
     };
-};
-declare const chains: ({
+    "97": {
+        "0": string;
+        aggregator: string;
+    };
+}>;
+declare const chains: readonly ({
     name: string;
     chainId: number;
     shortName: string;
@@ -49,6 +54,7 @@ declare const chains: ({
     faucets: string[];
     infoURL: string;
     archive?: undefined;
+    avgBlockTime?: undefined;
     explorer?: undefined;
 } | {
     name: string;
@@ -64,25 +70,21 @@ declare const chains: ({
     faucets: string[];
     infoURL: string;
     archive: string[];
+    avgBlockTime: number;
     explorer: {
+        url: string;
         api_url: string;
         api_key: string;
     };
 })[];
-declare namespace configs {
-    const RECORDS: {
-        _id: string;
-        methods: string;
-    }[];
-}
-declare namespace methods {
-    const lendings: string;
-    const vaults: string;
-    const swaps: string;
-    const providinglps: string;
-    const borrows: string;
-}
-declare const tokens: {
+declare const methods: Readonly<{
+    lendings: string;
+    vaults: string;
+    swaps: string;
+    providinglps: string;
+    borrows: string;
+}>;
+declare const tokens: Readonly<{
     "": {
         img_prefix: string;
         chainId: string;
@@ -913,16 +915,4 @@ declare const tokens: {
         img: string;
         name: string;
     };
-};
-declare namespace tsconfig {
-    const include: string[];
-    namespace compilerOptions {
-        const target: string;
-        const lib: string[];
-        const allowJs: boolean;
-        const declaration: boolean;
-        const emitDeclarationOnly: boolean;
-        const outDir: string;
-        const declarationMap: boolean;
-    }
-}
+}>;

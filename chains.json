@@ -74,7 +74,7 @@
             "decimals": 18
         },
         "rpc": [
-        	"https://nd-233-026-729.p2pify.com/4d072eb4598e7a592b8d18c5ac7b2d61",
+            "https://nd-233-026-729.p2pify.com/4d072eb4598e7a592b8d18c5ac7b2d61",
             "wss://ws-nd-233-026-729.p2pify.com/4d072eb4598e7a592b8d18c5ac7b2d61",
             "https://bsc-dataseed1.binance.org",
             "https://bsc-dataseed2.binance.org",

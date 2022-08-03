@@ -90,7 +90,7 @@ let code = '', names = [];
 for (const file of files) {
 	const name = file.split('.')[0];
 	if (!excludes.includes(name)) {
-		code += 'const '+name+' = '+fs.readFileSync(file)+";\n";
+		code += 'const '+name+' = Object.freeze('+fs.readFileSync(file)+");\n";
 		//code += 'import { default as '+name+' } from "'+'./'+file+'"'+"\n";
 		names.push(name);
 	}

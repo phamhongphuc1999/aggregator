@@ -1,0 +1,8 @@
+a.*
+*.sh
+*.json
+cache/*
+demo/*
+test.*
+abis/*
+contracts/*

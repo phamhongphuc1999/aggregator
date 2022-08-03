@@ -1,10 +1,30 @@
 /**
+ * @typedef {Object} Call
+ * @typedef {Object} View
+ * @typedef {Object} Check
+ * @typedef {Object} Strategy
+ * @typedef {Object} StrategyExecs
+ */
+/**
+ * Get
+ * @param {string} id
+ */
+export function getStrategy(id: string): Promise<any>;
+/**
  * Generate complete execution data based on strategy steps
  * @param {Strategy} strategy
- * @params {Object} maps
- * @returns {StrategyExecs}
+ * @param {Object} maps
+ * @param {boolean} noauto
+ * @param {boolean} merge
+ * @returns
  */
-export function process(strategy: Strategy, maps?: {}, merge?: boolean, quick?: boolean): StrategyExecs;
+export function process(strategy: Strategy, maps?: any, noauto?: boolean, merge?: boolean): Promise<any>;
+/**
+ * Check if automatic execution is available for a strategy
+ * @param {Strategy} strategy
+ * @returns {boolean}
+ */
+export function autoAvailability(strategy: Strategy): boolean;
 /**
  * Process and returns useful directions related to the error
  * @param {any} err
@@ -12,28 +32,33 @@ export function process(strategy: Strategy, maps?: {}, merge?: boolean, quick?: 
  * @returns
  */
 export function processError(err: any, callx?: Call | Call[]): Promise<{
+    /** @type {string} */
     suggest: string;
+    /** @type {string} */
     error: string;
-    code: any;
+    /** @type {number} */
+    code: number;
     at: {
-        contract: any;
-        function: any;
+        /** @type {string} */
+        title: string;
+        /** @type {string} */
+        contract: string;
+        /** @type {string} */
+        function: string;
         call: number;
-        step: any;
-        title: any;
+        /** @type {number} */
+        step: number;
     };
-    reason: any;
-    reason_parts: any;
-    stack: any[];
+    reason: string;
+    reason_parts: string[];
+    stack: string[];
 }>;
 export type Call = any;
 export type View = any;
 export type Check = any;
 export type Strategy = any;
 export type StrategyExecs = any;
-/** @type {boolean} */
-export const allowAsync: boolean;
-export const Error: Readonly<{
+export const ErrorType: Readonly<{
     UNKNOWN: string;
     PROVIDER: string;
     FUND: string;
@@ -43,10 +68,9 @@ export const Suggest: Readonly<{
     NONE: string;
     REEXEC: string;
     INPUT: string;
-    NETWORK: string;
-    FREEZE: string;
+    STOP: string;
 }>;
-export const Prefixs: readonly string[];
+export const AutoPrefixs: readonly string[];
 import { getAddress } from "./helpers.js";
 import { invalidAddresses } from "./helpers.js";
 export { getAddress, invalidAddresses };

@@ -1,14 +1,16 @@
 {
   "name": "@ais-ltd/strategyen",
   "repository": "git://github.com/ais-ltd/aggregator.git",
-  "version": "0.0.7-beta.9999",
+  "version": "0.0.8-alpha.999",
   "description": "BRicher Automatic Strategy Encoder",
   "main": "strategyen.js",
   "type": "module",
+  "browser": {
+  },
   "dependencies": {
     "@uniswap/sdk": "^3.0.3",
     "axios": "^0.27.2",
-    "ethers": "^5.5.0",
+    "ethers": "^5.6.0",
     "ethers-multisend": "^2.0.0"
   },
   "devDependencies": {
@@ -17,7 +19,8 @@
   },
   "scripts": {
     "test": "node test.js",
-    "test-all": "node test.all.js"
+    "test-all": "node test.all.js",
+    "build": "esbuild strategyen.js --minify --bundle --sourcemap --tree-shaking=true --format=esm --define:DEBUG=false --outfile=dist/strategyen.min.js"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

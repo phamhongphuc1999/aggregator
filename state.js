@@ -1,27 +1,39 @@
 const env = {};
 
 // default state
-export default {
+export default Object.seal({
     chainId: env.CHAIN ?? 56,
     maps: {
-        account: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
-        amount: '1',
+        account: '0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF',
+        amount: '1000',
         eth: '0',
         nonce: 0
     },
     config: {
+        // allow calls generation to be async
+        apiBase: 'https://scoringapi.trava.finance/aggregator',
+        allowAsync: false,
+        optimizeSwaps: false,
+        optimizeLPs: false,
         approveMax: true,
-        formatHtml: true
+        formatHtml: true,
+        optimalSplit: false,
+        gasPrice: false,
+        needNonce: true
     },
     timeout: {
-        'network': 20000,
-        'swaps': 3600
+        process: 40,
+        execute: 3600,
+        network: 20,
+        swaps: 3600
     },
     slippage: {
         'swaps': 0.005,
         'providinglps': 0.005,
-        'borrow': 0.05,
-        'lendings': 0.025
+        'mintlps': 0.002,
+        'borrows': 0.05,
+        'lendings': 0.025,
+        'wraps': 0.0
     },
     view: {
         options: {
@@ -34,5 +46,10 @@ export default {
         def: {},
         user: {},
         ts: {}
+    },
+    log: {
+        start: null,
+        entries: [],
+        timestamps: []
     }
-};
+});
