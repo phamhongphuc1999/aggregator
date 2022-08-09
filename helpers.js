@@ -160,6 +160,7 @@ const getProvider = (id = state.chainId) =>
             name: getChain(id).shortName,
             ensAddress: null
         };
+        //
         const provider = new ethers.providers[
             getChain(id).rpc[0].startsWith('wss:') ? 'WebSocketProvider' : 'JsonRpcBatchProvider'
         ]({

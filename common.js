@@ -217,6 +217,8 @@ View.prototype = Object.freeze({
         try {
             res = await con.callStatic[this.name()].apply(con, params.concat([state.view.options]));
             res = (res.length && this.index != -1) ? res[this.index] : res;
+            // might
+            detect && debug('match', target,  this.name());
         } catch (err) {
             if (!maps) { throw err; }
             !detect && debug('view', err.code, target, this.name(), params, this.index);

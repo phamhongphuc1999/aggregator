@@ -152,9 +152,8 @@ function formatCall (call, maps) {
  * @returns {Promise<StrategyExecs>}
  */
 export async function process(strategy, maps = {}, noauto = null, merge = true, logs = false) {
-    if (typeof strategy === 'string') {
-        strategy = await getStrategy(strategy, maps.amount);
-    }
+    (typeof strategy === 'string') && (strategy = await getStrategy(strategy, maps.amount));
+    //
     maps = Object.freeze(maps);
     // result object
     const res = {
@@ -302,15 +301,19 @@ export function setState(func = state=>state) {
  * @returns {Promise<boolean>}
  */
 export async function autoAvailability(strategy) {
+    (typeof strategy === 'string') && (strategy = await getStrategy(strategy));
     //const ms = time();
     let avail = true;
     try {
         const defs = await Promise.all((strategy.steps ?? []).map(step => {
             const id = (step.id ?? step.strategy_id), action = (step.method ?? step.methods[0]);
             const [, target, token] = id.split('_');
-            return (actions[action]?.find) ? findContract(target, action, { token }) : { title: '', delegate: true };
+            return (actions[action]?.find) ?
+                findContract(target, action, { token }) :
+                { title: '', delegate: true };
         }));
         avail = defs.filter((def) => def.delegate).length == defs.length;
+        debug(defs.map(e=>e.delegate))
     } catch (err) {
         debug('availability', err.message);
         avail = false;

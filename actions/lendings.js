@@ -78,7 +78,8 @@ async function comp_available (maps = {}, target, abi = 'lendings.c') {
 async function comp_ref (maps = {}, index = -1) {
     // find target by our own api
     const get_pools = async (tokens = [], res = null) =>
-        (res = (await (await import('axios')).default.get(this.poolsApi + maps.target, { responseType: 'json' })).data) &&
+        (res = await import('axios')) &&
+        (res = (await res.default.get(this.poolsApi + maps.target, { responseType: 'json' })).data) &&
         (res = res['lendings'] ?? res) &&
         (res = res['reserves_list'] ?? res) &&
         tokens.map(
@@ -89,7 +90,6 @@ async function comp_ref (maps = {}, index = -1) {
     try {
         if (index > 1) {
             // target not a ctoken
-            //if (ethers.utils.isAddress(maps.target)) {
             const targets = await get_pools([maps.itoken ?? maps.token, maps.otoken ?? maps.token]);
             const def = {
                 ...this,
@@ -104,14 +104,13 @@ async function comp_ref (maps = {}, index = -1) {
                 borrow: 1,
                 repay: 1
             }).forEach(([name, index]) => (def[name].target = targets[index]));
+            if (maps.action === 'borrows' || targets[0] != targets[1]) {
+                def.delegate = false;
+            }
             return def;
-            //}
         } else if (index == 1) {
             // target is cether
-            return {
-                ...this,
-                ...this.ether
-            };
+            return { ...this, ...this.ether };
         }
     } catch(err) {
         debug('ref', err.message, err.stack);
@@ -139,12 +138,12 @@ export default [
             stabledebt: OA(temp, {index: 8}),
             debt: OA(temp, {index: 9})
         },
-        deposit: new Call(null, 'deposit(address,uint256,address,uint16)', ['__token__', '__amount__', '__account__', '0'], '0', { title: 'Deposit asset to pool', params: ['Asset address', 'Asset amount', 'On behalf of', 'Referral code'], editable: 1 }, new Check(
+        deposit: new Call(null, 'deposit(address,uint256,address,uint16)', ['__token__', '__amount__', '__user__', '0'], '0', { title: 'Deposit asset to pool', params: ['Asset address', 'Asset amount', 'On behalf of', 'Referral code'], editable: 1 }, new Check(
             getBalanceView('__account__', '__token__'),
             Expecting.PASS
         )),
         approve: approve('__debttoken__', '__aggregator__', '__available__', 'approveDelegation', 'borrowAllowance'),
-        borrow: new Call(null, 'borrow(address,uint256,uint256,uint16,address)', ['__token__', '__amount__', '1', '0', '__account__'], '__eth__', { title: 'Borrow reserve asset', params: ['Asset address', 'Amount', 'Interest rate mode', 'Referal code', 'On behalf of'], editable: 1 }, new Check(
+        borrow: new Call(null, 'borrow(address,uint256,uint256,uint16,address)', ['__token__', '__amount__', '1', '0', '__user__'], '__eth__', { title: 'Borrow reserve asset', params: ['Asset address', 'Amount', 'Interest rate mode', 'Referal code', 'On behalf of'], editable: 1 }, new Check(
             getBalanceView('__account__', '__token__'),
             Expecting.PASS
         )),
@@ -181,11 +180,11 @@ export default [
             debt: OA(temp, {index: 7})
         },
         approve: approve('__debttoken__', '__aggregator__', '__available__', 'approveDelegation', 'borrowAllowance'),
-        deposit: new Call(null, 'deposit(address,uint256,address,uint16)', ['__token__', '__amount__', '__account__', '0'], '0', { title: 'Deposit to lending pool', params: ['Asset address', 'Asset amount', 'On behalf of', 'Referral code'], editable: 1 }, new Check(
+        deposit: new Call(null, 'deposit(address,uint256,address,uint16)', ['__token__', '__amount__', '__user__', '0'], '0', { title: 'Deposit to lending pool', params: ['Asset address', 'Asset amount', 'On behalf of', 'Referral code'], editable: 1 }, new Check(
             getBalanceView('__account__', '__token__'),
             Expecting.PASS
         )),
-        borrow: new Call(null, 'borrow(address,uint256,uint16,address)', ['__token__', '__amount__', '0', '__account__'], '0', { title: 'Borrow reserve asset', params: ['Asset address', 'Amount', 'Referal code', 'On behalf of'], editable: 1 }, new Check(
+        borrow: new Call(null, 'borrow(address,uint256,uint16,address)', ['__token__', '__amount__', '0', '__user__'], '0', { title: 'Borrow reserve asset', params: ['Asset address', 'Amount', 'Referal code', 'On behalf of'], editable: 1 }, new Check(
             getBalanceView('__account__', '__token__'),
             Expecting.PASS
         )),

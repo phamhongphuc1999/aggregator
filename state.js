@@ -11,8 +11,8 @@ export default Object.seal({
     },
     config: Object.seal({
         debug: true,
-        // allow calls generation to be async
         apiBase: 'https://scoringapi.trava.finance/aggregator',
+        // allow calls generation to be async
         allowAsync: false,
         optimizeSwaps: false,
         optimizeLPs: false,
@@ -23,12 +23,21 @@ export default Object.seal({
         needNonce: true,
         autoSkipCalls: true,
         fixCapitalField: true,
-        maxSlippage: {
-            'swaps': 0.05,
-            'providinglps': 0.05,
-            'mintlps': 0.02,
-            'borrows': 0.25,
-            'lendings': 0.125
+        slippage: {
+            max: {
+                'swaps': 0.05,
+                'providinglps': 0.05,
+                'mintlps': 0.02,
+                'borrows': 0.25,
+                'lendings': 0.125
+            },
+            min: {
+                'swaps': 0.0025,
+                'providinglps': 0.0025,
+                'mintlps': 0.001,
+                'borrows': 0.025,
+                'lendings': 0.0125
+            }
         }
     }),
     timeout: Object.seal({

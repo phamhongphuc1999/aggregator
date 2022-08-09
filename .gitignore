@@ -19,3 +19,4 @@ test.json
 error.json
 dist/*.js
 *.map
+abis.json

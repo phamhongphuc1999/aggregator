@@ -22,8 +22,8 @@
     );
     for (const ids of Object.values(args[0] ? [aids[args[0]]] : aids)) {
         const results = await Promise.all(
-            ids.map((id, index) => test(id, accounts[0], amounts[0], false)
+            ids.map((id) => test(id, accounts[0], amounts[0], false)
         ));
-        console.log(results);
+        console.log(results.join("\n\n"));
     }
 })();
