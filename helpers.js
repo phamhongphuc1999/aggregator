@@ -1,7 +1,6 @@
 import * as ethers from 'ethers';
 import state from './state.js';
 import config from './config.js';
-import functions from './actions/functions.js';
 
 /**
  * Helper functions
@@ -13,6 +12,11 @@ import functions from './actions/functions.js';
 // Get contract instance
 export function contract (address, abi = 'token') {
     return new ethers.Contract(address, (typeof abi == 'string') ? getABI(abi) : abi, getProvider())
+};
+
+// Get function definitions
+export async function functions (name) {
+    return (await import('./actions/functions.js')).default[name] ?? {};
 };
 
 /**
@@ -42,7 +46,7 @@ export function findSwapPath (router, from, to, amount = toBN(1), final = true) 
 export async function findSwapPair (router, token, otoken) {
     const con = contract(router, 'swaps');
     return await con.attach(
-        (getAddress('swap.router') == router) ? getAddress('swap.factory') : await con.factory()
+        (router.toLowerCase() == getAddress('swap.router')) ? getAddress('swap.factory') : await con.factory()
         ).getPair(token, otoken);
 };
 
@@ -59,50 +63,54 @@ export async function findPairInfo (pair) {
  * @param {address} target
  * @param {string} action
  * @param {Object} maps
- * @returns
+ * @returns {Object}
  */
 export async function findContract (target, action = '', maps = {}) {
     //const findAbis = (match) => Object.keys(ABIS).filter((e) => e.match(new RegExp(match))).map(e => ABIS[e]);
     //const con = contract(address, findAbis(type).reduce((o, e) => o.concat(e), []));
     const key = target+'_'+maps.token;
-    let def = functions[action], tokens, check, index;
+    let def = await functions(action), tokens, detect, index, errmsg;
     if (def && def.length) {
-        if (check = state.cache.def[key]) {
-            return check;
+        if (detect = state.cache.def[key]) {
+            debug('cached', key);
+            return detect;
         }
         try {
             // only parallel detections, only valid method checks
             const checks = def.reduce(
                 (arr, app) => arr.concat(
                     (app.detect.length ? app.detect : [app.detect]).map((detect, i) => new Promise((resolve, reject) =>
-                        detect.get(maps, target).then(
+                        detect.get(maps, target, true).then(
                             (ret) => (ret == null) ? reject('') : resolve([app, ret, i])
                         ))
                     ))
             , []);
             // find fallback definitions
-            [def, check, index] = await Promise.any(checks);
-            (def.ref instanceof Function) && (def = await def.ref({ ...maps, target, index }));
+            [def, detect, index] = await Promise.any(checks);
+            (def.ref instanceof Function) && (def = await def.ref({ ...maps, target }, index));
             // fetch designated tokens
             tokens = (await Promise.all(
-                Object.entries(def.tokens).map(async ([name, view]) => {
-                    !name.includes('token') && (name += 'token');
-                    (view && view.get) && (view = (await view.get(maps, target) ?? '').toLowerCase());
-                    return [name, view];
-                })
-            )).reduce(
-                (obj, [name, view]) => ({...obj, [name]: view})
-            , {})
+                    Object.entries(def.tokens).map(async ([name, view]) => {
+                        !name.includes('token') && (name += 'token');
+                        view.get && (view = (await view.get(maps, target) ?? A0).toLowerCase());
+                        return [name, view];
+                    })
+                )).reduce(
+                    (obj, [name, view]) => ({...obj, [name]: view})
+                , {});
             debug('find', key, def.title);
+            maps.detect = detect;
+            return (state.cache.def[key] = { ...def, ...tokens, detect });
         } catch (err) {
-            // straight to console
-            console.error(`No ${action} matched for ${target} (${err.message})`);
-            return null;
+            errmsg = err.message;
         }
         //if (!con[detect.method]) throw Error('Method not in ABI');
         //if (err.code != 'UNPREDICTABLE_GAS_LIMIT') console.error(detect, err.code);
     }
-    return (state.cache.def[key] = { ...def, ...tokens, check });
+    // straight to console
+    errmsg = `No ${action} matched for ${target} (${errmsg})`;
+    debug(errmsg) && console.error(errmsg);
+    return null;
 };
 
 // aliases
@@ -137,7 +145,7 @@ const getChain = (id = state.chainId) => config.chains.filter(chain => chain.cha
 const getAddress = (name = 'aggregator', id = state.chainId) => config.addresses[id][name] ?? '';
 
 //
-const getToken = (address = A0) => config.tokens[address.toLowerCase()] ?? null;
+const getToken = (address = A0, id = state.chainId) => config.tokens[address.toLowerCase()] ?? null;
 
 
 /**
@@ -211,14 +219,14 @@ const getSimulateApi = (maps = {}) => {
         "save": false,
         "simulation_type": "quick"
     };
-    return axios.bind(this, {
+    return axios.bind(null, {
         url: `${env.ENDPOINT}/account/${env.USER}/project/${env.PROJECT}/simulate`,
         method: 'post',
         headers: {
             'X-Access-Key': env.KEY ?? '',
             'Content-Type': 'application/json'
         },
-        data,
+        data
     });
 };
 
@@ -263,25 +271,23 @@ export { types, cached };
 
 // general debugging
 const debug = function () {
-    (state.log.start === null) && (state.log.start = Date.now());
     (typeof arguments[0] === 'string') && (arguments[0] += ':');
-    //
-    console.error.apply(console, arguments);
-    state.log.timestamps.push(Date.now());
-    state.log.entries.push(arguments);
-    //
-    return arguments;
+    state.logs.push([Date.now(), JSON.stringify(arguments)]);
+    if (state.config.debug) {
+        console.error.apply(console, arguments);
+        return arguments;
+    }
 };
 
 // debug run duration
-const ran = async function (get = ()=>null) {
+const ran = async function (get = () => null) {
     const ms = Date.now();
     const res = await get();
-    debug(get.name ?? 'ran', (Date.now()-ms)+'ms');
+    debug(get.name ?? 'ran', (Date.now()-ms) + 'ms');
     return res;
 };
 
-export { debug };
+export { debug, ran };
 
 // json helper
 const serialize = (obj) => JSON.stringify(obj, (key, value) => key.startsWith('_') ? undefined : value, "\t");

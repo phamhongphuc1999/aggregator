@@ -9,7 +9,8 @@ export default Object.seal({
         eth: '0',
         nonce: 0
     },
-    config: {
+    config: Object.seal({
+        debug: true,
         // allow calls generation to be async
         apiBase: 'https://scoringapi.trava.finance/aggregator',
         allowAsync: false,
@@ -19,22 +20,31 @@ export default Object.seal({
         formatHtml: true,
         optimalSplit: false,
         gasPrice: false,
-        needNonce: true
-    },
-    timeout: {
+        needNonce: true,
+        autoSkipCalls: true,
+        fixCapitalField: true,
+        maxSlippage: {
+            'swaps': 0.05,
+            'providinglps': 0.05,
+            'mintlps': 0.02,
+            'borrows': 0.25,
+            'lendings': 0.125
+        }
+    }),
+    timeout: Object.seal({
         process: 40,
         execute: 3600,
         network: 20,
         swaps: 3600
-    },
-    slippage: {
+    }),
+    slippage: Object.seal({
         'swaps': 0.005,
         'providinglps': 0.005,
         'mintlps': 0.002,
         'borrows': 0.05,
         'lendings': 0.025,
         'wraps': 0.0
-    },
+    }),
     view: {
         options: {
             gasPrice: 1,
@@ -47,9 +57,5 @@ export default Object.seal({
         user: {},
         ts: {}
     },
-    log: {
-        start: null,
-        entries: [],
-        timestamps: []
-    }
+    logs: []
 });

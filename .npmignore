@@ -6,3 +6,4 @@ demo/*
 test.*
 abis/*
 contracts/*
+dist/*.map

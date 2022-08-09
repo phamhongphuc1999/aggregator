@@ -1,0 +1,11 @@
+[
+    "event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)",
+    "event SetPriceFeed(address indexed token0, address indexed token1, address source)",
+    "function getPrice(address token0, address token1) view returns (uint256, uint256)",
+    "function initialize()",
+    "function owner() view returns (address)",
+    "function priceFeeds(address, address) view returns (address)",
+    "function renounceOwnership()",
+    "function setPriceFeeds(address[] token0s, address[] token1s, address[] allSources)",
+    "function transferOwnership(address newOwner)"
+]

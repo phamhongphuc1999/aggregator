@@ -5,6 +5,7 @@
  * @typedef {ethers.BigNumber|string} bn
  */
 export function contract(address: any, abi?: string): any;
+export function functions(name: any): Promise<any>;
 /**
  * Return first valid swap path and expected out amounts
  * @param {address} router
@@ -14,7 +15,7 @@ export function contract(address: any, abi?: string): any;
  * @param {boolean=} final
  * @returns [path, amounts]
  */
-export function findSwapPath(router: address, from: address, to: address, amount?: bn | undefined, final?: boolean | undefined): any;
+export function findSwapPath(router: any, from: any, to: any, amount?: bn | undefined, final?: boolean | undefined): any;
 export function findSwapPair(router: any, token: any, otoken: any): Promise<any>;
 export function findPairInfo(pair: any): Promise<[[any, any], any]>;
 /**
@@ -22,17 +23,17 @@ export function findPairInfo(pair: any): Promise<[[any, any], any]>;
  * @param {address} target
  * @param {string} action
  * @param {Object} maps
- * @returns
+ * @returns {Object}
  */
-export function findContract(target: address, action?: string, maps?: any): Promise<any>;
+export function findContract(target: any, action?: string, maps?: any): any;
 /**
  * Helper functions
  */
-export type string = address;
+export type string = any;
 /**
  * Helper functions
  */
-export type bn = ethers.BigNumber | string;
+export type bn = any;
 export function ts(): number;
 export const invalidAddresses: any[];
 export const toBN: any;
@@ -78,19 +79,19 @@ export function getChain(id?: any): {
     };
 };
 export function getAddress(name?: string, id?: any): any;
-export function getToken(address?: any): any;
+export function getToken(address?: any, id?: any): any;
 /**
  * Return, cache provider and fixes
  * @param {number=} id
  * @returns {ethers.providers.Provider}
  */
-export function getProvider(id?: number | undefined): ethers.providers.Provider;
+export function getProvider(id?: number | undefined): any;
 /**
  * Get signer
  * @param {number|string} id
  * @returns {ethers.Wallet}
  */
-export function getSigner(id?: number | string): ethers.Wallet;
+export function getSigner(id?: number | string): any;
 /**
  * Get transaction simulation/backtracing API instance
  * @param {Object} maps
@@ -108,6 +109,7 @@ export namespace types {
  * @param {number} expire
  * @returns
  */
-export function cached(get?: Function, type?: prototype, name?: string, expire?: number): Promise<any>;
-export function debug(...args: any[]): void;
+export function cached(get?: Function, type?: any, name?: string, expire?: number): Promise<any>;
+export function debug(...args: any[]): IArguments;
+export function ran(get?: () => any): Promise<any>;
 export function serialize(obj: any): string;

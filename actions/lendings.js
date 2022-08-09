@@ -1,16 +1,17 @@
 import * as ethers from 'ethers';
-import axios from 'axios';
 import state from '../state.js';
 import { Call, Check, View, approve, Expecting, getBalanceView } from '../common.js';
 import { contract, toBN, getAddress, getDecimals, invalidAddresses, debug } from '../helpers.js';
 
+const OA = Object.assign;
+const A0 = invalidAddresses[0];
 const toPow = (n) => toBN(10).pow(n);
 
 /**
  * splitted function:
  */
 async function aave_available (maps = {}, target, abi = 'lendings.a') {
-    debug('available', target, maps.token, maps.amount);
+    debug('available', target, maps.token, maps.amount.toString());
     // should be integrate to some contract
     const con = contract(maps.target, abi);
     try {
@@ -42,12 +43,12 @@ async function aave_available (maps = {}, target, abi = 'lendings.a') {
  * splitted function:
  */
 async function comp_available (maps = {}, target, abi = 'lendings.c') {
-    debug('available', target, maps.token, maps.amount);
+    debug('available', target, maps.token, maps.amount.toString());
     // target should be correct pool (ctoken)
     const con = contract(maps.target, abi);
     try {
         //debug('--------->', maps.target, target, maps.token);
-        let token = invalidAddresses[0];
+        let token = A0;
         try {
             token = await con.underlying();
         } catch(err) {}
@@ -63,8 +64,7 @@ async function comp_available (maps = {}, target, abi = 'lendings.c') {
                 .add(
                     toBN(maps.amount).mul(cfactor).div(toPow(18))
                 ).mul(parseInt(state.slippage[maps.action] * 1e4)).div(1e4);
-        //
-        await ctrl.borrowAllowed(maps.target, maps.user ?? maps.account, borrowable);
+        //await ctrl.callStatic.borrowAllowed(maps.target, maps.user ?? maps.account, borrowable);
         return [liquidity, borrowable];
     } catch (err) {
         debug('comp', maps, err.stack);
@@ -75,46 +75,38 @@ async function comp_available (maps = {}, target, abi = 'lendings.c') {
 /**
  * splitted function: compound need special function to determine correct target and interface
  */
-async function comp_ref (maps = {}) {
+async function comp_ref (maps = {}, index = -1) {
     // find target by our own api
-    const token_get_pool = async (api_url, token) => {
-        try {
-            token = token.toLowerCase();
-            let res = (await axios.get(api_url, { responseType: 'json' })).data;
-            res = res['lendings'] ?? res;
-            res = res['reserves_list'] ?? res;
-            res = res[ (token == getAddress('token.eth')) ? invalidAddresses[0] : token ];
-            if (res) return res['cToken'] ?? res['vToken'] ?? res;
-        } catch (err) {}
-        return invalidAddresses[0];
-    };
+    const get_pools = async (tokens = [], res = null) =>
+        (res = (await (await import('axios')).default.get(this.poolsApi + maps.target, { responseType: 'json' })).data) &&
+        (res = res['lendings'] ?? res) &&
+        (res = res['reserves_list'] ?? res) &&
+        tokens.map(
+            token =>
+            (token = res[ ((token = token.toLowerCase()) == getAddress('token.eth')) ? A0 : token ]) &&
+            (token = token['cToken'] ?? token['vToken'] ?? token['token'] ?? token)
+        ) || new Array(tokens.length).fill(A0);
     try {
-        if (maps.index > 1) {
-            let target;
+        if (index > 1) {
             // target not a ctoken
-            if (ethers.utils.isAddress(maps.target)) {
-                const def = {...this};
-                //
-                if (target = await token_get_pool(this.tokensUrl+maps.target, maps.itoken ?? maps.token)) {
-                    const obj = invalidAddresses.concat([getAddress('token.eth')])
-                        .includes(maps.token.toLowerCase()) ? this.ether : this;
-                    Object.assign(def, {
-                        deposit: obj.deposit.update({target}),
-                        reddem: obj.redeem.update({target}),
-                        target
-                    });
-                }
-                //
-                if (target = await token_get_pool(this.tokensUrl+maps.target, maps.otoken ?? maps.token)) {
-                    Object.assign(def, {
-                        borrow: this.borrow.update({target}),
-                        repay: this.repay.update({target}),
-                        target
-                    });
-                }
-                return def;
-            }
-        } else if (maps.index == 1) {
+            //if (ethers.utils.isAddress(maps.target)) {
+            const targets = await get_pools([maps.itoken ?? maps.token, maps.otoken ?? maps.token]);
+            const def = {
+                ...this,
+                ...invalidAddresses.concat([getAddress('token.eth')]).includes(maps.token.toLowerCase()) && this.ether,
+                target: targets.slice().reverse().find(e=>e),
+                otarget: targets[1],
+                targets
+            };
+            Object.entries({
+                deposit: 0,
+                redeem: 0,
+                borrow: 1,
+                repay: 1
+            }).forEach(([name, index]) => (def[name].target = targets[index]));
+            return def;
+            //}
+        } else if (index == 1) {
             // target is cether
             return {
                 ...this,
@@ -122,15 +114,13 @@ async function comp_ref (maps = {}) {
             };
         }
     } catch(err) {
-        //console.error('--------------->', err);
-        debug('ref', err.stack);
+        debug('ref', err.message, err.stack);
     }
-    // target is normal
+    // target is ctoken
     return this;
 };
 
 let temp;
-
 /**
  * Supported lendings
  */
@@ -141,12 +131,13 @@ export default [
         detect: [
             new View('FLASHLOAN_PREMIUM_TOTAL()', [], 'uint256')
         ],
-        nodelegate: false,
+        delegate: true,
         url: 'https://github.com/aave/protocol-v2',
         tokens: {
-            deposit: temp=new View('getReserveData(address)', ['__token__'], '(uint256),uint128,uint128,uint128,uint128,uint128 stable,uint40,address,address stable,address,address,uint8 id', 7),
-            stabledebt: temp.update({}, 8),
-            debt: temp.update({}, 9)
+            deposit: { get(maps) { return maps.itoken ?? maps.token } },
+            output: temp=new View('getReserveData(address)', ['__token__'], '(uint256),uint128,uint128,uint128,uint128,uint128 stable,uint40,address,address stable,address,address,uint8 id', 7),
+            stabledebt: OA(temp, {index: 8}),
+            debt: OA(temp, {index: 9})
         },
         deposit: new Call(null, 'deposit(address,uint256,address,uint16)', ['__token__', '__amount__', '__account__', '0'], '0', { title: 'Deposit asset to pool', params: ['Asset address', 'Asset amount', 'On behalf of', 'Referral code'], editable: 1 }, new Check(
             getBalanceView('__account__', '__token__'),
@@ -170,7 +161,7 @@ export default [
         },
         get available() {
             return {
-                reservedata: this.tokens.deposit,
+                reservedata: this.tokens.output,
                 oracle: this.oracle,
                 get: aave_available
             };
@@ -182,10 +173,12 @@ export default [
         detect: [
             new View('LENDINGPOOL_REVISION()', [], 'uint256')
         ],
-        nodelegate: false,
+        delegate: true,
         url: 'https://github.com/geist-finance/geist-protocol',
         tokens: {
-            deposit: new View('getReserveData(address)', ['__token__'], '(uint256),uint128,uint128,uint128,uint128,uint40,address,address,address,uint8', 6)
+            deposit: { get(maps) { return maps.itoken ?? maps.token } },
+            output: temp=new View('getReserveData(address)', ['__token__'], '(uint256),uint128,uint128,uint128,uint128,uint40,address,address,address,uint8', 6),
+            debt: OA(temp, {index: 7})
         },
         approve: approve('__debttoken__', '__aggregator__', '__available__', 'approveDelegation', 'borrowAllowance'),
         deposit: new Call(null, 'deposit(address,uint256,address,uint16)', ['__token__', '__amount__', '__account__', '0'], '0', { title: 'Deposit to lending pool', params: ['Asset address', 'Asset amount', 'On behalf of', 'Referral code'], editable: 1 }, new Check(
@@ -210,7 +203,7 @@ export default [
         },
         get available() {
             return {
-                reservedata: this.tokens.deposit,
+                reservedata: this.tokens.output,
                 oracle: this.oracle,
                 get: aave_available
             };
@@ -226,9 +219,9 @@ export default [
             new View('cTokenMetadataAll(address[])', [[]], 'bytes32'),
             new View('vTokenMetadataAll(address[])', [[]], 'bytes32')
         ],
-        nodelegate: 'transfer',
+        delegate: false,
         url: 'https://github.com/compound-finance/compound-protocol',
-        poolsUrl: state.config.apiBase + '/dev/lending-pools?address=',
+        poolsApi: state.config.apiBase + '/dev/lending-pools?address=',
         // data provided is flawed, ref() is for both correcting address and interfacing detection
         ref: comp_ref,
         tokens: {
@@ -259,12 +252,14 @@ export default [
         get ether() {
             return {
                 tokens: {
-                    deposit: { get: () => ethers.constants.AddressZero }
+                    deposit: { get () { return ethers.constants.AddressZero } },
+                    output: { get (maps) { return maps.target } }
                 },
                 deposit: new Call(null, 'mint()', [], '__amount__', { title: 'Deposit ETH to pool', params: ['Amount'], editable: 0 }, new Check(
                     new View(),
                     Expecting.PASS
                 )),
+                borrow: this.borrow,
                 redeem: this.redeem,
                 repay: new Call(null, 'repayBorrowBehalf(address)', ['__account__'], '__amount__', { title: 'Repay all ETH', params: ['For'], editable: -1 }, new Check(
                     new View(),

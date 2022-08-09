@@ -1,11 +1,14 @@
 {
   "name": "@ais-ltd/strategyen",
   "repository": "git://github.com/ais-ltd/aggregator.git",
-  "version": "0.0.8-alpha.999",
+  "version": "0.0.11",
   "description": "BRicher Automatic Strategy Encoder",
   "main": "strategyen.js",
   "type": "module",
   "browser": {
+  },
+  "exports": {
+  	".": "./strategyen.js"
   },
   "dependencies": {
     "@uniswap/sdk": "^3.0.3",
@@ -20,11 +23,14 @@
   "scripts": {
     "test": "node test.js",
     "test-all": "node test.all.js",
-    "build": "esbuild strategyen.js --minify --bundle --sourcemap --tree-shaking=true --format=esm --define:DEBUG=false --outfile=dist/strategyen.min.js"
+    "tsc": "rm -f *.d.ts actions/*.d.ts && npx tsc && rm -f actions/*.d.ts",
+    "build": "esbuild strategyen.js --bundle --minify --sourcemap --platform=browser --target=chrome58 --tree-shaking=true --format=esm --define:DEBUG=false --charset=utf8 --outfile=dist/strategyen.min.js",
+    "compile": "npx hardhat compile"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
   "author": "buikhoa40",
-  "license": "Proprietary"
+  "contributes": {},
+  "license": "CC0-1.0"
 }

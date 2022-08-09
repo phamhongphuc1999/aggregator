@@ -7,6 +7,7 @@ declare namespace _default {
         const nonce: number;
     }
     namespace config {
+        const debug: boolean;
         const apiBase: string;
         const allowAsync: boolean;
         const optimizeSwaps: boolean;
@@ -16,19 +17,34 @@ declare namespace _default {
         const optimalSplit: boolean;
         const gasPrice: boolean;
         const needNonce: boolean;
+        const autoSkipCalls: boolean;
+        const fixCapitalField: boolean;
+        namespace maxSlippage {
+            const swaps: number;
+            const providinglps: number;
+            const mintlps: number;
+            const borrows: number;
+            const lendings: number;
+        }
     }
     namespace timeout {
-        const process: number;
-        const network: number;
-        const swaps: number;
-    }
-    namespace slippage {
+        export const process: number;
+        export const execute: number;
+        export const network: number;
         const swaps_1: number;
         export { swaps_1 as swaps };
-        export const providinglps: number;
-        export const mintlps: number;
-        export const borrows: number;
-        export const lendings: number;
+    }
+    namespace slippage {
+        const swaps_2: number;
+        export { swaps_2 as swaps };
+        const providinglps_1: number;
+        export { providinglps_1 as providinglps };
+        const mintlps_1: number;
+        export { mintlps_1 as mintlps };
+        const borrows_1: number;
+        export { borrows_1 as borrows };
+        const lendings_1: number;
+        export { lendings_1 as lendings };
         export const wraps: number;
     }
     namespace view {
@@ -44,5 +60,6 @@ declare namespace _default {
         const user: {};
         const ts: {};
     }
+    const logs: any[];
 }
 export default _default;

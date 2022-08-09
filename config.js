@@ -1,4 +1,5 @@
-const abis = Object.freeze({
+export default {
+abis: Object.freeze({
 	"lendings.a": [
 		"event Borrow(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount, uint256 borrowRateMode, uint256 borrowRate, uint16 indexed referral)",
 		"event Deposit(address indexed reserve, address user, address indexed onBehalfOf, uint256 amount, uint16 indexed referral)",
@@ -575,6 +576,17 @@ const abis = Object.freeze({
 		"function upperBoundAnchorRatio() view returns (uint256)",
 		"function validate(uint256, int256, uint256, int256 currentAnswer) returns (bool valid)"
 	],
+	"oracles": [
+		"event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)",
+		"event SetPriceFeed(address indexed token0, address indexed token1, address source)",
+		"function getPrice(address token0, address token1) view returns (uint256, uint256)",
+		"function initialize()",
+		"function owner() view returns (address)",
+		"function priceFeeds(address, address) view returns (address)",
+		"function renounceOwnership()",
+		"function setPriceFeeds(address[] token0s, address[] token1s, address[] allSources)",
+		"function transferOwnership(address newOwner)"
+	],
 	"swaps": [
 		"event PairCreated(address indexed token0, address indexed token1, address pair, uint256)",
 		"function allPairs(uint256) view returns (address)",
@@ -712,6 +724,7 @@ const abis = Object.freeze({
 		"function withdraw(uint256 _amount)",
 		"function withdrawAndUnwrap(uint256 _amount)"
 	],
+	"vaults.l": [],
 	"vaults.o": [
 		"function claim(address _recipient, bool _rebasing) returns (uint256)",
 		"function forfeit() returns (uint256)",
@@ -863,8 +876,8 @@ const abis = Object.freeze({
 		"function votingPowerOfUserAt(address _user, uint256 _t) view returns (uint256)",
 		"function withdraw(uint256 _tokenId)"
 	]
-});
-const addresses = Object.freeze({
+}),
+addresses: Object.freeze({
 	"56": {
 		"0": "0x0000000000000000000000000000000000000000",
 		"aggregator": "0xfb4392e3431b9cc820362ad2b6a3fda4f8a7712d",
@@ -884,8 +897,8 @@ const addresses = Object.freeze({
 		"0": "0x0000000000000000000000000000000000000000",
 		"aggregator": "0x76a49c82982d1b5910d9e696d2a7b5ce5e814a2f"
 	}
-});
-const chains = Object.freeze([
+}),
+chains: Object.freeze([
     {
         "name": "Ethereum Mainnet",
         "chainId": 1,
@@ -1012,22 +1025,48 @@ const chains = Object.freeze([
         "faucets": [
             "https://testnet.binance.org/faucet-smart"
         ],
-        "infoURL": "https://testnet.binance.org/",
-        "nativeCurrency": {
-            "name": "Ubiq Ether",
-            "symbol": "UBQ",
-            "decimals": 18
-        },
-        "rpc": [
-            "https://rpc.octano.dev",
-            "https://pyrus2.ubiqscan.io"
-        ],
-        "faucets": [],
-        "infoURL": "https://ubiqsmart.com"
+        "infoURL": "https://testnet.binance.org/"
     }
-]);
-const methods = Object.freeze({"lendings":"Deposit","vaults":"Stake","swaps":"Swap","providinglps":"Add Liquidity Pair","borrows":"Borrow"});
-const tokens = Object.freeze({
+]),
+methods: Object.freeze({"lendings":"Deposit","vaults":"Stake","swaps":"Swap","providinglps":"Add Liquidity Pair","borrows":"Borrow"}),
+package: Object.freeze({
+  "name": "@ais-ltd/strategyen",
+  "repository": "git://github.com/ais-ltd/aggregator.git",
+  "version": "0.0.11",
+  "description": "BRicher Automatic Strategy Encoder",
+  "main": "strategyen.js",
+  "type": "module",
+  "browser": {
+  },
+  "exports": {
+  	".": "./strategyen.js"
+  },
+  "dependencies": {
+    "@uniswap/sdk": "^3.0.3",
+    "axios": "^0.27.2",
+    "ethers": "^5.6.0",
+    "ethers-multisend": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.3",
+    "mocha": "^7.2.0"
+  },
+  "scripts": {
+    "test": "node test.js",
+    "test-all": "node test.all.js",
+    "tsc": "rm -f *.d.ts actions/*.d.ts && npx tsc && rm -f actions/*.d.ts",
+    "build": "esbuild strategyen.js --bundle --minify --sourcemap --platform=browser --target=chrome58 --tree-shaking=true --format=esm --define:DEBUG=false --charset=utf8 --outfile=dist/strategyen.min.js",
+    "compile": "npx hardhat compile"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "author": "buikhoa40",
+  "contributes": {},
+  "license": "CC0-1.0"
+}
+),
+tokens: Object.freeze({
 	"": {
 		"img_prefix": "https://storage.googleapis.com/token-c515a.appspot.com",
 		"chainId": "56"
@@ -1858,5 +1897,5 @@ const tokens = Object.freeze({
 		"img": "/tokens_v2/ORAI.png",
 		"name": "Oraichain Token"
 	}
-});
-export default { abis, addresses, chains, methods, tokens }
+}),
+}

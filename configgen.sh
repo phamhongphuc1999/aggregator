@@ -84,20 +84,22 @@ console.error('\t config gen');
 const fs = require('fs');
 const files = fs.readdirSync('.').filter(e => e.endsWith('.json'));
 const save = 'config.js';
-const excludes = ['package','test','a', 'tsconfig'];
+const excludes = ['test','a','tsconfig','all'];
+const names = [];
 
-let code = '', names = [];
+let code = "export default {\n";
 for (const file of files) {
 	const name = file.split('.')[0];
 	if (!excludes.includes(name)) {
-		code += 'const '+name+' = Object.freeze('+fs.readFileSync(file)+");\n";
 		//code += 'import { default as '+name+' } from "'+'./'+file+'"'+"\n";
+		code += name+': Object.freeze('+fs.readFileSync(file)+"),\n";
 		names.push(name);
 	}
 }
 
-code += 'export default { '+names.join(', ')+' }'+"\n";
+code += "}\n";
 
+console.error(names);
 console.error(save+':', code.length);
 
 fs.writeFileSync(save, code);

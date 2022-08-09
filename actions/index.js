@@ -1,8 +1,9 @@
 ///import * as swapsdk from '@uniswap/sdk';
 import state from '../state.js';
-import functions from './functions.js';
 import { approve, transfer } from '../common.js';
-import { contract, ts, invalidAddresses, toBN, parseAmount, getAddress, findContract, findSwapPair, findPairInfo, findSwapPath, debug } from '../helpers.js';
+import { contract, ts, functions, invalidAddresses, toBN, parseAmount, getAddress, findContract, findSwapPair, findPairInfo, findSwapPath, debug } from '../helpers.js';
+
+const OA = Object.assign;
 
 //
 const setAmount = (maps, val = maps.oamount) => ([maps._amount, maps.amount] = [maps.amount, val]);
@@ -41,7 +42,7 @@ const actions = {
             //
             const calls = [
                 approve(maps.token, maps.target, maps.amount),
-                functions.swaps.call.update({...maps, target: maps.target}, [maps.amount, aout, path, maps.account, ts() + state.timeout.swaps])
+                (await functions('swaps')).call.update({...maps, target: maps.target}, [maps.amount, aout, path, maps.account, ts() + state.timeout.swaps])
             ].map(call => call.update(maps));
             //
             setAmount(maps);
@@ -52,7 +53,6 @@ const actions = {
                 debug('swaps.auto', id);
                 [maps.cid, maps.target, maps.token, maps.otoken] = id.split('_');
                 const calls = [];
-                [maps.ins, maps.outs] = [[], []];
                 const [path, aouts] = await findSwapPath(maps.target, maps.token, maps.otoken, maps.amount = await parseAmount(maps.amount, maps.token), false);
                 const pairs = await Promise.all(path.map((address, i) => i != 0 && findSwapPair(maps.target, path[i-1], address)));
                 const token0s = await Promise.all(pairs.map((pair, i) => i != 0 && contract(pair, 'swaps').token0()));
@@ -67,7 +67,7 @@ const actions = {
                     //
                     calls.push.apply(calls, [
                         transfer(path[j], maps.target, maps.amount),
-                        functions.swaps.auto.update(maps, [amounts[0], amounts[1], maps.account, []])
+                        (await functions('swaps')).swaps.auto.update(maps, [amounts[0], amounts[1], maps.account, []])
                     ]);
                 }
                 //
@@ -117,7 +117,7 @@ const actions = {
             calls.push.apply(calls, [
                 approve(maps.token, maps.target, amounts[0]),
                 approve(maps.otoken, maps.target, amounts[1]),
-                functions.providinglps.call.update({...maps, target: maps.target}, [maps.token, maps.otoken, amounts[0], amounts[1], amountx[0], amountx[1], maps.account, ts() + state.timeout.swaps])
+                (await functions('providinglps')).call.update({...maps, target: maps.target}, [maps.token, maps.otoken, amounts[0], amounts[1], amountx[0], amountx[1], maps.account, ts() + state.timeout.swaps])
             ].map(call => call.update(maps)));
             //
             setAmount(maps);
@@ -129,7 +129,6 @@ const actions = {
                 [maps.cid, maps.target, maps.token, maps.otoken, maps.pair] = id.split('_');
                 //
                 const calls = [];
-                [maps.ins, maps.outs] = [[], []];
                 const amounts = ['0', '0'];
                 try {
                     maps.amount = await parseAmount(maps.amount, maps.token);
@@ -161,7 +160,7 @@ const actions = {
                 calls.push.apply(calls, [
                     transfer(maps.token, maps.pair, amounts[0]),
                     transfer(maps.otoken, maps.pair, amounts[1]),
-                    functions.providinglps.auto.update({...maps, target: maps.pair})
+                    (await functions('providinglps')).auto.update({...maps, target: maps.pair})
                 ]);
                 //
                 setAmount(maps);
@@ -180,7 +179,6 @@ const actions = {
             [maps.cid, maps.target, maps.token] = id.split('_');
             //
             const calls = [];
-            [maps.ins, maps.outs] = [[], []];
             const def = await findContract(maps.target, action, { token: maps.token });
             if (def) {
                 const { deposit:call } = def;
@@ -222,26 +220,24 @@ const actions = {
     lendings: {
         abis: [],
         find: true,
+        tokenNames: ['target', 'token', 'deposittoken', 'outputtoken', 'debttoken'],
         calls: async function (id, maps = {}, parent = {}, auto = false) {
-            const action = 'lendings';
-            debug(action, id);
+            debug('lendings', id);
             [maps.cid, maps.target, maps.token] = id.split('_');
             const calls = [];
-            [maps.ins, maps.outs] = [[], []];
-            const def = await findContract(maps.target, action, { token: maps.token });
+            const def = await findContract(maps.target, 'lendings', maps);
             if (def) {
                 const { deposit:call } = def;
                 // sometimes target needs update
-                updateIf(maps, def, ['target', 'token', 'deposittoken', 'debttoken']);
+                updateIf(maps, def, this.tokenNames);
                 maps.amount = await parseAmount(maps.amount, maps.token);
-                //[maps.otoken, maps.oamount] = [, ];
                 //
                 invalidAddresses.includes(maps.token) ? (maps.eth = maps.amount) : calls.push(approve(maps.token, maps.target, maps.amount).update(maps));
                 calls.push(call.update(maps));
                 //
                 if (def.delegate) {
                     maps.ins.push([maps.token, maps.amount]);
-                    (maps.otoken = def.outputtoken ?? def.otoken ?? def.token1) && maps.outs.push([maps.otoken, '0']);
+                    maps.outs.push([maps.outputtoken ?? maps.tokens?.[1] ?? maps.otoken, '0']);
                 } else if (auto) {
                     return null;
                 }
@@ -259,31 +255,28 @@ const actions = {
         find: true,
         calls: async function (id, maps = {}, parent = {}, auto = false) {
             debug('borrows', id);
-            [maps.cid, maps.target, maps.token, maps.otoken] = id.split('_');
+            [maps.cid, maps.target, maps.itoken, maps.otoken] = id.split('_');
             const [calls, def] = await Promise.all([
-                actions.lendings.calls(`${maps.cid}_${maps.target}_${maps.token}`, maps),
-                findContract(maps.target, 'lendings', { token: maps.otoken })
+                actions.lendings.calls(`${maps.cid}_${maps.target}_${maps.itoken}`, OA(maps, {token: maps.itoken})),
+                findContract(maps.target, 'lendings', OA(maps, {token: maps.otoken}))
             ]);
-            [maps.ins, maps.outs] = [[], []];
             if (def && calls.length) {
                 const { borrow:call } = def;
                 // sometimes target needs update
-                (def.target) && ({ target: maps.target } = def);
+                updateIf(maps, def, actions.lendings.tokenNames);
+                [maps.iamount, maps.itarget, maps.otarget] = [maps.amount, calls.slice(-1)[0].target, def.target ?? maps.target];
                 //
-                [maps.token, maps.itarget, maps.itoken] = [maps.otoken, calls[calls.length-1].target, maps.token];
                 [maps.available, maps.borrowable] = await def.available.get(maps, maps.target);
-                maps.amount = maps.borrowable;
-                calls.push(call.update(maps));
                 //
                 if (def.delegate) {
-                    if (def.approve) {
-                        [maps.approve, maps.approve.amount] = [def.approve.update(maps), maps.approve.params[1]];
-                    }
-                    maps.ins.push([maps.token, maps.amount]);
-                    (maps.otoken = def.debttoken ?? def.otoken ?? def.token1) && maps.outs.push([maps.otoken, '0']);
+                    def.approve && (maps.approve = def.approve.update(maps)) && (maps.approve.amount = maps.approve.params[1]);
+                    maps.ins.push([maps.itoken, maps.iamount]);
+                    maps.outs.push([maps.debttoken ?? maps.tokens?.[1] ?? maps.otoken, '0']);
                 } else if (auto) {
                     return null;
                 }
+                //
+                calls.push(call.update(OA(maps, {amount: maps.borrowable})));
             }
             setAmount(maps, maps.amount);
             return calls;

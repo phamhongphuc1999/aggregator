@@ -2,8 +2,6 @@ import * as ethers from 'ethers';
 import state from './state.js';
 import { contract, toBN, isBN, getAddress, getSigner, getDecimals, getToken, debug, invalidAddresses } from './helpers.js';
 
-const A0 = ethers.constants.AddressZero;
-
 ethers.BigNumber.prototype.toJSON = function () { return this.toString() };
 ethers.logger.warn = function () {};
 
@@ -11,17 +9,27 @@ ethers.logger.warn = function () {};
  * @typedef {Object} Transaction
  */
 
-//
-const _update = (params, maps) => {
+/**
+ * Update
+ * @param {Array} params
+ * @param {Object} maps
+ * @returns {Array}
+ */
+function _update(params, maps = {}) {
     const keys = Object.keys(maps);
-    const ra = (item) => {
-        let name;
-        if (typeof item == 'string' && item.startsWith('__')) {
-            return keys.includes( name = item.split('__').join('').toLowerCase() ) ? maps[name] : item;
-        } else if (Array.isArray(item)) {
-            return item.map(ra);
+    const ra = (val) => {
+        if (typeof val == 'string' && val.startsWith('__')) {
+            //
+            let prop = val.split('__').join('').toLowerCase(), key;
+            keys.includes(prop) && (val = maps[prop]);
+            //
+            if (prop.includes('.') && ([prop, key] = prop.split('.'))) {
+                keys.includes(prop) && maps[prop].hasOwnProperty(key) && (val = maps[prop][key]);
+            }
+        } else if (Array.isArray(val)) {
+            return val.map(ra);
         }
-        return item;
+        return val;
     };
     return params.map(ra);
 };
@@ -114,7 +122,7 @@ Call.prototype = Object.freeze({
                     val = val; // print
                 }
             } else if (isBN(this._params[i]) || (this._params[i] ?? '').toString().match(/amount|in|out/)) {
-                val = printToken(toBN(val), isToken ?? await getToken(this._maps.token ?? this._maps.otoken ?? this._maps.itoken ?? A0));
+                val = printToken(toBN(val), isToken ?? await getToken(this._maps.token ?? this._maps.otoken ?? this._maps.itoken ?? ethers.constants.AddressZero));
             } else if (Array.isArray(val)) {
                 val = (await Promise.all(val.map(formatParam))).join(', ');
             }
@@ -169,7 +177,7 @@ Call.prototype = Object.freeze({
  * @param {target=} target
  * @return {Object}
  */
-function View (method = '', params = [], returns = '', index = -1, target = A0) {
+function View (method = '', params = [], returns = '', index = -1, target = ethers.constants.AddressZero) {
     //console.assert(this.constructor === View, "must-using-new");
     //if (method instanceof Function) this.get = method;
     Object.assign(this, {
@@ -198,8 +206,11 @@ View.prototype = Object.freeze({
      * @param {Object} maps
      * @return any
      */
-    async get(maps = {}, target = this.target) {
+    async get(maps = {}, target = this.target, detect = false) {
         //const ms = Date.now();
+        if (!this.method) {
+            return null;
+        }
         const con = this.contract(target);
         const params = _update(this.params ?? [], maps ?? {});
         let res = null;
@@ -208,7 +219,7 @@ View.prototype = Object.freeze({
             res = (res.length && this.index != -1) ? res[this.index] : res;
         } catch (err) {
             if (!maps) { throw err; }
-            debug('view', err.code, target, this.name(), params);
+            !detect && debug('view', err.code, target, this.name(), params, this.index);
         }
         return res;
     },
@@ -354,8 +365,8 @@ const transfer = (token = '__token__', to = '__account__', amount = '__amount__'
 // get ETH balance
 const getBalanceEth = (account = '__account__') => new View('balance(address)', [ account ], ['uint256']).get({}, getAddress());
 // get balance view
-const getBalanceView = (account = '__account__', token = A0) => new View('balanceOf(address)', [ account ], ['uint256'], -1, token);
+const getBalanceView = (account = '__account__', token = ethers.constants.AddressZero) => new View('balanceOf(address)', [ account ], ['uint256'], -1, token);
 // get ERC balance
-const getBalance = (account = '__account__', token = A0) => getBalanceView(account, null).get({}, token);
+const getBalance = (account = '__account__', token = ethers.constants.AddressZero) => getBalanceView(account, null).get({}, token);
 
 export { approve, transfer, getBalance, allowance, getBalanceEth, getBalanceView };

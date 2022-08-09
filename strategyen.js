@@ -7,18 +7,20 @@
  *
  */
 
-
-'use strict'
+//use strict'
 
 import state from './state.js';
-import functions from './actions/functions.js';
-import actions from './actions/index.js';
+import config from './config.js';
 import { approve, allowance } from './common.js';
-import { ts, toBN, debug, getAddress, getToken, parseAmount, invalidAddresses, findContract, serialize, getProvider } from './helpers.js';
+import { ts, serialize, toBN, debug, functions, getAddress, getToken, parseAmount, invalidAddresses, findContract, getProvider } from './helpers.js';
+
+import actions from './actions/index.js';
 
 const OA = Object.assign;
+const time = Date.now;
 
 /**
+ * @typedef {Object} Step
  * @typedef {Object} Call
  * @typedef {Object} View
  * @typedef {Object} Check
@@ -26,19 +28,23 @@ const OA = Object.assign;
  * @typedef {Object} StrategyExecs
  */
 
+export const version = config.package.version;
+
+export { state, config };
+
 /**
  * Get
  * @param {string} id
  */
-export async function getStrategy(id) {
-    const api_url = state.config.apiBase+'/strategies/'+id;
-    return (await axios.get(api_url, { responseType: 'json' })).data;
+export async function getStrategy(id, amount = state.maps.amount) {
+    const api_url = `${state.config.apiBase}/strategies/${id}?amount=${amount}`;
+    return (await (await import('axios')).default.get(api_url, { responseType: 'json' })).data;
 }
 
 /**
  * Get all helper
  * @param {Object[]} steps
- * @param {string} func
+* @param {string} func
  * @param {Object} maps
  * @param {number} i
  * @returns
@@ -48,11 +54,13 @@ async function allCalls (steps, func, maps) {
     // merge calls helper
     const get = async (step, i, get) => {
         const
-            starttime = Date.now(),
+            ms = time(),
             id = (step.id ?? step.strategy_id),
             action = (step.method ?? step.methods[0]),
             addprops = { action, step: i, ...(i == steps.length) && {lastStep: true} };
-        return (id && action && (get = actions[action][func]) && (get = await get(id, OA(maps, addprops))) && debug('get', action, Date.now() - starttime)) ?
+        return id && action && (get = actions[action][func]) &&
+            (get = await get(id, OA(maps, addprops))) &&
+        debug(func, action, (time() - ms) + 'ms') ?
             get.map((call) => OA(call, addprops)) :
             [];
     };
@@ -62,7 +70,9 @@ async function allCalls (steps, func, maps) {
             calls = (await Promise.all(steps.map(get))).reduce((calls, items) => calls.concat(items), []);
         } else {
             let i = 0;
-            for (const step of steps) calls = calls.concat(await get(step, i++));
+            for (const step of steps){
+                calls = calls.concat(await get(step, i++));
+            }
         }
     } catch(err) {
         debug('all.'+func, err.message, err.stack);
@@ -131,18 +141,20 @@ function formatCall (call, maps) {
         tx: call.get(maps.account, ++maps.nonce),
         descs: undefined
     });
-    //debug('format', err.message, err.stack);
 };
 
 /**
  * Generate complete execution data based on strategy steps
- * @param {Strategy} strategy
+ * @param {Strategy|string} strategy
  * @param {Object} maps
- * @param {boolean} noauto
- * @param {boolean} merge
+ * @param {boolean=} noauto
+ * @param {boolean=} merge
  * @returns {Promise<StrategyExecs>}
  */
-export async function process(strategy, maps = {}, noauto = false, merge = true) {
+export async function process(strategy, maps = {}, noauto = null, merge = true, logs = false) {
+    if (typeof strategy === 'string') {
+        strategy = await getStrategy(strategy, maps.amount);
+    }
     maps = Object.freeze(maps);
     // result object
     const res = {
@@ -156,35 +168,45 @@ export async function process(strategy, maps = {}, noauto = false, merge = true)
         ...(merge == true) && strategy
     };
     // run analysis
-    const starttime = Date.now();
-    const from = maps.retry?.realCall ?? maps.retry?.call ?? 0;
+    const logstart = state.logs.length;
+    const ms = time();
+    const from = maps.retry?.realCall ?? maps.retry?.call ?? null;
     const transfers = {ins: [], out: []};
+    const steps = strategy.steps ?? [];
     let temp;
-
 
     // default map values
     const addmaps = {
         user: maps.account,
+        receiver: maps.account,
         aggregator: getAddress(),
+        steps: steps.length,
         ts: ts(),
+        strategy: res.id,
+        ins: [],
+        outs: [],
         ...(maps.nonce === undefined && state.config.needNonce) && { nonce: await getProvider().getTransactionCount(maps.account) }
     };
 
     // initialize variables
-    const _maps = { ...state.maps, ...maps, ...addmaps, auto: true, account: addmaps.aggregator };
+    const _maps = { ...state.maps, ...maps, ...addmaps, auto: !noauto, account: addmaps.aggregator };
+
+    if (from !== null) {
+        //
+    }
 
     // Generate manual call/params and checks
     // Generate auto (aggregated) call/params and expectation
     [res.calls, res.auto.calls] = await Promise.all([
-        optimizeCalls(allCalls(strategy.steps, 'calls', temp={ ...state.maps, ...maps, ...addmaps }), temp),
-        noauto ? null : allCalls(strategy.steps, 'auto', _maps)
+        (noauto === false && state.config.autoSkipCalls) ? [] : optimizeCalls(allCalls(steps, 'calls', temp={ ...state.maps, ...maps, ...addmaps }), temp),
+        noauto ? [] : allCalls(steps, 'auto', _maps)
     ]);
 
     // encode auto calls for use with aggregator
     if (res.auto.calls && res.auto.calls.length) {
         let eth = '0';
         const target = getAddress();
-        //
+        // hacky
         if (true){
             OA(_maps, maps);
         }
@@ -196,21 +218,21 @@ export async function process(strategy, maps = {}, noauto = false, merge = true)
                 ).check
             ];
             // Standardize transfers
-            const processTransfer = async (token, i) => {
+            const processTransfer = async (a, i) => {
                 //if(!invalidAddresses.includes(token))
                 // need a little optimization
-                const input_amount = (_maps.amount ?? [])[i] ?? _maps.amount ?? '1000';
+                const input_amount = _maps.amounts?.[i] ?? _maps.amount ?? state.maps.amount;
+                const token = a.target ?? a;
                 debug('capital', token, input_amount);
                 //
-                const amount = await parseAmount(input_amount, token.target ?? token);
-                const tx = (token.target) ? token : approve(token, target, amount).update({ account: _maps.account });
-                const allowance = await tx.check?.view?.get() ?? toBN(0);
+                const amount = await parseAmount(input_amount, token);
+                const tx = a.target ? a : approve(token, target, amount).update({ account: _maps.account });
                 // send eth along
-                (invalidAddresses.includes(token)) && (eth = amount);
+                invalidAddresses.includes(token) && (eth = amount);
                 return {
                     token,
                     amount,
-                    tx: allowance.gte(amount) ? null : tx.get(_maps.account, ++_maps.nonce ?? null),
+                    tx: (await tx.check?.view?.get() ?? toBN(0)).gte(amount) ? null : tx.get(_maps.account, ++_maps.nonce ?? null),
                     ...getToken(token)
                 };
             };
@@ -232,7 +254,7 @@ export async function process(strategy, maps = {}, noauto = false, merge = true)
                 .map((call, i, arr) => OA(call, { ...(arr.length-1 != i) && { check: null } }))
                 .map(call => formatCall(call, _maps))
             res.auto.transfers = transfers;
-            res.auto.call = functions.aggregate.call.update({
+            res.auto.call = (await functions('aggregate')).call.update({
                 target,
                 eth,
                 calls: res.auto.calls.map(call => Object.values(call.tx).slice(0,3)),
@@ -248,15 +270,30 @@ export async function process(strategy, maps = {}, noauto = false, merge = true)
         res.auto = null;
     }
 
-    res.ran = Date.now() - starttime;
+    res.ran = time() - ms;
     // calls/auto maps
     res.maps = _maps;
-    temp = { account: addmaps.user, nonce: addmaps.nonce };
-    res.calls = (await Promise.all(res.calls.map(call => call.meta())))
-        .map(call => formatCall(call, temp));
+
+    if (res.calls.length) {
+        temp = { account: addmaps.user, nonce: addmaps.nonce };
+        res.calls = (await Promise.all(
+                res.calls.map(call => call.meta())
+            ))
+            .map(call => formatCall(call, temp));
+    }
+    if (logs) {
+        res.logs = state.logs.slice(logstart).map(([time, log]) => time + ': ' + log);
+    }
 
     // final result
     return res;
+};
+
+/**
+ * Allow update to state
+ */
+export function setState(func = state=>state) {
+    OA(state, func(state));
 };
 
 /**
@@ -265,17 +302,17 @@ export async function process(strategy, maps = {}, noauto = false, merge = true)
  * @returns {Promise<boolean>}
  */
 export async function autoAvailability(strategy) {
-    //const starttime = Date.now();
+    //const ms = time();
     let avail = true;
     try {
         const defs = await Promise.all((strategy.steps ?? []).map(step => {
             const id = (step.id ?? step.strategy_id), action = (step.method ?? step.methods[0]);
             const [, target, token] = id.split('_');
-            return (actions[action]?.find) ? findContract(target, action, { token }) : { delegate: true };
+            return (actions[action]?.find) ? findContract(target, action, { token }) : { title: '', delegate: true };
         }));
         avail = defs.filter((def) => def.delegate).length == defs.length;
     } catch (err) {
-        debug('availablity', err.message);
+        debug('availability', err.message);
         avail = false;
     }
     return avail;
@@ -287,7 +324,7 @@ const ErrorType = Object.freeze({
     PROVIDER: 'provider', // includes fee
     FUND: 'fund', // missing funds
     SLIPPAGE: 'slippage', // for swaps and borrows
-    SLIPPAGE: 'app' // protocol specific faults
+    APP: 'app' // protocol specific faults
 });
 
 // Suggested actions dictionary
@@ -391,4 +428,4 @@ export async function processError(err, callx = null) {
     };
 };
 
-export { getAddress, invalidAddresses };
+export { debug, serialize, getAddress, invalidAddresses };

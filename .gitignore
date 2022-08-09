@@ -14,5 +14,8 @@ docs/
 .openzeppelin
 *.log
 a.json
+all*.json
 test.json
 error.json
+dist/*.js
+*.map
