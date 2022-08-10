@@ -1,8 +1,8 @@
 {
   "name": "@ais-ltd/strategyen",
-  "repository": "git://github.com/ais-ltd/aggregator.git",
-  "version": "0.0.12-rc",
-  "description": "BRicher Automatic Strategy Encoder",
+  "repository": "git+https://github.com/ais-ltd/aggregator.git",
+  "version": "0.0.12-ga",
+  "description": "Automatic Strategy Encoder (BRicher)",
   "main": "strategyen.js",
   "type": "module",
   "browser": {
@@ -29,6 +29,7 @@
   "publishConfig": {
     "_registry": "https://npm.pkg.github.com"
   },
+  "bugs": "https://github.com/ais-ltd/aggregator/issues",
   "author": "buikhoa40",
   "contributes": {},
   "license": "CC0-1.0"

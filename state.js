@@ -9,6 +9,7 @@ export default Object.seal({
         eth: '0',
         nonce: 0
     },
+    deprecate: false,
     config: Object.seal({
         debug: true,
         apiBase: 'https://scoringapi.trava.finance/aggregator',
@@ -23,6 +24,7 @@ export default Object.seal({
         needNonce: true,
         noautoSkipCalls: true,
         fixCapitalField: true,
+        existingLiquidity: false,
         slippage: {
             max: {
                 'swaps': 0.05,

@@ -293,3 +293,5 @@ export { debug, ran };
 const serialize = (obj) => JSON.stringify(obj, (key, value) => key.startsWith('_') ? undefined : value, "\t");
 
 export { serialize };
+
+export { ethers };
