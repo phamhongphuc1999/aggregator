@@ -197,12 +197,12 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
     // Generate manual call/params and checks
     // Generate auto (aggregated) call/params and expectation
     [res.calls, res.auto.calls] = await Promise.all([
-        (noauto === false && state.config.autoSkipCalls) ? [] : optimizeCalls(allCalls(steps, 'calls', temp={ ...state.maps, ...maps, ...addmaps }), temp),
+        (noauto === false && state.config.noautoSkipCalls) ? [] : optimizeCalls(allCalls(steps, 'calls', temp={ ...state.maps, ...maps, ...addmaps }), temp),
         noauto ? [] : allCalls(steps, 'auto', _maps)
     ]);
 
     // encode auto calls for use with aggregator
-    if (res.auto.calls && res.auto.calls.length) {
+    if (res.auto.calls?.length) {
         let eth = '0';
         const target = getAddress();
         // hacky
@@ -273,7 +273,7 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
     // calls/auto maps
     res.maps = _maps;
 
-    if (res.calls.length) {
+    if (res.calls?.length) {
         temp = { account: addmaps.user, nonce: addmaps.nonce };
         res.calls = (await Promise.all(
                 res.calls.map(call => call.meta())
@@ -313,7 +313,7 @@ export async function autoAvailability(strategy) {
                 { title: '', delegate: true };
         }));
         avail = defs.filter((def) => def.delegate).length == defs.length;
-        debug(defs.map(e=>e.delegate))
+        debug('availability', defs.map(e=>e.delegate));
     } catch (err) {
         debug('availability', err.message);
         avail = false;
@@ -412,8 +412,10 @@ export async function processError(err, callx = null) {
         error = ErrorType.APP;
     } else if (contains('insufficient|enough|small')) {
         error = ErrorType.SLIPPAGE;
-    } else if (contains('transfer|allowance|sub-underflow')) {
+    } else if (contains('transfer|safeerc20|safebep20|allowance|sub-underflow')) {
         error = ErrorType.FUND;
+    } else if (true) {
+        //
     }
 
     //

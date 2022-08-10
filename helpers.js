@@ -147,7 +147,6 @@ const getAddress = (name = 'aggregator', id = state.chainId) => config.addresses
 //
 const getToken = (address = A0, id = state.chainId) => config.tokens[address.toLowerCase()] ?? null;
 
-
 /**
  * Return, cache provider and fixes
  * @param {number=} id

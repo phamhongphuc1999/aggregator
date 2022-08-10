@@ -1,6 +1,7 @@
 a.*
 *.sh
 *.json
+*.log
 cache/*
 demo/*
 test.*

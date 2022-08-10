@@ -113,7 +113,7 @@ abis: Object.freeze({
 		"event Withdraw(address indexed reserve, address indexed user, address indexed to, uint256 amount)",
 		"function LENDINGPOOL_REVISION() view returns (uint256)",
 		"function borrow(address asset, uint256 amount, uint16 referralCode, address onBehalfOf)",
-		"function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode)",
+		"function deposit(address asset, uint256 amount, address onBehalfOf, uint16 referralCode) payable",
 		"function finalizeTransfer(address asset, address from, address to, uint256 amount, uint256 balanceFromBefore, uint256 balanceToBefore)",
 		"function getAddressesProvider() view returns (address)",
 		"function getConfiguration(address asset) view returns ((uint256 data))",
@@ -1032,7 +1032,7 @@ methods: Object.freeze({"lendings":"Deposit","vaults":"Stake","swaps":"Swap","pr
 package: Object.freeze({
   "name": "@ais-ltd/strategyen",
   "repository": "git://github.com/ais-ltd/aggregator.git",
-  "version": "0.0.11",
+  "version": "0.0.12-rc",
   "description": "BRicher Automatic Strategy Encoder",
   "main": "strategyen.js",
   "type": "module",

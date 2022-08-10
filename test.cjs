@@ -18,14 +18,14 @@ async function test(strategy, account, amount, merge = true, error = null) {
         debug('STRATEGY:', strategy.id ?? strategy.strategy_id ?? strategy);
         res = await autoAvailability(strategy);
         debug('AUTO:', serialize(res), (Date.now() - starttime)+'ms');
-        res = await process(strategy, maps, !res, merge);
+        res = await process(strategy, maps, null, merge);
         debug('PROCESS:',
             [res.calls?.length, (res.calls ?? []).map(call => call.method.slice(0, call.method.indexOf('('))).join(', ')],
             [res.auto?.calls?.length, res.auto?.call?.tx?.data?.length/2 - 1],
             res.ran+'ms'
         );
     } catch (err) {
-        debug("---->\n\terror:", err.stack, serialize(err), "\n<----");
+        console.error("---->\n\tERROR:", err.stack, serialize(err), "\n<----");
     }
     try {
         //

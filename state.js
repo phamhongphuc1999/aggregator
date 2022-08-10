@@ -17,11 +17,11 @@ export default Object.seal({
         optimizeSwaps: false,
         optimizeLPs: false,
         approveMax: true,
-        formatHtml: true,
+        formatHtml: false,
         optimalSplit: false,
         gasPrice: false,
         needNonce: true,
-        autoSkipCalls: true,
+        noautoSkipCalls: true,
         fixCapitalField: true,
         slippage: {
             max: {
@@ -61,6 +61,9 @@ export default Object.seal({
         }
     },
     cache: {
+        names: {
+            '0xfb4392e3431b9cc820362ad2b6a3fda4f8a7712d': 'Automatic Aggregator Contract'
+        },
         provider: {},
         def: {},
         user: {},

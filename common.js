@@ -104,40 +104,47 @@ Call.prototype = Object.freeze({
      */
     async meta() {
         //debug('meta', this.target, this.params);
-        const names = {
-            [getAddress()]: 'Automatic Aggregator Contract'
-        };
-        const isToken = await getToken(this.target);
         const con = contract(this.target, 'token');
         //
         const trimAddress = (address) => address.slice(0,8)+'...'+address.slice(-6);
         const printToken = (amount, token) =>
-            (amount.eq(ethers.constants.MaxUint256) ? 'MAX' : ethers.utils.formatUnits(amount, token.getDecimals))+' '+token.symbol;
+            (amount.eq(ethers.constants.MaxUint256) ? 'MAX' : ethers.utils.formatUnits(amount, token.getDecimals)) + ' ' + token.symbol;
+        const getName = async (target, name='name', temp = null) => {
+            try {
+                target = target.toLowerCase();
+                return state.cache.names[target] ?? (temp = await getToken(target) && temp.name) ?? await con.attach(target)[name]() ?? '';
+            } catch (err) {
+                return '';
+            }
+        };
+        //
         const formatParam = async (val, i) => {
+            const orig = val;
             if (typeof val === 'string' && val.startsWith('__')) {
                 val = val.slice(2, val.lastIndexOf('__'));
             } else if (ethers.utils.isAddress(val)) {
                 val = trimAddress(val);
                 if (state.config.formatHtml) {
-                    val = val; // print
+                    val = `<a href="${orig}">${val}</a>`;
                 }
-            } else if (isBN(this._params[i]) || (this._params[i] ?? '').toString().match(/amount|in|out/)) {
-                val = printToken(toBN(val), isToken ?? await getToken(this._maps.token ?? this._maps.otoken ?? this._maps.itoken ?? ethers.constants.AddressZero));
+                val += ' ' + await getName(orig) ?? '';
+            } else if (isBN(this._params[i]) || (this._params[i] ?? '').toString().match(/amount|eth|value|in|out/)) {
+                val = printToken(toBN(val),
+                    await getToken(this.target) ??
+                    await getToken(this._maps.token ?? this._maps.otoken ?? this._maps.itoken ?? ethers.constants.AddressZero)
+                );
             } else if (Array.isArray(val)) {
                 val = (await Promise.all(val.map(formatParam))).join(', ');
             }
             return val.toString();
         };
         //
-        try {
-            this.targetName = names[this.target] ?? isToken?.name ?? await con.name() ?? '';
-        } catch (err) {}
+        this.targetName = await getName(this.target);
         //
         try {
             this.descs.values = await Promise.all(Object.entries(this.params).map(
                 ([i, val]) => formatParam(val, i)
             ));
-
             //[this.fee, this.probe] = await Promise.all([con.estimate(), con.probe()]);
         } catch (err) {
             debug('meta', this.method, err.message, err.stack);
