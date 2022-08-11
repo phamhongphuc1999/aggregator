@@ -102,7 +102,7 @@ export async function findContract (target, action = '', maps = {}) {
             maps.detect = detect;
             return (state.cache.def[key] = { ...def, ...tokens, detect });
         } catch (err) {
-            errmsg = err.message;
+            errmsg = err.stack;
         }
         //if (!con[detect.method]) throw Error('Method not in ABI');
         //if (err.code != 'UNPREDICTABLE_GAS_LIMIT') console.error(detect, err.code);
@@ -145,7 +145,7 @@ const getChain = (id = state.chainId) => config.chains.filter(chain => chain.cha
 const getAddress = (name = 'aggregator', id = state.chainId) => config.addresses[id][name] ?? '';
 
 //
-const getToken = (address = A0, id = state.chainId) => config.tokens[address.toLowerCase()] ?? null;
+const getToken = (address = A0, cacheOnly = false, id = state.chainId) => config.tokens[address.toLowerCase()] ?? null;
 
 /**
  * Return, cache provider and fixes

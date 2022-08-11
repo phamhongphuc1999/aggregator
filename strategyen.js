@@ -11,8 +11,11 @@
 
 import state from './state.js';
 import config from './config.js';
-import { approve, allowance } from './common.js';
-import { ts, serialize, toBN, debug, functions, getAddress, getToken, parseAmount, invalidAddresses, findContract, getProvider } from './helpers.js';
+
+import * as helpers from './helpers.js';
+const { ts, serialize, toBN, debug, functions, getAddress, getToken, parseAmount, invalidAddresses, findContract, getProvider } = helpers;
+import * as common from './common.js';
+const { approve, allowance } = common;
 
 import actions from './actions/index.js';
 
@@ -30,7 +33,7 @@ const time = Date.now;
 
 export const version = config.package.version;
 
-export { state, config };
+export { state, config, helpers };
 
 /**
  * Get
@@ -304,20 +307,16 @@ export async function autoAvailability(strategy) {
     (typeof strategy === 'string') && (strategy = await getStrategy(strategy));
     //const ms = time();
     let avail = true;
-    try {
-        const defs = await Promise.all((strategy.steps ?? []).map(step => {
-            const id = (step.id ?? step.strategy_id), action = (step.method ?? step.methods[0]);
-            const [, target, token] = id.split('_');
-            return (actions[action]?.find) ?
-                findContract(target, action, { token }) :
-                { title: '', delegate: true };
-        }));
-        avail = defs.filter((def) => def.delegate).length == defs.length;
-        debug('availability', defs.map(e=>e.delegate));
-    } catch (err) {
-        debug('availability', err.message);
-        avail = false;
-    }
+    // if works correctly, findContract never throws
+    const defs = await Promise.all((strategy.steps ?? []).map(step => {
+        const id = (step.id ?? step.strategy_id), action = (step.method ?? step.methods[0]);
+        const [, target, token] = id.split('_');
+        return (actions[action]?.find) ?
+            findContract(target, action, { token }) :
+            { title: '', delegate: true };
+    }));
+    avail = defs.filter((def) => def.delegate).length == defs.length;
+    debug('availability', defs.map(e => e.delegate));
     return avail;
 };
 

@@ -266,7 +266,7 @@ const actions = {
                 updateIf(maps, def, actions.lendings.tokenNames);
                 [maps.iamount, maps.itarget, maps.otarget] = [maps.amount, calls.slice(-1)[0].target, def.target ?? maps.target];
                 //
-                [maps.available, maps.borrowable] = await def.available.get(maps, maps.target);
+                [maps.available, maps.borrowable] = await def.available.get(maps);
                 //
                 if (def.delegate) {
                     def.approve && (maps.approve = def.approve.update(maps)) && (maps.approve.amount = maps.approve.params[1]);

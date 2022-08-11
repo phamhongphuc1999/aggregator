@@ -6,74 +6,87 @@ import { contract, toBN, getAddress, getDecimals, invalidAddresses, debug } from
 const OA = Object.assign;
 const A0 = invalidAddresses[0];
 const toPow = (n) => toBN(10).pow(n);
+const BASE18 = toPow(18);
+const str = (arr) => '[' + arr.map(e => e.toString()).join(', ') + ']';
 
 /**
  * splitted function:
  */
-async function aave_available (maps = {}, target, abi = 'lendings.a') {
-    debug('available', target, maps.token, maps.amount.toString());
+async function aave_available (maps = {}, abi = 'lendings.a') {
+    // https://github.com/aave/aave-js
     // could be integrate to some contract
+    const res = new Array(3);
     const con = contract(maps.target, abi);
     try {
-        const [addressprovider, [totalliquidity, totaldebt, totalborrowable, threshold, ltv, healthfactor], idecimals, odecimals] =
-            await Promise.all([con.getAddressesProvider(), con.getUserAccountData(maps.account), getDecimals(maps.itoken), getDecimals(maps.token)]);
-        //
-        const oracle = con.attach(await Promise.any(this.oracle.map(view => view.get(false, addressprovider))));
-        const [idata, ] = await this.reservedata.update({ token: maps.itoken }, 0).get({}, maps.itarget ?? maps.target);
+        //[maps.itoken, maps.otoken] = ;
+        const [[totalliquidity, totaldebt, totalborrowable, threshold, totalltv, healthfactor], [idata, ], addressprovider, idecimals, odecimals] = await Promise.all([
+            con.getUserAccountData(maps.account),
+            this.reservedata.update({ token: maps.itoken }, 0).get({}, maps.itarget ?? maps.target),
+            con.getAddressesProvider(),
+            getDecimals(maps.itoken),
+            getDecimals(maps.otoken)
+        ]);
+        // for variations
+        const oracle = con.attach(maps.oracle = await Promise.any(this.oracle.map(view => view.get(false, addressprovider))));
+        const [iprice, oprice] = await Promise.all([oracle.getAssetPrice(maps.itoken), oracle.getAssetPrice(maps.otoken)]);
         // https://docs.aave.com/developers/v/2.0/the-core-protocol/protocol-data-provider
         const iltv = parseInt(idata.toHexString().slice(-4), 16);
         //
-        const [iprice, oprice] = await Promise.all([oracle.getAssetPrice(maps.itoken), oracle.getAssetPrice(maps.token)]);
-        //
-        const liquidity =
-            toBN(state.config.existingLiquidity ? totalliquidity : 0).mul(ltv).div(1e4)
-            .add(toBN(maps.amount).mul(iltv).div(1e4).mul(iprice).div(toPow(idecimals)));
-        const borrowable =
-            liquidity
-            .mul(toPow(odecimals)).div(oprice)
+        maps.liquidity = res[0] = toBN(state.config.existingLiquidity ? totalliquidity.mul(totalltv).div(1e4) : 0)
+            .add(
+                toBN(maps.amount)
+                .mul(iprice).div(toPow(idecimals)
+                .mul(iltv).div(1e4)
+            ));
+        maps.maxborrowable = res[2] = maps.liquidity
+            .mul(toPow(odecimals)).div(oprice);
+        maps.borrowable = res[1] = maps.maxborrowable
             .mul(parseInt(state.slippage[maps.action] * 1e4)).div(1e4);
-        //
-        return [liquidity, borrowable];
+        debug('available', maps.target, [maps.itoken, maps.otoken], str([iprice, oprice]), str([maps.amount, maps.liquidity, maps.maxborrowable]));
     } catch (err) {
         debug('aave', maps, err.stack);
     }
     // should halt
-    return [null, null];
+    return res;
 };
 
 /**
  * splitted function:
  */
-async function comp_available (maps = {}, target, abi = 'lendings.c') {
-    debug('available', target, maps.token, maps.amount.toString());
+async function comp_available (maps = {}, abi = 'lendings.c') {
+    // https://github.com/compound-developers/compound-borrow-examples
     // deprecated
     !state.deprecate && ([maps.itarget, maps.otarget] = [ maps.itarget ?? maps.targets[0] ?? maps.target ?? A0, maps.otarget ?? maps.targets[1] ?? maps.target ?? A0]);
     // target should be a pool to borrow from
+    const res = new Array(3);
     const con = contract(maps.otarget, abi);
     try {
         // check eth pool
         //[maps.itoken, maps.otoken] = await Promise.all([maps.itarget, maps.otarget].map(target => con.attach(target).underlying()));
-        const ctrl = con.attach(await con.comptroller());
+        const comp = con.attach(maps.comp = await con.comptroller());
         //const bbr = await con.borrowRatePerBlock();
-        const oracle = con.attach(await ctrl.oracle());
-        const [{ 1:icollateralfactor }, { 1:ocollateralfactor }, { 1:totalliquidity }, iprice, oprice, idecimals, odecimals] = await Promise.all([ctrl.markets(maps.itarget), ctrl.markets(maps.otarget), ctrl.getAccountLiquidity(maps.account), oracle.getUnderlyingPrice(maps.itarget), oracle.getUnderlyingPrice(maps.otarget), getDecimals(maps.itoken), getDecimals(maps.otoken)]);
-        // price: x decimals, liquidity: always 18 decimals
-        const liquidity =
-            toBN(state.config.existingLiquidity ? totalliquidity : 0)
-            ;
-        const borrowable =
-            liquidity
-            .mul(toPow(6)).div(oprice)
-            .mul(toPow(odecimals)).div(toPow(18))
-            .add(toBN(maps.amount).mul(ocollateralfactor).div(toPow(18)))
-            .mul(parseInt(state.slippage[maps.action] * 1e4)).div(1e4);
+        const oracle = con.attach(maps.oracle = await comp.oracle());
+        const [{ 1:icollateralfactor }, { 1:totalliquidity }, iprice, oprice, idecimals, odecimals] = await Promise.all([comp.markets(maps.itarget), comp.getAccountLiquidity(maps.account), oracle.getUnderlyingPrice(maps.itarget), oracle.getUnderlyingPrice(maps.otarget), getDecimals(maps.itoken), getDecimals(maps.otoken)]);
+        // price: x decimals, liquidity: always 18 decimals and in USD
+        maps.liquidity = res[0] = toBN(state.config.existingLiquidity ? totalliquidity : 0)
+            .add(
+                toBN(maps.amount)
+                .mul(toPow(idecimals)).div(BASE18)
+                .mul(iprice).div(BASE18)
+                .mul(icollateralfactor).div(BASE18)
+            );
+        maps.maxborrowable = res[2] = maps.liquidity
+            .mul(BASE18).div(oprice)
+            .mul(BASE18).div(toPow(odecimals));
+        maps.borrowable = res[1] = maps.maxborrowable
+            .mul(parseInt(state.slippage[maps.action] * 1e4)).div(1e4)
         //await ctrl.callStatic.borrowAllowed(maps.otarget, maps.user ?? maps.account, borrowable);
-        return [liquidity, borrowable];
+        debug('available', maps.target, [maps.itoken, maps.otoken], str([iprice, oprice]), str([maps.amount, maps.liquidity, maps.maxborrowable]));
     } catch (err) {
         debug('comp', maps, err.stack);
     }
     // should halt
-    return [null, null];
+    return res;
 };
 
 /**
@@ -94,21 +107,21 @@ async function comp_ref (maps = {}, index = -1) {
     try {
         if (index > 1) {
             // target not a ctoken
-            const targets = await get_pools([maps.itoken ?? maps.token, maps.otoken ?? maps.token]);
+            maps.targets = await get_pools([maps.itoken ?? maps.token, maps.otoken ?? maps.token]);
             const def = {
                 ...this,
                 ...invalidAddresses.concat([getAddress('token.eth')]).includes(maps.token.toLowerCase()) && this.ether,
-                target: targets.slice().reverse().find(e=>e),
-                otarget: targets[1],
-                targets
+                target: maps.targets.slice().reverse().find(e => e),
+                otarget: maps.targets[1],
+                targets: maps.targets
             };
             Object.entries({
                 deposit: 0,
                 redeem: 0,
                 borrow: 1,
                 repay: 1
-            }).forEach(([name, index]) => (def[name].target = targets[index]));
-            if (maps.action === 'borrows' || targets[0] != targets[1]) {
+            }).forEach(([name, index]) => (def[name].target = maps.targets[index]));
+            if (maps.action === 'borrows' || maps.targets[0] != maps.targets[1]) {
                 def.delegate = false;
             }
             return def;
@@ -137,7 +150,7 @@ export default [
         delegate: true,
         url: 'https://github.com/aave/protocol-v2',
         tokens: {
-            deposit: { get(maps) { return maps.itoken ?? maps.tokens[0] ?? maps.token } },
+            deposit: { get(maps) { return maps.itoken ?? maps.tokens?.[0] ?? maps.token } },
             output: temp=new View('getReserveData(address)', ['__token__'], '(uint256),uint128,uint128,uint128,uint128,uint128 stable,uint40,address,address stable,address,address,uint8 id', 7),
             stabledebt: OA(temp, {index: 8}),
             debt: OA(temp, {index: 9})
@@ -179,7 +192,7 @@ export default [
         delegate: true,
         url: 'https://github.com/geist-finance/geist-protocol',
         tokens: {
-            deposit: { get(maps) { return maps.itoken ?? maps.tokens[0] ?? maps.token } },
+            deposit: { get(maps) { return maps.itoken ?? maps.tokens?.[0] ?? maps.token } },
             output: temp=new View('getReserveData(address)', ['__token__'], '(uint256),uint128,uint128,uint128,uint128,uint40,address,address,address,uint8', 6),
             debt: OA(temp, {index: 7})
         },
@@ -232,21 +245,21 @@ export default [
             output: { get(maps) { return maps.target } }
         },
         deposit: new Call(null, 'mint(uint256)', ['__amount__'], '0', { title: 'Deposit token to pool', params: ['Amount'], editable: 0 }, new Check(
-            new View(),
-            Expecting.PASS
+            getBalanceView('__account__', '__target__'),
+            Expecting.INCREASE,
+            '__amount__'
         )),
+        redeemable: temp=new View('balanceOfUnderlying(address)', ['__account__'], 'uint256'),
         borrow: new Call(null, 'borrow(uint256)', ['__amount__'], '0', { title: 'Borrow underlying asset', params: ['Amount'], editable: 0 }, new Check(
-            new View(),
-            Expecting.PASS
+            temp,
+            Expecting.PASS,
+            '__borrowable__'
         )),
         redeem: new Call(null, 'redeemUnderlying(uint256)', ['__amount__'], '0', { title: 'Redeem underlying assets', params: ['Amount'], editable: 0 }),
         repay: new Call(null, 'repayBorrowBehalf(address,uint256)', ['__account__', '__amount__'], '0', { title: 'Repay borrow on', params: ['For', 'Amount'], editable: 1 }, new Check(
             new View(),
             Expecting.PASS
         )),
-        get redeemable() {
-            return new View('balanceOfUnderlying(address)', ['__account__'], 'uint256');
-        },
         get available() {
             return {
                 tokens: this.tokens,

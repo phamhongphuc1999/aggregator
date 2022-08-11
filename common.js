@@ -1,6 +1,6 @@
 import * as ethers from 'ethers';
 import state from './state.js';
-import { contract, toBN, isBN, getAddress, getSigner, getDecimals, getToken, debug, invalidAddresses } from './helpers.js';
+import { contract, toBN, isBN, getAddress, getSigner, getDecimals, getToken, debug, invalidAddresses, getChain } from './helpers.js';
 
 ethers.BigNumber.prototype.toJSON = function () { return this.toString() };
 ethers.logger.warn = function () {};
@@ -123,14 +123,13 @@ Call.prototype = Object.freeze({
             if (typeof val === 'string' && val.startsWith('__')) {
                 val = val.slice(2, val.lastIndexOf('__'));
             } else if (ethers.utils.isAddress(val)) {
+                const name = await getName(orig);
                 val = trimAddress(val);
-                if (state.config.formatHtml) {
-                    val = `<a href="${orig}">${val}</a>`;
-                }
-                val += ' ' + await getName(orig) ?? '';
+                name && (val += ` (${name})`);
+                state.config.formatHtml && (val = `<a href="${getChain().explorer?.url}/address/${orig}">${val}</a>`);
             } else if (isBN(this._params[i]) || (this._params[i] ?? '').toString().match(/amount|eth|value|in|out/)) {
                 val = printToken(toBN(val),
-                    await getToken(this.target) ??
+                    await getToken(this.target, true) ??
                     await getToken(this._maps.token ?? this._maps.otoken ?? this._maps.itoken ?? ethers.constants.AddressZero)
                 );
             } else if (Array.isArray(val)) {
@@ -267,20 +266,17 @@ function Check (view, expecting = Expecting.PASS, value = '0', vtype = ethers.Bi
         vtype,
         last
     });
-    //this._fetch();
+    this._fetch();
     return this;
 };
 Check.prototype = Object.freeze({
     _fetch() {
         const {view} = this;
         //console.error('---->', view.target, view._params, view.params, view.method);
-        if (!this.last && view) {
-            if (ethers.utils.isAddress(view.target) && view.params.filter(e => e.startsWith('__')).length == 0) {
-                if (Object.values(Expecting).includes(this.expecting)) {
-                    this.last = view.get();
-                }
-            }
-        }
+        (!this.last && view) &&
+            (ethers.utils.isAddress(view.target) && view.params.filter(e => e && e.startsWith('__')).length == 0) &&
+            ([Expecting.INCREASE, Expecting.DECREASE].includes(this.expecting)) &&
+            (this.last = view.get());
         return this.last;
     },
     update(maps = {}, value = this.value) {
