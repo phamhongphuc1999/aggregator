@@ -10,11 +10,17 @@ interface IERC20 {
 interface IERC721 is IERC20 {
 }
 
+contract Context {
+    function _msgSender() internal view virtual returns (address) {
+        return msg.sender;
+    }
+}
+
 /**
  * Anonymous DeFi Aggregator
  * Users should not approve more than needed, money loss is guaranteed if not careful
  */
-contract DefiAggregator {
+contract DefiAggregator is Context {
 
     /* DATA STRUCTURES */
 
@@ -70,13 +76,13 @@ contract DefiAggregator {
     bool internal guard;
 
     constructor() {
-        owner = msg.sender;
+        owner = _msgSender();
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     modifier onlyOwner {
-        require(msg.sender == owner, "Recover: not owner");
+        require(_msgSender() == owner, "Recover: not owner");
         _;
     }
 
@@ -88,19 +94,19 @@ contract DefiAggregator {
     }
 
     modifier guarded() {
-        require(!guard && tx.origin == msg.sender, "Aggregator: guarded");
+        require(!guard && tx.origin == _msgSender(), "Aggregator: guarded");
         guard = true;
         _;
         // may yield
         if (balance(address(this)) != 0) {
-            _eth(msg.sender, balance(address(this)));
+            _eth(_msgSender(), balance(address(this)));
         }
         // final
         guard = false;
     }
 
     function staticCheck() external {
-        require(msg.sender == address(this));
+        require(_msgSender() == address(this));
         emit StaticCheck();
     }
 
@@ -113,9 +119,10 @@ contract DefiAggregator {
     /**
      * Main aggregator proxy support
      * Issues:
-     * - Working with ETH or evens tokens still dangerous
      */
     function aggregate(Call[] calldata calls, Expectation[] calldata expect, Transfer[] calldata ins) public payable guarded returns (uint256 blockNumber, bytes[] memory results) {
+        require(ins.length != 0 && calls.length != 0, "Aggregator: no capitals or calls");
+
         uint256 gas = gasleft();
         uint256 last;
         results = new bytes[](calls.length);
@@ -129,26 +136,21 @@ contract DefiAggregator {
             _verify(offset);
         }
 
-        //
         if (expect.length != 0 && expect[0].expecting != Expecting.PASS) {
             (, last) = _callgetvalue(expect[0].call, expect[0].vpos);
         }
         _handletransfers(ins);
 
-        require(ins.length != 0 && calls.length != 0, "Aggregator: no transfers or calls");
-
-        //
         for(uint256 i; i != calls.length; i++) {
             bytes calldata data = calls[i].data;
 
             assembly {
                 let sig := calldataload(data.offset)
-                // high level assembly, so expect eq() to cast values before comparison
-                // block transfer calls
+                // high level assembly, eq() cast value before comparison
+                // block transfer calls, prevent user fund loss
                 //if eq(sig, TRANSER_SIG) { revert(0, 0) }
-                // block transferFrom calls
                 if eq(sig, TRANSERFROM_SIG) { revert(0, 0) }
-                //if eq(sig, PERMIT_SIG) { revert(0, 0) }
+                if eq(sig, PERMIT_SIG) { revert(0, 0) }
             }
 
             results[i] = _call(calls[i], i);
@@ -157,12 +159,10 @@ contract DefiAggregator {
         // Expecting handler
         _handleexpect(expect[0], last);
 
-        //
-        //_handletransfers(touts);
+        //_handletransfers(outs);
 
-        //
         blockNumber = block.number;
-        emit Aggregated(msg.sender, gas - gasleft());
+        emit Aggregated(_msgSender(), gas - gasleft());
     }
 
     /**
@@ -180,7 +180,7 @@ contract DefiAggregator {
     */
 
     /**
-     * Stop at first success, no state got saved, only parallel calls allowed
+     * Stop at first success, no state saved, only parallel calls allowed
      */
     function any(Call[] calldata calls) external view returns (uint256 blockNumber, bytes memory result, uint16 index) {
         bool success;
@@ -216,7 +216,7 @@ contract DefiAggregator {
         require(ecrecover(keccak256(msg.data[0 : offset]), v, r, s) == owner, "Signature: invalid");
         // do the tests
         require(time <= 3600, "Signature: expired");
-        require(user == msg.sender, "Signature: wrong sender");
+        require(user == _msgSender(), "Signature: wrong sender");
     }
 
     /**
@@ -238,7 +238,8 @@ contract DefiAggregator {
     }
 
     /**
-     * Inspired by OraclizeAPI's implementation - MIT licence (oraclizeAPI_0.4.25.sol)
+     * Number to string helper
+     * Inspired by OraclizeAPI's implementation - MIT licence
      */
     function _tostring(uint256 value) internal pure returns (bytes memory buffer) {
         if (value == 0) {
@@ -261,14 +262,14 @@ contract DefiAggregator {
     }
 
     /**
-     *
+     * do view-only call
      */
     function _staticcall(Call calldata call) internal view returns (bool success, bytes memory ret) {
         (success, ret) = call.target.staticcall(call.data);
     }
 
     /**
-     *
+     * do state-altering call
      */
     function _call(Call calldata call, uint256 i) internal returns (bytes memory ret) {
         bool success;
@@ -277,21 +278,21 @@ contract DefiAggregator {
     }
 
     /**
-     *
+     * transfer helper
      */
      function _transfer(address token, address to, uint256 amount) internal returns (bool) {
         return IERC20(token).transfer(to, (amount == 0) ? IERC20(token).balanceOf(address(this)) : amount);
      }
 
     /**
-     *
+     * send eth helper
      */
     function _eth(address to, uint256 amount) internal returns (bool success) {
         (success,) = to.call{gas: 3000, value: amount}("");
     }
 
     /**
-     *
+     * expectation checking helper
      */
     function _handleexpect(Expectation calldata expect, uint256 last) internal view {
         (bool success, uint256 value) = _callgetvalue(expect.call, expect.vpos);
@@ -316,7 +317,7 @@ contract DefiAggregator {
     }
 
     /**
-     *
+     * capitals transfer helper
      */
     function _handletransfers(Transfer[] calldata transfers) internal {
         for (uint256 i; i != transfers.length; i++) {
@@ -326,18 +327,9 @@ contract DefiAggregator {
 
             if (transfers[i].asset == address(0)) {
                 success = msg.value == amount;
-                ret = bytes(msg.value == 0 ? "no eth" : "not enough eth");
-
-            //    success = out ? _eth(msg.sender, amount) : msg.value == amount;
-            //} else if (out) {
-            //    try IERC20(asset).transfer(msg.sender, (amount == 0) ? IERC20(asset).balanceOf(address(this)) : amount) returns (bool ok) {
-            //        success = ok;
-            //    } catch (bytes memory ok) {
-            //        ret = ok;
-            //    }
-
+                ret = "not enough eth";
             } else {
-                try IERC20(transfers[i].asset).transferFrom(msg.sender, address(this), amount) returns (bool ok) {
+                try IERC20(transfers[i].asset).transferFrom(_msgSender(), address(this), amount) returns (bool ok) {
                     success = ok;
                 } catch Error(string memory ok) {
                     ret = bytes(ok);
@@ -383,13 +375,6 @@ contract DefiAggregator {
     }
 
     /**
-     * Recover stuck tokens
-     */
-    //function recoverLostTokens(Transfer[] calldata outs) external onlyOwner {
-    //    emit OwnerAction();
-    //}
-
-    /**
      * Allow owner to send arbitrary calls to help users recover mishap actions
      */
     function recoverActions(Call[] calldata calls) external onlyOwner {
@@ -413,7 +398,7 @@ contract DefiAggregator {
     function destroy(uint256 secret) external onlyOwner {
         require(secret == 982173);
         emit OwnerAction();
-        selfdestruct(payable(msg.sender));
+        selfdestruct(payable(_msgSender()));
     }
 
 }
