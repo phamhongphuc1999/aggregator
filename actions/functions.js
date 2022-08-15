@@ -1,4 +1,4 @@
-import { Call, Check, Expecting, View, getBalanceView } from '../common.js';
+import { Call, Check, View, getBalanceView } from '../common.js';
 
 /**
  * Abstract app specific function call definitions
@@ -6,7 +6,7 @@ import { Call, Check, Expecting, View, getBalanceView } from '../common.js';
 
 const tokenOutCheck = new Check(
     getBalanceView('__account__', '__otoken__'),
-    Expecting.MORETHAN,
+    View.MORETHAN,
     '__oamount__'
 );
 
@@ -27,13 +27,13 @@ const swaps = {
     //
     create: new Call(null, 'createPair(address,address)', [], '0', { title: 'Create liquidity pair', params: ['Token A', 'Token B'] }, new Check(
         new View('getPair(address,address)', ['__token__', '__otoken__']),
-        Expecting.NOTEQUAL,
+        View.NOTEQUAL,
         '0x0000000000000000000000000000000000000000'
     )),
     //
     call2e: new Call(null, 'swapExactTokensForETH(uint256,uint256,address[],address,uint256)', [], '0', { title: 'Shortcut to swap tokens to native', params: ['Amount In', 'Amount Out Min', 'Swap Path', 'Receiver', 'Deadline'] }, new Check(
         new View('balance(address)', [ '__account__' ], ['uint256'], -1, '__aggregator__'),
-        Expecting.MORETHAN,
+        View.MORETHAN,
         '__oamount__'
     )),
     //

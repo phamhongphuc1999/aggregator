@@ -1,4 +1,4 @@
-import { Call, Check, View, Expecting, getBalanceView } from '../common.js';
+import { Call, Check, View, getBalanceView } from '../common.js';
 
 let temp;
 /**
@@ -18,7 +18,7 @@ export default [
         },
         deposit: new Call(null, 'stake(address,uint256)', ['__account__', '__amount__'], '0', { title: 'Deposit token to pool', params: ['Receiver', 'Amount'], editable: 1 }, new Check(
             getBalanceView('__account__', '__target__'),
-            Expecting.INCREASE,
+            View.INCREASE,
             '__amount__'
         )),
         redeem: new Call(null, 'redeem(address,uint256)', ['__account__', '__amount__'], '0', { title: 'Redeem', params: ['Receiver', 'Amount'] })
@@ -36,43 +36,45 @@ export default [
         },
         deposit: new Call(null, 'stake(address,uint256,bool,bool)', ['__account__', '__amount__', 'true', 'true'], '0', { title: 'Deposit native to pool', params: ['Receiver', 'Amount', 'Rebasing', 'Claim'], editable: 1 }, new Check(
             getBalanceView('__account__', '__deposittoken__'),
-            Expecting.INCREASE,
+            View.INCREASE,
             '0'
         )),
         redeem: new Call(null, 'unstake(address,uint256,bool)', ['__account__', '__amount__', false], '0', { title: 'Unstake', params: ['Receiver', 'Amount', 'Trigger rebasing'] })
     },
     {
         id: 'cd7907a180b14082850be75bac891857',
-        title: 'Pancake compatible',
+        title: 'Pancake CAKE compatible',
         detect: [
             new View('receiptToken()', [], 'address')
         ],
         delegate: false,
-        url: 'https://github.com/pancakeswap/pancake-farm',
+        url: 'https://github.com/pancakeswap/pancake-swap-lib',
         tokens: {
-            deposit: new View('token()', [], 'address')
+            deposit: new View('token()', [], 'address'),
+            output: { get: maps => maps.target }
         },
         deposit: new Call(null, 'deposit(uint256)', ['__amount__'], '0', { title: 'Deposit token to pool', params: ['Amount'], editable: 0 }, new Check(
             new View('userInfo(address)', ['__account__'], '(uint256,uint256,uint256,uint256)', 0),
-            Expecting.INCREASE,
+            View.INCREASE,
             '0'
         )),
         redeem: new Call(null, 'withdrawAll()', [], '0', { title: 'Withdraw all' })
     },
     {
         id: '0c36be9a7355486fb1e1350a9ef6b670',
-        title: 'Convex compatible',
+        title: 'MasterChef compatible',
         detect: [
-            new View('convexPool()', [], 'address')
+            new View('poolInfo(uint256)', [0], 'uint256,uint256,uint256,uint256,bool', 4),
         ],
-        delegate: true,
-        url: 'https://github.com/convex-eth/platform',
+        delegate: false,
+        url: 'https://github.com/pancakeswap/pancake-farm',
+        url1: 'https://github.com/convex-eth/platform',
         tokens: {
-            deposit: new View('poolInfo(uint256)', ['0'], 'address,address,address,address,address,bool', 1)
+            deposit: new View('lpToken(uint256)', ['__poolid__'], 'address')
         },
-        deposit: new Call(null, 'deposit(uint256,address)', ['__amount__', '__account__'], '0', { title: 'Deposit token to pool', params: ['Amount', 'Receiver'], editable: 0 }, new Check(
-            getBalanceView('__account__', '__token__'),
-            Expecting.INCREASE,
+        deposit: new Call(null, 'deposit(uint256,uint256)', ['__amount__', '__account__'], '0', { title: 'Deposit token to pool', params: ['Amount', 'Receiver'], editable: 0 }, new Check(
+            new View('userInfo(uint256,address)', ['__poolid__', '__account__'], 'uint256,uint256,uint256', 0),
+            View.INCREASE,
             '__amount__'
         )),
         redeem: new Call(null, 'withdraw(uint256,uint256)', ['0', '__amount__'], '0', { title: 'Withdraw', params: ['PID', 'Amount'] })
@@ -81,16 +83,24 @@ export default [
         id: '2665ef392a5d4cf2bb7a0b72ff9b43e8',
         title: 'ALPACA vault',
         detect: [
-            new View('', [''], '')
+            new View('positionInfo(uint256)', ['0'], 'uint256,uint256')
         ],
         tokens: {
             deposit: new View('token()', [], 'address'),
-            output: { get(maps, target) { return target } }
+            output: { get: maps => maps.target }
         },
         delegate: true,
         url: 'https://github.com/alpaca-finance/bsc-alpaca-contract',
-        deposit: new Call(null, 'deposit(uint256,uint256,address,uint256,bytes)', [], '0', { title: '', params: ['', '', '', '', '', ''] }, new Check()),
-        redeem: new Call(null, 'withdraw(uint256,uint256,uint256,bytes)', [], '0', { title: '', params: [''] }, new Check())
+        deposit: new Call(null, 'deposit(uint256)', ['__amount__'], '0', { title: '', params: ['', '', '', '', '', ''] }, new Check(
+            getBalanceView(),
+            View.DECREASE,
+            '__amount__'
+        )),
+        redeem: new Call(null, 'withdraw(uint256)', ['__balance__'], '0', { title: '', params: [''] }, new Check(
+            new View(),
+            View.INCREASE,
+            '____'
+        ))
     },
     {
         id: '2665ef392a5d4cf2bb7a0b72ff9b43e8',
@@ -98,8 +108,8 @@ export default [
         detect: [
             new View('valueToShare(uint256)', ['100000000'], 'uint256')
         ],
-        delegate: true,
-        url: 'https://github.com/alpaca-finance/bsc-alpaca-contract',
+        delegate: 'transfer',
+        url: 'https://github.com/alpaca-finance/bsc-alpaca-contract/tree/main/solidity/contracts/8.10/protocol',
         tokens: {
         },
         deposit: new Call(null, 'deposit(uint256,uint256,address,uint256,bytes)', [], '0', { title: '', params: ['', '', '', '', '', ''] }, new Check()),
@@ -115,11 +125,11 @@ export default [
         url: 'https://github.com/curvefi/curve-veBoost',
         tokens: {
             deposit: new View('token()', [], 'address'),
-            output: { get(maps) { return maps.target } }
+            output: { get: maps => maps.target }
         },
         deposit: new Call(null, 'create_lock(uint256,uint256)', ['__amount__', '__time__'], '0', { title: 'Lock token for voting power and rewards', params: ['Amount', 'Lock duration'], editable: 0 }, new Check(
             new View('locked(address)', ['__account__'], 'uint128,uint256', 0),
-            Expecting.INCREASE,
+            View.INCREASE,
             '__amount__'
         ), { time: { default: '31536000', title: 'Lock duration specifier', descs: 'In seconds: 604800 (a week), 2592000 (a month), 31536000 (a year), 126144000 (4 years)' } }),
         redeem: new Call(null, 'withdraw()', [], '0', { title: 'Withdraw when lock has expired' })
@@ -134,12 +144,12 @@ export default [
         url: 'https://github.com/TravaLendingPool/GovernanceContract',
         tokens: {
             deposit: new View('tokens(uint256)', [0], 'address'),
-            output: { get(maps) { return maps.target } },
+            output: { get: maps => maps.target },
             reward: new View('rewardToken()', [], 'address')
         },
         deposit: new Call(null, 'create_lock_for(address,uint256,uint256,address)', ['__deposittoken__', '__amount__', '__time__', '__account__'], '0', { title: 'Lock token for voting power and rewards', params: ['Token', 'Amount', 'Lock duration', 'Receiver'], editable: 1 }, new Check(
             getBalanceView('__account__', '__target__'),
-            Expecting.INCREASE,
+            View.INCREASE,
             '1'
         ), { time: { default: '31536000', title: 'Lock duration specifier', descs: 'In seconds: 604800 (a week), 2592000 (a month), 31536000 (a year), 126144000 (4 years)' } }),
         redeem: new Call(null, 'withdraw(uint256)', ['0'], '0', { title: 'Withdraw when lock has expired', params: ['Token ID'] })
@@ -148,17 +158,17 @@ export default [
         id: '7ab2efe0a8974153a773eef60172c839',
         title: 'ALPACA Governance vault',
         detect: [
-            new View('', [], '')
+            new View('userPointHistory(address,uint256)', ['0x0000000000000000000000000000000000000000', '1'], 'int128,int128,uint256,uint256', 0)
         ],
         delegate: false,
         url: 'https://github.com/alpaca-finance/xALPACA-contract',
         tokens: {
             deposit: new View('token()', [], 'address'),
-            output: { get(maps) { return maps.target } }
+            output: { get: maps => maps.target }
         },
         deposit: new Call(null, 'createLock(uint256,uint256)', ['__amount__', '__time__'], '0', { title: 'Lock token for voting /power and rewards', params: ['Amount', 'Lock duration'], editable: 0 }, temp=new Check(
             new View('locks(address)', ['__account__'], 'uint256'),
-            Expecting.INCREASE,
+            View.INCREASE,
             '__amount__'
         ), { time: { default: '31536000', title: 'Lock duration specifier', descs: 'In seconds: 604800 (a week), 2592000 (a month), 31536000 (a year), 126144000 (4 years)' } }),
         depositx: new Call(null, 'depositFor(address,uint256)', ['__account__', '__amount__'], '0', { title: 'Increase lock balance without extend time', params: ['Account holder', 'Amount'], editable: 1 }, temp),

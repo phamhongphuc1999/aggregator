@@ -108,7 +108,7 @@ export async function findContract (target, action = '', maps = {}) {
         //if (err.code != 'UNPREDICTABLE_GAS_LIMIT') console.error(detect, err.code);
     }
     // straight to console
-    errmsg = `No ${action} matched for ${target} (${errmsg})`;
+    errmsg = `No ${action} matched for ${key} (${errmsg})`;
     debug(errmsg) && console.error(errmsg);
     return null;
 };

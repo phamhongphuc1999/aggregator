@@ -81,9 +81,11 @@ Call.prototype = Object.freeze({
         const _params = this.params.slice();
         // fill-in additional inputs
         Object.keys(this.inputs ?? {}).map((name) => (maps[name] === undefined) && (maps[name] = this.inputs[name]?.default));
-        params = _update(params, maps);
+        //
+        params = _update(params, maps).map(param => (typeof param === 'function') ? param(maps) : param);
         const [target, eth] = _update([this.target, this.eth], maps);
-        const check = (this.check && this.check.update) ? this.check.update({...maps, ...this.params}) : null;
+        const check = (this.check && this.check.update) ? this.check.update({...maps, ...params}) : null;
+        // clone
         return Object.setPrototypeOf({...this, ...(!this._params) && {_params}, _maps: maps, target, eth, check, params}, Call.prototype);
     },
     contract(signer = getSigner()) {
@@ -127,7 +129,7 @@ Call.prototype = Object.freeze({
                 val = trimAddress(val);
                 name && (val += ` (${name})`);
                 state.config.formatHtml && (val = `<a href="${getChain().explorer?.url}/address/${orig}">${val}</a>`);
-            } else if (isBN(this._params[i]) || (this._params[i] ?? '').toString().match(/amount|eth|value|in|out/)) {
+            } else if ((this._params[i] ?? '').toString().match(/amount|eth|value|in|out/) || isBN(this._params[i])) {
                 val = printToken(toBN(val),
                     await getToken(this.target, true) ??
                     await getToken(this._maps.token ?? this._maps.otoken ?? this._maps.itoken ?? ethers.constants.AddressZero)
@@ -141,9 +143,7 @@ Call.prototype = Object.freeze({
         this.targetName = await getName(this.target);
         //
         try {
-            this.descs.values = await Promise.all(Object.entries(this.params).map(
-                ([i, val]) => formatParam(val, i)
-            ));
+            this.descs.values = await Promise.all(this.params.map(formatParam));
             //[this.fee, this.probe] = await Promise.all([con.estimate(), con.probe()]);
         } catch (err) {
             debug('meta', this.method, err.message, err.stack);
@@ -179,11 +179,11 @@ Call.prototype = Object.freeze({
  * @param {string} method
  * @param {Array} params
  * @param {string=} returns
- * @param {number=} index
+ * @param {number|string=} index
  * @param {target=} target
  * @return {Object}
  */
-function View (method = '', params = [], returns = '', index = -1, target = ethers.constants.AddressZero) {
+function View (method = '', params = [], returns = 'uint256', index = -1, target = ethers.constants.AddressZero) {
     //console.assert(this.constructor === View, "must-using-new");
     //if (method instanceof Function) this.get = method;
     Object.assign(this, {
@@ -201,7 +201,7 @@ View.prototype = Object.freeze({
     },
     update(maps = {}, index = this.index) {
         // clone
-        return Object.setPrototypeOf({...this, _maps: maps, index, target: _update([this.target], maps)[0], params: _update(this.params ?? [], maps)}, View.prototype);
+        return Object.setPrototypeOf({...this, _maps: maps, index, target: _update([this.target], maps).shift(), params: _update(this.params ?? [], maps)}, View.prototype);
     },
     contract(address = this.target) {
         return contract(address, [ `function ${this.method} view returns (${this.returns})` ]);
@@ -222,7 +222,8 @@ View.prototype = Object.freeze({
         let res = null;
         try {
             res = await con.callStatic[this.name()].apply(con, params.concat([state.view.options]));
-            res = (res.length && this.index != -1) ? res[this.index] : res;
+            (typeof this.index === 'function' && (res = this.index(res))) ||
+                (this.index != -1) && (res = res[this.index] ?? res);
             // might
             detect && debug('match', target,  this.name());
         } catch (err) {
@@ -238,26 +239,15 @@ View.prototype = Object.freeze({
     }
 });
 
-// enum constant = nulls
-const Expecting = Object.freeze({
-    PASS: 0,
-    EQUAL: 1,
-    INCREASE: 2,
-    DECREASE: 3,
-    MORETHAN: 4,
-    FAIL: 5,
-    NOTEQUAL: 6
-});
-
 /**
  * Expectation wrapper
  * @param {View} view
- * @param {Expecting} expecting
- * @param {string} value
- * @param {*} vtype
+ * @param {number} expecting
+ * @param {string|Function} value
+ * @param {Object.prototype} vtype
  * @return {Object}
  */
-function Check (view, expecting = Expecting.PASS, value = '0', vtype = ethers.BigNumber, last = null) {
+function Check (view, expecting = View.PASS, value = '0', vtype = ethers.BigNumber, last = null) {
     //console.assert(this.constructor === Check, "must-using-new");
     Object.assign(this, {
         view,
@@ -272,10 +262,10 @@ function Check (view, expecting = Expecting.PASS, value = '0', vtype = ethers.Bi
 Check.prototype = Object.freeze({
     _fetch() {
         const {view} = this;
-        //console.error('---->', view.target, view._params, view.params, view.method);
+        //debug('fetch', view.target, view._params, view.params, view.method);
         (!this.last && view) &&
             (ethers.utils.isAddress(view.target) && view.params.filter(e => e && e.startsWith('__')).length == 0) &&
-            ([Expecting.INCREASE, Expecting.DECREASE].includes(this.expecting)) &&
+            ([View.INCREASE, View.DECREASE].includes(this.expecting)) &&
             (this.last = view.get());
         return this.last;
     },
@@ -283,8 +273,8 @@ Check.prototype = Object.freeze({
         if (!this.view?.update) {
             return null;
         }
-        value = _update([value], maps)[0];
-        const obj = Object.setPrototypeOf({...this, _maps: maps, value, view: this.view.update(maps)}, Check.prototype);
+        // clone
+        const obj = Object.setPrototypeOf({...this, _maps: maps, value: _update([value], maps).shift(), view: this.view.update(maps)}, Check.prototype);
         obj._fetch();
         return obj;
     },
@@ -309,28 +299,28 @@ Check.prototype = Object.freeze({
                 // very primitive
                 const n = toBN(ret);
                 switch (this.expecting) {
-                    case Expecting.EQUAL:
+                    case View.EQUAL:
                         match = n.eq(this.value) || ret == this.value;
                     break;
-                    case Expecting.INCREASE:
+                    case View.INCREASE:
                         match = (this.value == '0') ?
                             n.gt(last) :
                             n.sub(last).eq(this.value);
                     break;
-                    case Expecting.DECREASE:
+                    case View.DECREASE:
                         match = (this.value == '0') ?
                             n.lt(last) :
                             n.sub(ret).eq(this.value);
                     break;
-                    case Expecting.MORETHAN:
+                    case View.MORETHAN:
                         match = n.gt(this.value);
                     break;
-                    case Expecting.PASS:
+                    case View.PASS:
                     default:
                         match = true;
                 }
             } else {
-                match = this.expecting == Expecting.FAIL;
+                match = this.expecting == View.FAIL;
             }
         } catch (err) {
             debug('eval', err.message);
@@ -343,11 +333,21 @@ Check.prototype = Object.freeze({
      */
     encode() {
         // view should be already updated
-        return [this.view.encode(), isFinite(this.expecting) ? this.expecting : Expect[this.expecting], this.value, (this.view.index == -1) ? 0 : this.view.index];
+        return [this.view.encode(), isFinite(this.expecting) ? this.expecting : View[this.expecting], this.value, (this.view.index == -1) ? 0 : this.view.index];
     }
 });
+// enum constant = nulls
+Object.assign(View, {
+    PASS: 0,
+    EQUAL: 1,
+    INCREASE: 2,
+    DECREASE: 3,
+    MORETHAN: 4,
+    FAIL: 5,
+    NOTEQUAL: 6
+});
 
-export { Call, Expecting, Check, View };
+export { Call, Check, View };
 
 // Get allowance view
 const allowance = (token = '__token__', owner = '__account__', spender = '__to__', name='allowance') =>
@@ -356,21 +356,23 @@ const allowance = (token = '__token__', owner = '__account__', spender = '__to__
 const approve = (token = '__token__', spender = '__target__', amount = '__amount__', name='approve', checkName='allowance') =>
     new Call(token, name + '(address,uint256)', [spender, amount], '0', { title: 'Approve token spending', params: ['Spender', 'Amount'] }, new Check(
         allowance(token, '__account__', spender, checkName),
-        Expecting.EQUAL,
+        View.EQUAL,
         amount
     ));
 // Get transfer call
 const transfer = (token = '__token__', to = '__account__', amount = '__amount__') =>
     new Call(token, 'transfer(address,uint256)', [to, amount], '0', { title: 'Transfer token', params: ['Receiver', 'Amount'] }, new Check(
         getBalanceView(to, token),
-        Expecting.MORETHAN,
+        View.MORETHAN,
         amount
     ));
 
 // get ETH balance
 const getBalanceEth = (account = '__account__') => new View('balance(address)', [ account ], ['uint256']).get({}, getAddress());
 // get balance view
-const getBalanceView = (account = '__account__', token = ethers.constants.AddressZero) => new View('balanceOf(address)', [ account ], ['uint256'], -1, token);
+const getBalanceView = (account = '__account__', token = '__token__') => new View('balanceOf(address)', [ account ], ['uint256'], -1, token);
+
+
 // get ERC balance
 const getBalance = (account = '__account__', token = ethers.constants.AddressZero) => getBalanceView(account, null).get({}, token);
 

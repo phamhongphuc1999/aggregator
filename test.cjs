@@ -17,7 +17,7 @@ async function test(strategy, account, amount, merge = true, error = null) {
     try {
         debug('STRATEGY:', strategy.id ?? strategy.strategy_id ?? strategy);
         res = await autoAvailability(strategy);
-        debug('AUTO:', serialize(res), (Date.now() - starttime)+'ms');
+        debug('AUTO:', res, (Date.now() - starttime)+'ms');
         res = await process(strategy, maps, null, merge);
         debug('PROCESS:',
             [res.calls?.length, (res.calls ?? []).map(call => call.method.slice(0, call.method.indexOf('('))).join(', ')],

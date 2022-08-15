@@ -126,8 +126,7 @@ contract DefiAggregator {
                 offset := ins.offset
                 offset := add(add(offset, mul(calldataload(offset), 0x40)), 0x20)
             }
-            address signer = _verify(keccak256(msg.data[0 : offset]), msg.data[offset:]);
-            _require(signer == owner, "Signature", uint160(signer), "not allowed");
+            _verify(offset);
         }
 
         //
@@ -199,9 +198,25 @@ contract DefiAggregator {
      * Check aggregate signature if required
      * @dev sigs is append right after aggregate() arguments
      */
-    function _verify(bytes32 hashed, bytes memory signatureBlob) internal pure returns (address signer) {
-        if (true) {
+    function _verify(uint256 offset) internal view {
+        address user;
+        uint64 time;
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        assembly {
+            //32 - 12
+            user := calldataload(sub(offset, 12))
+            //32 + 20 - 24
+            time := calldataload(sub(offset, 4))
+            r := calldataload(add(offset, 32))
+            s := calldataload(add(offset, 64))
+            v := byte(0, calldataload(add(offset, 96)))
         }
+        require(ecrecover(keccak256(msg.data[0 : offset]), v, r, s) == owner, "Signature: invalid");
+        // do the tests
+        require(time <= 3600, "Signature: expired");
+        require(user == msg.sender, "Signature: wrong sender");
     }
 
     /**

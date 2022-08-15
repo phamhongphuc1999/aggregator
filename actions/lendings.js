@@ -1,6 +1,6 @@
 import * as ethers from 'ethers';
 import state from '../state.js';
-import { Call, Check, View, approve, Expecting, getBalanceView } from '../common.js';
+import { Call, Check, View, approve, getBalanceView } from '../common.js';
 import { contract, toBN, getAddress, getDecimals, invalidAddresses, debug } from '../helpers.js';
 
 const OA = Object.assign;
@@ -157,17 +157,17 @@ export default [
         },
         deposit: new Call(null, 'deposit(address,uint256,address,uint16)', ['__token__', '__amount__', '__user__', '0'], '0', { title: 'Deposit asset to pool', params: ['Asset address', 'Asset amount', 'On behalf of', 'Referral code'], editable: 1 }, new Check(
             getBalanceView('__account__', '__token__'),
-            Expecting.PASS
+            View.PASS
         )),
         approve: approve('__debttoken__', '__aggregator__', '__available__', 'approveDelegation', 'borrowAllowance'),
         borrow: new Call(null, 'borrow(address,uint256,uint256,uint16,address)', ['__token__', '__amount__', '1', '0', '__user__'], '__eth__', { title: 'Borrow reserve asset', params: ['Asset address', 'Amount', 'Interest rate mode', 'Referal code', 'On behalf of'], editable: 1 }, new Check(
             getBalanceView('__account__', '__token__'),
-            Expecting.PASS
+            View.PASS
         )),
         redeem: new Call(null, 'withdraw(address,uint256,address)', ['__token__', '__amount', '__account__'], '0', { title: 'Withdraw deposited asset', params: ['Asset address', 'Amount', 'Receiver'], editable: 1 }),
         repay: new Call(null, 'repay(address,uint256,uint256,address)', ['__token__', '__amount', '1', '__account__'], '__eth__', { title: 'Repay borrow', params: ['Asset address', 'Amount', 'Interest rate mode', 'On behalf of'], editable: 1 }, new Check(
             getBalanceView('__account__', '__token__'),
-            Expecting.PASS
+            View.PASS
         )),
         oracle: [
             new View('getPriceOracle()', [], 'address')
@@ -199,16 +199,16 @@ export default [
         approve: approve('__debttoken__', '__aggregator__', '__available__', 'approveDelegation', 'borrowAllowance'),
         deposit: new Call(null, 'deposit(address,uint256,address,uint16)', ['__token__', '__amount__', '__user__', '0'], '0', { title: 'Deposit to lending pool', params: ['Asset address', 'Asset amount', 'On behalf of', 'Referral code'], editable: 1 }, new Check(
             getBalanceView('__account__', '__token__'),
-            Expecting.PASS
+            View.PASS
         )),
         borrow: new Call(null, 'borrow(address,uint256,uint16,address)', ['__token__', '__amount__', '0', '__user__'], '0', { title: 'Borrow reserve asset', params: ['Asset address', 'Amount', 'Referal code', 'On behalf of'], editable: 1 }, new Check(
             getBalanceView('__account__', '__token__'),
-            Expecting.PASS
+            View.PASS
         )),
         redeem: new Call(null, 'withdraw(address,uint256,address)', ['__token__', '__amount', '__account__'], '0', { title: 'Withdraw deposited asset', params: ['Asset address', 'Amount', 'Receiver'], editable: 1 }),
         repay: new Call(null, 'repay(address,uint256,address)', ['__token__', '__amount', '1', '__account__'], '0', { title: 'Repay borrow', params: ['Asset address', 'Amount', 'On behalf of'], editable: 1 }, new Check(
             getBalanceView('__account__', '__token__'),
-            Expecting.PASS
+            View.PASS
         )),
         oracle: [
             new View('getPriceOracle()', [], 'address'),
@@ -227,7 +227,7 @@ export default [
     },
     {
         id: 'dd2daefe7b2140a5a1eb7c5b08ff8df8',
-        title: 'Compound ERC/ETH compatible',
+        title: 'Compound ERC compatible',
         detect: [
             new View('underlying()', [], 'address'),
             new View('isCToken()', [], 'address'),
@@ -242,23 +242,23 @@ export default [
         ref: comp_ref,
         tokens: {
             deposit: new View('underlying()', [], 'address'),
-            output: { get(maps) { return maps.target } }
+            output: { get: maps => maps.target }
         },
         deposit: new Call(null, 'mint(uint256)', ['__amount__'], '0', { title: 'Deposit token to pool', params: ['Amount'], editable: 0 }, new Check(
             getBalanceView('__account__', '__target__'),
-            Expecting.INCREASE,
+            View.INCREASE,
             '__amount__'
         )),
         redeemable: temp=new View('balanceOfUnderlying(address)', ['__account__'], 'uint256'),
         borrow: new Call(null, 'borrow(uint256)', ['__amount__'], '0', { title: 'Borrow underlying asset', params: ['Amount'], editable: 0 }, new Check(
             temp,
-            Expecting.PASS,
+            View.PASS,
             '__borrowable__'
         )),
         redeem: new Call(null, 'redeemUnderlying(uint256)', ['__amount__'], '0', { title: 'Redeem underlying assets', params: ['Amount'], editable: 0 }),
         repay: new Call(null, 'repayBorrowBehalf(address,uint256)', ['__account__', '__amount__'], '0', { title: 'Repay borrow on', params: ['For', 'Amount'], editable: 1 }, new Check(
             new View(),
-            Expecting.PASS
+            View.PASS
         )),
         get available() {
             return {
@@ -268,19 +268,20 @@ export default [
         },
         get ether() {
             return {
+                title: this.title.replace('ERC', 'ETH'),
                 tokens: {
                     deposit: { get () { return ethers.constants.AddressZero } },
                     output: { get (maps) { return maps.target } }
                 },
                 deposit: new Call(null, 'mint()', [], '__amount__', { title: 'Deposit ETH to pool', params: ['Amount'], editable: 0 }, new Check(
                     new View(),
-                    Expecting.PASS
+                    View.PASS
                 )),
                 borrow: this.borrow,
                 redeem: this.redeem,
                 repay: new Call(null, 'repayBorrowBehalf(address)', ['__account__'], '__amount__', { title: 'Repay all ETH', params: ['For'], editable: -1 }, new Check(
                     new View(),
-                    Expecting.PASS
+                    View.PASS
                 ))
             }
         }

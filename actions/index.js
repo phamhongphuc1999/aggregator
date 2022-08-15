@@ -229,7 +229,7 @@ const actions = {
             if (def) {
                 const { deposit:call } = def;
                 // sometimes target needs update
-                updateIf(maps, def, this.tokenNames);
+                updateIf(maps, def, actions.lendings.tokenNames);
                 maps.amount = await parseAmount(maps.amount, maps.token);
                 //
                 invalidAddresses.includes(maps.token) ? (maps.eth = maps.amount) : calls.push(approve(maps.token, maps.target, maps.amount).update(maps));

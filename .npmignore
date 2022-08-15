@@ -8,3 +8,4 @@ test.*
 abis/*
 contracts/*
 dist/*.map
+*.map

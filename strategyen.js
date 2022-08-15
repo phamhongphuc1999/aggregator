@@ -306,17 +306,23 @@ export function setState(func = state=>state) {
 export async function autoAvailability(strategy) {
     (typeof strategy === 'string') && (strategy = await getStrategy(strategy));
     //const ms = time();
+    const steps = strategy.steps ?? [];
+    const logs = [];
     let avail = true;
     // if works correctly, findContract never throws
-    const defs = await Promise.all((strategy.steps ?? []).map(step => {
-        const id = (step.id ?? step.strategy_id), action = (step.method ?? step.methods[0]);
-        const [, target, token] = id.split('_');
+    const defs = await Promise.all(steps.map(step => {
+        const
+            id = (step.id ?? step.strategy_id),
+            action = (step.method ?? step.methods[0]),
+            [, target, token] = id.split('_');
+        logs.push(action);
         return (actions[action]?.find) ?
             findContract(target, action, { token }) :
-            { title: '', delegate: true };
+            { title: action, delegate: true };
     }));
+    // count eligablity
     avail = defs.filter((def) => def.delegate).length == defs.length;
-    debug('availability', defs.map(e => e.delegate));
+    debug('availability', logs, defs.map(e => e.title), defs.map(e => e.delegate));
     return avail;
 };
 
