@@ -13,6 +13,7 @@
     //const files = readdirSync('cache').filter(e => e.endsWith('.json'));
     const ids = JSON.parse(readFileSync('cache/testIds.json'));
     const by = { step: {}, token: {}, all: [], tokens: Object.keys(ids) };
+    // AOP
     Object.entries(ids).forEach(([t, obj]) =>
         Object.entries(obj).forEach(([n, ids]) => {
             by.step[n] = (by.step[n] ?? []).concat(ids);
@@ -20,16 +21,17 @@
             [].push.apply(by.all, ids);
         })
     );
-    //
+    // parallel processing may stress provider
     const results = await Promise.all(
         (() => {
             const args = process.argv.slice(2);
-            if (args.length === 2)
+            if (args.length >= 2)
                 return ids[ args[0] ][ by.tokens[args[1]] ];
-            else if (args.length === 1)
+            else if (args.length >= 1)
                 return Object.values(args[0].startsWith('0x') ? by.token[args[0]] : by.step[args[0]]);
             return by.all;
         })().map((id) => test(id, accounts[0], amounts[0], false)
     ));
+    // print all result
     console.log(results.join("\n\n\n\n"));
 })();

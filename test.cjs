@@ -3,7 +3,7 @@
 */
 
 async function test(strategy, account, amount, merge = true, error = null) {
-    const { process, debug, processError, autoAvailability, serialize, state } =
+    const { process, debug, processError, autoAvailability, getStrategy, serialize, state } =
         global.module ??
         (global.module = await import('./strategyen.js'));
     let res = {}, fs;
@@ -15,6 +15,9 @@ async function test(strategy, account, amount, merge = true, error = null) {
     const maps = { account, amount };
     // handler
     try {
+        if (false) {
+            return debug(strategy) && serialize(await getStrategy(strategy));
+        }
         debug('STRATEGY:', strategy.id ?? strategy.strategy_id ?? strategy);
         res = await autoAvailability(strategy);
         debug('AUTO:', res, (Date.now() - starttime)+'ms');
@@ -25,6 +28,7 @@ async function test(strategy, account, amount, merge = true, error = null) {
             res.ran+'ms'
         );
     } catch (err) {
+        error = err;
         console.error("---->\n\tERROR:", err.stack, serialize(err), "\n<----");
     }
     try {

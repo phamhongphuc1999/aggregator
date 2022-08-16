@@ -114,10 +114,9 @@ Call.prototype = Object.freeze({
         const getName = async (target, name='name', temp = null) => {
             try {
                 target = target.toLowerCase();
-                return state.cache.names[target] ?? (temp = await getToken(target) && temp.name) ?? await con.attach(target)[name]() ?? '';
-            } catch (err) {
-                return '';
-            }
+                return state.cache.names[target] ?? (await getToken(target))?.name ?? await con.attach(target)[name]();
+            } catch (err) {}
+            return '';
         };
         //
         const formatParam = async (val, i) => {
@@ -354,14 +353,14 @@ const allowance = (token = '__token__', owner = '__account__', spender = '__to__
     new View(name + '(address,address)', [owner, spender], 'uint256', -1, token);
 // Get approve call
 const approve = (token = '__token__', spender = '__target__', amount = '__amount__', name='approve', checkName='allowance') =>
-    new Call(token, name + '(address,uint256)', [spender, amount], '0', { title: 'Approve token spending', params: ['Spender', 'Amount'] }, new Check(
+    new Call(token, name + '(address,uint256)', [spender, amount], '0', { title: 'Approve token spending', params: ['Spender', 'Amount'], maxFee: 45000 }, new Check(
         allowance(token, '__account__', spender, checkName),
         View.EQUAL,
         amount
     ));
 // Get transfer call
 const transfer = (token = '__token__', to = '__account__', amount = '__amount__') =>
-    new Call(token, 'transfer(address,uint256)', [to, amount], '0', { title: 'Transfer token', params: ['Receiver', 'Amount'] }, new Check(
+    new Call(token, 'transfer(address,uint256)', [to, amount], '0', { title: 'Transfer token', params: ['Receiver', 'Amount'], maxFee: 65000 }, new Check(
         getBalanceView(to, token),
         View.MORETHAN,
         amount

@@ -12,7 +12,7 @@ export default Object.seal({
     deprecate: false,
     config: Object.seal({
         debug: true,
-        apiBase: 'https://scoringapi.trava.finance/aggregator',
+        apiBase: 'https://scoringapi.trava.finance/aggregator_test',
         // allow calls generation to be async
         allowAsync: false,
         optimizeSwaps: false,

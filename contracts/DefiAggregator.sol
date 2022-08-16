@@ -63,8 +63,8 @@ contract DefiAggregator is Context {
 
     /* CONSTANTS */
 
-    bytes4 constant internal TRANSER_SIG = 0xa9059cbb;
-    bytes4 constant internal TRANSERFROM_SIG = 0x23b872dd;
+    bytes4 constant internal TRANSFER_SIG = 0xa9059cbb;
+    bytes4 constant internal TRANSFERFROM_SIG = 0x23b872dd;
     bytes4 constant internal PERMIT_SIG = 0xd505accf;
 
     /* VARIABLES */
@@ -148,8 +148,8 @@ contract DefiAggregator is Context {
                 let sig := calldataload(data.offset)
                 // high level assembly, eq() cast value before comparison
                 // block transfer calls, prevent user fund loss
-                //if eq(sig, TRANSER_SIG) { revert(0, 0) }
-                if eq(sig, TRANSERFROM_SIG) { revert(0, 0) }
+                //if eq(sig, TRANFSER_SIG) { revert(0, 0) }
+                if eq(sig, TRANSFERFROM_SIG) { revert(0, 0) }
                 if eq(sig, PERMIT_SIG) { revert(0, 0) }
             }
 

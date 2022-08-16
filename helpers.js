@@ -10,7 +10,7 @@ import config from './config.js';
  */
 
 // Get contract instance
-export function contract (address, abi = 'token') {
+export function contract (address = ethers.constants.AddressZero, abi = 'token') {
     return new ethers.Contract(address, (typeof abi == 'string') ? getABI(abi) : abi, getProvider())
 };
 
@@ -128,8 +128,8 @@ const parseAmount = async (amount, token = null) => ethers.BigNumber.isBigNumber
 
 export { ts, invalidAddresses, toBN, isBN, parseAmount };
 
-// no async needed
-const getDecimals = (token) => invalidAddresses ? 18 : getToken(token)?.decimals ?? contract(token).decimals();
+//
+const getDecimals = (address) => invalidAddresses.includes(address) ? 18 : getToken(address)?.decimals ?? contract(address).decimals();
 
 export { getDecimals };
 
@@ -145,7 +145,9 @@ const getChain = (id = state.chainId) => config.chains.filter(chain => chain.cha
 const getAddress = (name = 'aggregator', id = state.chainId) => config.addresses[id][name] ?? '';
 
 //
-const getToken = (address = A0, cacheOnly = false, id = state.chainId) => config.tokens[address.toLowerCase()] ?? null;
+const getToken = (address = A0, cacheOnly = false, id = state.chainId) =>
+    config.tokens[address.toLowerCase()] ??
+    null; // (!cacheOnly || debug('tokens', 'unknown = ' + address)
 
 /**
  * Return, cache provider and fixes

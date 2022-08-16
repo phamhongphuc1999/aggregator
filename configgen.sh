@@ -2,108 +2,93 @@
 
 #fs.statSync(file).isDirectory()
 env node << EOM
-
-console.error('\t abis gen');
-const path='abis';
-const obj={};
-const fs=require('fs');
-//
-for (let file of fs.readdirSync(path)) {
-    let name=file.replace('.json','') /*.split('.')*/, data=fs.readFileSync(path+'/'+file);
-    console.error(name+': '+data.length);
-    file=JSON.parse(data);
-    obj[name]=file;
-}
-//
-fs.writeFileSync(path + '.json', JSON.stringify(obj, null, "\t"));
-
+	console.error('\t abis gen');
+	const path='abis';
+	const obj={};
+	const fs=require('fs');
+	//
+	for (let file of fs.readdirSync(path)) {
+		let name=file.replace('.json','') /*.split('.')*/, data=fs.readFileSync(path+'/'+file);
+		console.error(name+': '+data.length);
+		file=JSON.parse(data);
+		obj[name]=file;
+	}
+	//
+	fs.writeFileSync(path + '.json', JSON.stringify(obj, null, "\t"));
 EOM
 ##
 
-#fs.statSync(file).isDirectory()
+##
+# Unneccessary long
 env node << EOM
-(async()=>{
-console.error('\t tokens gen');
-let chainId='56';
-let img_prefix='/tokens';
-let file='./tokens.json';
-let api_url='https://scoringapi.trava.finance/aggregator/strategies/tokens';
-
-const fetch=require('node-fetch');
-const ethers=require('ethers');
-const fs=require('fs');
-const abi=JSON.parse(fs.readFileSync('./abis/token.json'));
-const token=new ethers.Contract(
-	ethers.constants.AddressZero,
-	abi,
-	ethers.provider = new ethers.providers.JsonRpcBatchProvider(
-		require('./chains.json').filter(e => e.chainId==chainId)[0].rpc[0]
-	)
-);
-const arr=[];
-//fs.existsSync(file) ? require(file) : []
-let obj=await(await fetch(api_url)).json();
-if (!Object.keys(obj).length) throw new Error('!tokens');
-for (const kind in obj)
-	arr.push.apply(arr, obj[kind].map(e => ({...e, internal: kind.split('_')[0] == 'internal' })));
-img_prefix=arr[0].img_url.slice(0, arr[0].img_url.indexOf(img_prefix));
-//
-obj={
-	'': { img_prefix, chainId }
-};
-
-const decimals = await Promise.all(arr.map(
-	info => info.decimals ?? (ethers.utils.isAddress(info.address) ? token.attach(info.address).decimals() : 18)
-))
-const names = await Promise.all(arr.map(
-	info => info.name ?? (ethers.utils.isAddress(info.address) ? token.attach(info.address).name() : 'Native token')
-));
-
-let i = 0;
-for (const info of arr) {
-	if (!ethers.utils.isAddress(info.address))
-		info.address = ethers.constants.AddressZero;
-	info.img = info.img_url.replace(img_prefix, '');
-	info.name = names[i];
-	obj[info.address] = info;
-	delete info.address;
-	delete info.img_url;
-	process.stdout.write('\r'+(++i)+'/'+arr.length);
-}
-//
-fs.writeFileSync(file, JSON.stringify(obj, null, "\t"));
-process.exit(0);
+(async() => {
+	console.error('\t tokens gen');
+	//
+	const useArray = false;
+	const file = './tokens.json';
+	const api_url = 'https://scoringapi.trava.finance/aggregator/strategies/tokens';
+	//
+	const lib = await import('./strategyen.js');
+	const [axios, ethers, fs] = [require('axios'), require('ethers'), require('fs')];
+	const con = lib.helpers.contract();
+	const arr = []; // fs.existsSync(file) ? require(file) : []
+	//
+	let obj = (await axios.get(api_url)).data;
+	let i = 0;
+	Object.keys(obj).forEach(kind => [].push.apply(arr, obj[kind].map(
+		info => Object.assign(info, { internal: kind.startsWith('internal') }))
+	));
+	//
+	let img_prefix = arr[0].img_url.slice(0, arr[0].img_url.indexOf('/tokens'));
+	obj = { '': { img_prefix, chainId: lib.state.chainId } };
+	//
+	const infos = await Promise.all(arr.map((info, i) =>
+		ethers.utils.isAddress(info.address) ?
+			(i=con.attach(info.address)) && Promise.all([i.name(), i.symbol(), i.decimals()]) :
+			['Native token', 'ETH', 18]
+	));
+	console.log(infos);
+	//
+	arr.forEach(info => {
+		const address = (info.address ?? ethers.constants.AddressZero).toLowerCase();
+		delete info.address;
+		[info.name, info.decimals, info.img_url] = [infos[i][0], infos[i][2], info.img_url.replace(img_prefix, '')];
+		obj[address] = useArray ? Object.values(info) : info;
+		process.stderr.write('\r'+(++i)+'/'+arr.length);
+	});
+	//
+	obj[ethers.constants.AddressZero] = obj['0x'];
+	obj[''].keys = Object.keys(arr[0]);
+	//
+	fs.writeFileSync(file, JSON.stringify(obj, null, "\t"));
+	process.exit(0);
 })()
 EOM
 ##
 
 ##
 env node << EOM
-
-console.error('\t config gen');
-const fs = require('fs');
-const files = fs.readdirSync('.').filter(e => e.endsWith('.json'));
-const save = 'config.js';
-const excludes = ['test','a','tsconfig','all'];
-const names = [];
-
-let code = "export default {\n";
-for (const file of files) {
-	const name = file.split('.')[0];
-	if (!excludes.includes(name)) {
-		//code += 'import { default as '+name+' } from "'+'./'+file+'"'+"\n";
-		code += name+': Object.freeze('+fs.readFileSync(file)+"),\n";
-		names.push(name);
+	console.error('\t config gen');
+	const fs = require('fs');
+	const files = fs.readdirSync('.').filter(e => e.endsWith('.json'));
+	const save = 'config.js';
+	const excludes = ['test','a','tsconfig','all'];
+	const names = [];
+	//
+	let code = "export default {\n";
+	for (const file of files) {
+		const name = file.split('.')[0];
+		if (!excludes.includes(name)) {
+			//code += 'import { default as '+name+' } from "'+'./'+file+'"'+"\n";
+			code += name+': Object.freeze('+fs.readFileSync(file)+"),\n";
+			names.push(name);
+		}
 	}
-}
-
-code += "}\n";
-
-console.error(names);
-console.error(save+':', code.length);
-
-fs.writeFileSync(save, code);
-
+	//
+	code += "}\n";
+	console.error(names);
+	console.error(save+':', code.length);
+	fs.writeFileSync(save, code);
 EOM
 
 exit 0
