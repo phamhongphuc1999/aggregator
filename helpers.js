@@ -19,42 +19,71 @@ export async function functions (name) {
     return (await import('./actions/functions.js')).default[name] ?? {};
 };
 
+// Get swapsdk on-demand
+export async function swapsdk() {
+    try {
+        const swapsdk = await import ('@uniswap/sdk');
+        // init uniswap sdk
+        swapsdk.ChainId = state.chainId;
+        swapsdk.FACTORY_ADDRESS = getAddress('swap.factory');
+        swapsdk.WETH[state.chainId] = new swapsdk.Token(state.chainId, getAddress('token.eth'), 18, 'WETH', 'Wrapped');
+        return swapsdk;
+    } catch (err) {
+        return null;
+    }
+};
+
+// Get axios library
+export async function axios(args = null) {
+    const axios = (await import('axios')).default;
+    if (args) {
+        return await (typeof axios === 'string' ? axios.get : axios)(args);
+    }
+    return axios;
+};
+
 /**
  * Return first valid swap path and expected out amounts
  * @param {address} router
  * @param {address} from
  * @param {address} to
- * @param {bn=} amount
+ * @param {ethers.BigNumber=} amount
  * @param {boolean=} final
  * @returns [path, amounts]
  */
-export function findSwapPath (router, from, to, amount = toBN(1), final = true) {
+export function findSwapPath (router, tokens = [], amount = toBN(10000), final = true) {
     const con = contract(router, 'swaps');
-    const tokens = [getAddress('token.usd'), getAddress('token.eth')];
-    const fnpath = [tokens[0][0], tokens[1]];
-    // try: direct, via weth, via usds, via mix of both (ordered)
-    const paths = [[], [tokens[1]], ...tokens[0].map(e => [e]), fnpath, fnpath.reverse() ].map(path => [from, ...path, to]);
+    const mtokens = [getAddress('token.eth')]
+        .concat(getAddress('token.usd'))
+        .map(a => a.toLowerCase())
+        .filter(token => !tokens.includes(token));
+    tokens = tokens.map(token => invalidAddresses.includes(token) ? mtokens[0] : token);
+    // !try: direct, via weth, via usds, via mix of eth and first usd token (ordered)
+    const paths = [[], ...mtokens.map(token => [token]), mtokens.slice(0,2), mtokens.slice(0,2).reverse() ];
+    //toBN(amount).eq(0) && (amount = toBN(10000));
     //swapsdk.Trade.bestTradeExactIn(apairs, new swapsdk.TokenAmount(new swapsdk.Token(), maps.amount.toHexString()), new swapsdk.Token(), { maxHops: 3, maxNumResults: 1 })[0];
-    (toBN(amount).eq(0)) && (amount = toBN(1));
-    return Promise.any(paths.map(async (path) => {
+    //
+    return Promise.any(paths.map(path => [tokens[0], ...path, tokens[1]]).map(async path => {
         const amounts = await con.getAmountsOut(amount, path);
-        return [path.map(e => e.toLowerCase()), final ? amounts[amounts.length - 1] : amounts];
-    }));
+        return [path, final ? amounts[amounts.length - 1] : amounts];
+    })).catch(err => {
+        debug.apply(null, ['!path', router, tokens].concat(paths));
+        throw err;
+    });
 };
 
 // Get pair address
-export async function findSwapPair (router, token, otoken) {
-    const con = contract(router, 'swaps');
-    return await con.attach(
-        (router.toLowerCase() == getAddress('swap.router')) ? getAddress('swap.factory') : await con.factory()
-        ).getPair(token, otoken);
+export async function findSwapPair (router, tokens = []) {
+    let con = contract(router, 'swaps');
+    con = con.attach(router.toLowerCase() == getAddress('swap.router') ? getAddress('swap.factory') : await con.factory());
+    return await con.getPair.apply(con, tokens);
 };
 
 // get pair tokens
 export async function findPairInfo (pair) {
     const con = contract(pair, 'swaps');
     const res = await Promise.all([Promise.all([con.token0(), con.token1()]), con.getReserves()]);
-    res[0] = res[0].map(e => e.toLowerCase(e));
+    res[0] = res[0].map(token => token.toLowerCase(token));
     return res;
 };
 
@@ -69,10 +98,10 @@ export async function findContract (target, action = '', maps = {}) {
     //const findAbis = (match) => Object.keys(ABIS).filter((e) => e.match(new RegExp(match))).map(e => ABIS[e]);
     //const con = contract(address, findAbis(type).reduce((o, e) => o.concat(e), []));
     const key = target+'_'+maps.token;
-    let def = await functions(action), tokens, detect, index, errmsg;
+    let def = await functions(action), fetchs = {}, detect, index, errmsg;
     if (def && def.length) {
-        if (detect = state.cache.def[key]) {
-            debug('cached', key);
+        if (state.config.findCache && (detect = state.cache.def[key])) {
+            debug('cached', key, detect.title);
             return detect;
         }
         try {
@@ -89,18 +118,20 @@ export async function findContract (target, action = '', maps = {}) {
             [def, detect, index] = await Promise.any(checks);
             (def.ref instanceof Function) && (def = await def.ref({ ...maps, target }, index));
             // fetch designated tokens
-            tokens = (await Promise.all(
-                    Object.entries(def.tokens).map(async ([name, view]) => {
-                        !name.includes('token') && (name += 'token');
-                        view.get && (view = (await view.get(maps, target) ?? A0).toLowerCase());
-                        return [name, view];
-                    })
-                )).reduce(
-                    (obj, [name, view]) => ({...obj, [name]: view})
-                , {});
-            debug('find', key, def.title);
+            await Promise.all(
+                Object.entries(def.fetchs).map(async ([name, view]) => {
+                    //name.endsWith('token') || (name += 'token');
+                    if (view = await Promise.any(
+                        (view.length ? view : [view])
+                        .map(view => view && view.get && view.get(maps, def.target ?? target))
+                    )) {
+                        fetchs[name] = view.toLowerCase();
+                    }
+                })
+            );
+            debug('find', key, def.title, str(fetchs));
             maps.detect = detect;
-            return (state.cache.def[key] = { ...def, ...tokens, detect });
+            return (state.cache.def[key] = { ...def, ...fetchs, detect });
         } catch (err) {
             errmsg = err.stack;
         }
@@ -109,7 +140,7 @@ export async function findContract (target, action = '', maps = {}) {
     }
     // straight to console
     errmsg = `No ${action} matched for ${key} (${errmsg})`;
-    debug(errmsg) && console.error(errmsg);
+    debug('!find', errmsg) && console.error(errmsg);
     return null;
 };
 
@@ -120,20 +151,22 @@ const AE = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 const invalidAddresses = [A0, AE, '']; // undefined
 const toBN = ethers.BigNumber.from;
 const isBN = ethers.BigNumber.isBigNumber;
+const toPow = (n) => toBN(10).pow(n);
 //const fmUnits = ethers.utils.formatUnits;
 //const abiEncode = ethers.utils.defaultAbiCoder.encode;
+const str = (a) => a.length ?
+    '[' + a.map(e => e.toString()).join(', ') + ']' :
+    (a instanceof Object ? str(Object.values(a)) : a.toString());
 
 // Parse amount
 const parseAmount = async (amount, token = null) => ethers.BigNumber.isBigNumber(amount) ? amount : ethers.utils.parseUnits('' + amount, ethers.utils.isAddress(token) ? await getDecimals(token) : 18);
 
-export { ts, invalidAddresses, toBN, isBN, parseAmount };
+export { ts, invalidAddresses, toBN, isBN, parseAmount, toPow, str };
+
+// stateful getters
 
 //
 const getDecimals = (address) => invalidAddresses.includes(address) ? 18 : getToken(address)?.decimals ?? contract(address).decimals();
-
-export { getDecimals };
-
-// stateful getters
 
 //
 const getABI = (name) => config.abis[name] ?? [];
@@ -179,7 +212,7 @@ const getProvider = (id = state.chainId) =>
  * @param {number|string} id
  * @returns {ethers.Wallet}
  */
-const getSigner = (id = -1) => new ethers.Wallet((id.length == 64) ? id : 'a'.repeat(64), getProvider());
+const getSigner = (a, id = state.chainId) => new ethers[ethers.utils.isAddress(a) ? 'VoidSigner' : 'Wallet'](a ?? '0'.repeat(63) + '1', getProvider(id));
 
 /**
  * Get transaction simulation/backtracing API instance
@@ -190,9 +223,8 @@ const getSigner = (id = -1) => new ethers.Wallet((id.length == 64) ? id : 'a'.re
     // 'module=contract&action=getsourcecode&address='
     const chain = getChain(id);
     return axios({
-        url:
-            chain.explorer?.api_url+'?apikey='+chain.explorer?.api_key+'&' +
-            Object.keys(maps).reduce((o, name) => o+name+'='+maps[name]+'&', ''),
+        url: `${chain.explorer?.api_url}?apikey=${chain.explorer?.api_key}` +
+            Object.entries(maps).reduce((o, [name, val]) => o+name+'='+val+'&', '&'),
         method: 'get',
         headers: {}
     });
@@ -205,7 +237,9 @@ const getSigner = (id = -1) => new ethers.Wallet((id.length == 64) ? id : 'a'.re
 const getSimulateApi = (maps = {}) => {
     const A0 = invalidAddresses[0];
     const env = {
-        ENDPOINT: 'https://api.tenderly.co/api/v1'
+        ENDPOINT: 'https://api.tenderly.co/api/v1',
+        USER: '0x',
+        PROJECT: ''
     };
     const data = {
         // standard TX fields
@@ -232,7 +266,7 @@ const getSimulateApi = (maps = {}) => {
     });
 };
 
-export { getABI, getChain, getAddress, getToken, getProvider, getSigner, getScanApi };
+export { getABI, getChain, getAddress, getToken, getProvider, getSigner, getScanApi, getDecimals };
 
 // serilized types
 const types ={
@@ -272,7 +306,7 @@ export { types, cached };
 // debug print
 
 // general debugging
-const debug = function () {
+export function debug () {
     (typeof arguments[0] === 'string') && (arguments[0] += ':');
     state.logs.push([Date.now(), JSON.stringify(arguments)]);
     if (state.config.debug) {
@@ -282,18 +316,45 @@ const debug = function () {
 };
 
 // debug run duration
-const ran = async function (get = () => null) {
+export async function rans (get = () => null) {
     const ms = Date.now();
     const res = await get();
     debug(get.name ?? 'ran', (Date.now()-ms) + 'ms');
     return res;
 };
 
-export { debug, ran };
-
 // json helper
-const serialize = (obj) => JSON.stringify(obj, (key, value) => key.startsWith('_') ? undefined : value, "\t");
+export function serialize (obj) {
+    return JSON.stringify(obj, (key, value) => key.startsWith('_') ? undefined : value, "\t");
+};
 
-export { serialize };
+//
+export function subSlippage(num, name) {
+    return toBN(num).mul(parseInt((1.0 - state.slippage[name] ?? 0.001) * 1e4)).div(1e4);
+};
+
+//
+export async function getPrice (token, tofloat = true, chain = state.chainId) {
+    const endpoint = state.config.priceAPI.base;
+    const platform = state.config.priceAPI.platform[chain];
+    const to = state.config.priceAPI.to;
+    try {
+        // [(endpoint + '/asset_platforms'), (endpoint + '/coins/list')]
+        const res = (await axios(
+            (!token || token == A0) ?
+            endpoint + `/simple/price?vs_currencies=${to}&ids=${platform[1]}` :
+            endpoint + `/simple/token_price/${platform[0]}?vs_currencies=${to}&contract_addresses=${token}`,
+            { responseType: 'json' }
+        )).data;
+        let price = Object.values(res)[0]?.[to] ?? 1.0;
+        !tofloat && (price = ethers.utils.parseUnits('' + price, 8));
+        debug('price', token, price);
+        return price;
+        // (await Promise.all(usds.concat([weth]).map(address => con.getPair(token, address)))).filter(address => address != A0);
+    } catch (err) {
+        debug('!price', err.message);
+    }
+    return 0.0;
+};
 
 export { ethers };

@@ -12,12 +12,21 @@ export default Object.seal({
     deprecate: false,
     config: Object.seal({
         debug: true,
-        apiBase: 'https://scoringapi.trava.finance/aggregator_test',
+        priceAPI: {
+            base: 'https://api.coingecko.com/api/v3',
+            platform: {
+                '1': ['ethereum', 'ethereum'],
+                '56': ['binance-smart-chain', 'binancecoin']
+            },
+            to: 'usd'
+        },
+        baseAPI: 'https://scoringapi.trava.finance/aggregator_test',
         // allow calls generation to be async
-        allowAsync: false,
+        enableAsync: false,
         optimizeSwaps: false,
-        optimizeLPs: false,
+        optimizeLPs: true,
         approveMax: true,
+        approveMaxValue: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
         formatHtml: false,
         optimalSplit: false,
         gasPrice: false,
@@ -40,13 +49,16 @@ export default Object.seal({
                 'borrows': 0.025,
                 'lendings': 0.0125
             }
-        }
+        },
+        fixedGasEthLeft: '1000000000000000',
+        findCache: false
     }),
     timeout: Object.seal({
         process: 40,
         execute: 3600,
         network: 20,
-        swaps: 3600
+        'swaps': 3600,
+        'providinglps': 7200
     }),
     slippage: Object.seal({
         'swaps': 0.005,

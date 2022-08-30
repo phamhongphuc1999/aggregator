@@ -47,7 +47,6 @@ env node << EOM
 			(i=con.attach(info.address)) && Promise.all([i.name(), i.symbol(), i.decimals()]) :
 			['Native token', 'ETH', 18]
 	));
-	console.log(infos);
 	//
 	arr.forEach(info => {
 		const address = (info.address ?? ethers.constants.AddressZero).toLowerCase();

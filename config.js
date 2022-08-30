@@ -878,8 +878,27 @@ abis: Object.freeze({
 	]
 }),
 addresses: Object.freeze({
+	"": {
+		"": "0x0000000000000000000000000000000000000000",
+	},
+	"1": {
+		"aggregator": "0xfb4392e3431b9cc820362ad2b6a3fda4f8a7712d",
+		"swap.router": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
+		"swap.factory": "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f",
+		"swap.fee": "3",
+		"token.usd": [
+			"0xdac17f958d2ee523a2206206994597c13d831ec7",
+			"0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+			"0x6b175474e89094c44da98b954eedeac495271d0f",
+			"0x0000000000085d4780B73119b644AE5ecd22b376",
+			"0x8e870d67f660d95d5be530380d0ec0bd388289e1",
+			"0x0c10bf8fcb7bf5412187a595ab97a3609160b5c6",
+			"0x853d955acef822db058eb8505911ed77f175b99e",
+			"0x4fabb145d64652a948d72533023f6e7a623c7c53"
+		],
+		"token.eth": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+	},
 	"56": {
-		"0": "0x0000000000000000000000000000000000000000",
 		"aggregator": "0xfb4392e3431b9cc820362ad2b6a3fda4f8a7712d",
 		"aggregator_old": "0x308d85243bbc67cd3d595f0b4fe4a5af473bce50",
 		"swap.router": "0x10ed43c718714eb63d5aa57b78b54704e256024e",
@@ -894,7 +913,6 @@ addresses: Object.freeze({
 		"token.eth": "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c"
 	},
 	"97": {
-		"0": "0x0000000000000000000000000000000000000000",
 		"aggregator": "0x76a49c82982d1b5910d9e696d2a7b5ce5e814a2f"
 	}
 }),
@@ -1032,7 +1050,7 @@ methods: Object.freeze({"lendings":"Deposit","vaults":"Stake","swaps":"Swap","pr
 package: Object.freeze({
   "name": "@ais-ltd/strategyen",
   "repository": "git+https://github.com/ais-ltd/aggregator.git",
-  "version": "0.1.0-rc",
+  "version": "0.1.1",
   "description": "Automatic Strategy Encoder (BRicher)",
   "main": "strategyen.js",
   "type": "module",

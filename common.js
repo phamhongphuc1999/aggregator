@@ -1,6 +1,6 @@
 import * as ethers from 'ethers';
 import state from './state.js';
-import { contract, toBN, isBN, getAddress, getSigner, getDecimals, getToken, debug, invalidAddresses, getChain } from './helpers.js';
+import { contract, toBN, isBN, getProvider, getAddress, getSigner, getToken, debug, invalidAddresses, getChain } from './helpers.js';
 
 ethers.BigNumber.prototype.toJSON = function () { return this.toString() };
 ethers.logger.warn = function () {};
@@ -11,21 +11,21 @@ ethers.logger.warn = function () {};
 
 /**
  * Update
+ * Only support two level depth
  * @param {Array} params
  * @param {Object} maps
  * @returns {Array}
  */
-function _update(params, maps = {}) {
+function update(params, maps = {}) {
     const keys = Object.keys(maps);
     const ra = (val) => {
         if (typeof val == 'string' && val.startsWith('__')) {
-            //
-            let prop = val.split('__').join('').toLowerCase(), key;
-            keys.includes(prop) && (val = maps[prop]);
-            //
-            if (prop.includes('.') && ([prop, key] = prop.split('.'))) {
-                keys.includes(prop) && maps[prop].hasOwnProperty(key) && (val = maps[prop][key]);
-            }
+            const [prop, key] = val.split('__').join('').toLowerCase().split('.');
+            //debug('update', prop, key);
+            keys.includes(prop) &&
+            ((maps[prop] ?? {}).hasOwnProperty(key) ?
+                (val = maps[prop][key]) :
+                (val = maps[prop]));
         } else if (Array.isArray(val)) {
             return val.map(ra);
         }
@@ -48,11 +48,12 @@ const methodName = (str) => str.slice(0, str.indexOf('('));
  * @param {Array=} inputs
  * @return {Object}
  */
-function Call (target, method = '', params = [], eth = '0', descs = {title: '', params: []}, check = null, inputs = undefined) {
-    //console.assert(this.constructor === Call, "must-using-new");
-    if (!target) target = '__target__';
+function Call (target, method = '', params = [], eth = '0', descs = { title: '', params: [] }, check = null, inputs = undefined) {
+    // this.constructor === Call
+    console.assert(this, "must-using-new");
+    !target && (target = '__target__');
     if (Array.isArray(method)) method = `${method[0]}(${Array.isArray(method[1]) ? method[1].join(',') : method[1]})`;
-    if (!descs) descs = {};
+    !descs && (descs = {});
     Object.assign(this, {
         target,
         method,
@@ -81,20 +82,20 @@ Call.prototype = Object.freeze({
         const _params = this.params.slice();
         // fill-in additional inputs
         Object.keys(this.inputs ?? {}).map((name) => (maps[name] === undefined) && (maps[name] = this.inputs[name]?.default));
-        //
-        params = _update(params, maps).map(param => (typeof param === 'function') ? param(maps) : param);
-        const [target, eth] = _update([this.target, this.eth], maps);
+        // updates
+        params = update(params, maps).map(param => (param instanceof Function) ? param(maps) : param);
+        const [target, eth] = update([this.target, this.eth], maps);
         const check = (this.check && this.check.update) ? this.check.update({...maps, ...params}) : null;
         // clone
         return Object.setPrototypeOf({...this, ...(!this._params) && {_params}, _maps: maps, target, eth, check, params}, Call.prototype);
     },
-    contract(signer = getSigner()) {
+    contract(signer = getSigner(this._maps?.account ?? null)) {
         const [name, nonpay] = [this.name(), this.eth == '0' ? [] : null];
         const params =
-            (this.params[0]?.value ? this.params.map(e => e.value) : this.params)
+            (this.params[0]?.value ? this.params.map(param => param.value ?? param) : this.params)
             .concat(nonpay ?? [ { value: toBN(this.eth) } ]);
-        let con = contract(this.target, [ `function ${this.method} ${nonpay ?? 'payable'}` ]);
-        if (signer) con = con.connect(signer);
+        const func = `function ${this.method} ${nonpay ?? 'payable'} returns (${this.descs.returns ?? ''})`;
+        const con = contract(this.target, [ func ]).connect(signer ? signer : getProvider());
         con.call = () => con[name].apply(con, params);
         con.probe = () => con.callStatic[name].apply(con, params);
         con.estimate = () => con.estimateGas[name].apply(con, params);
@@ -145,7 +146,7 @@ Call.prototype = Object.freeze({
             this.descs.values = await Promise.all(this.params.map(formatParam));
             //[this.fee, this.probe] = await Promise.all([con.estimate(), con.probe()]);
         } catch (err) {
-            debug('meta', this.method, err.message, err.stack);
+            debug('!meta', this.method, err.message, err.stack);
         }
         return this;
     },
@@ -162,7 +163,7 @@ Call.prototype = Object.freeze({
         return {
             to: this.target,
             data,
-            value: toBN(this.eth),
+            value: toBN(this.eth).toHexString(),
             ...(from) && {from},
             ...(!isNaN(nonce)) && {nonce},
             chainId: state.chainId
@@ -182,8 +183,8 @@ Call.prototype = Object.freeze({
  * @param {target=} target
  * @return {Object}
  */
-function View (method = '', params = [], returns = 'uint256', index = -1, target = ethers.constants.AddressZero) {
-    //console.assert(this.constructor === View, "must-using-new");
+function View (method = '', params = [], returns = 'uint256', index = -1, target = '__target__') {
+    console.assert(this, "must-using-new");
     //if (method instanceof Function) this.get = method;
     Object.assign(this, {
         method,
@@ -200,7 +201,7 @@ View.prototype = Object.freeze({
     },
     update(maps = {}, index = this.index) {
         // clone
-        return Object.setPrototypeOf({...this, _maps: maps, index, target: _update([this.target], maps).shift(), params: _update(this.params ?? [], maps)}, View.prototype);
+        return Object.setPrototypeOf({...this, _maps: maps, index, target: update([this.target], maps).shift(), params: update(this.params ?? [], maps)}, View.prototype);
     },
     contract(address = this.target) {
         return contract(address, [ `function ${this.method} view returns (${this.returns})` ]);
@@ -216,24 +217,24 @@ View.prototype = Object.freeze({
         if (!this.method) {
             return null;
         }
-        const con = this.contract(target);
-        const params = _update(this.params ?? [], maps ?? {});
+        const con = this.contract(target).callStatic;
+        const params = update(this.params ?? [], maps ?? {});
         let res = null;
         try {
-            res = await con.callStatic[this.name()].apply(con, params.concat([state.view.options]));
-            (typeof this.index === 'function' && (res = this.index(res))) ||
+            res = await con[this.name()].apply(con, params.concat([state.view.options]));
+            (this.index instanceof Function && (res = this.index(res))) ||
                 (this.index != -1) && (res = res[this.index] ?? res);
             // might
-            detect && debug('match', target,  this.name());
+            detect && debug('view', 'HIT', target, this.name());
         } catch (err) {
             if (!maps) { throw err; }
-            !detect && debug('view', err.code, target, this.name(), params, this.index);
+            !detect && debug('!view', err.code, target, this.name(), params, this.index, err.stack);
         }
         return res;
     },
     encode(address = this.target, maps = {}) {
         return this.method ?
-            [address, this.method ? this.contract(address).interface.encodeFunctionData(this.name(), _update(this.params, maps)) : '0x', '0'] :
+            [address, this.method ? this.contract(address).interface.encodeFunctionData(this.name(), update(this.params, maps)) : '0x', '0'] :
             [invalidAddresses[0], '0x', '0'];
     }
 });
@@ -247,7 +248,7 @@ View.prototype = Object.freeze({
  * @return {Object}
  */
 function Check (view, expecting = View.PASS, value = '0', vtype = ethers.BigNumber, last = null) {
-    //console.assert(this.constructor === Check, "must-using-new");
+    console.assert(this, "must-using-new");
     Object.assign(this, {
         view,
         expecting,
@@ -255,17 +256,17 @@ function Check (view, expecting = View.PASS, value = '0', vtype = ethers.BigNumb
         vtype,
         last
     });
-    this._fetch();
+    this._last();
     return this;
 };
 Check.prototype = Object.freeze({
-    _fetch() {
+    _last() {
         const {view} = this;
-        //debug('fetch', view.target, view._params, view.params, view.method);
         (!this.last && view) &&
-            (ethers.utils.isAddress(view.target) && view.params.filter(e => e && e.startsWith('__')).length == 0) &&
+            (ethers.utils.isAddress(view.target) && view.params.filter(e => e && e.startsWith && e.startsWith('__')).length == 0) &&
             ([View.INCREASE, View.DECREASE].includes(this.expecting)) &&
-            (this.last = view.get());
+            (this.last = view.get()) &&
+            debug('last', view.target, view.method, view.params);
         return this.last;
     },
     update(maps = {}, value = this.value) {
@@ -273,8 +274,8 @@ Check.prototype = Object.freeze({
             return null;
         }
         // clone
-        const obj = Object.setPrototypeOf({...this, _maps: maps, value: _update([value], maps).shift(), view: this.view.update(maps)}, Check.prototype);
-        obj._fetch();
+        const obj = Object.setPrototypeOf({...this, _maps: maps, value: update([value], maps).shift(), view: this.view.update(maps)}, Check.prototype);
+        obj._last();
         return obj;
     },
     /**
@@ -322,7 +323,7 @@ Check.prototype = Object.freeze({
                 match = this.expecting == View.FAIL;
             }
         } catch (err) {
-            debug('eval', err.message);
+            debug('!eval', err.message);
         }
         return match;
     },
@@ -352,15 +353,15 @@ export { Call, Check, View };
 const allowance = (token = '__token__', owner = '__account__', spender = '__to__', name='allowance') =>
     new View(name + '(address,address)', [owner, spender], 'uint256', -1, token);
 // Get approve call
-const approve = (token = '__token__', spender = '__target__', amount = '__amount__', name='approve', checkName='allowance') =>
-    new Call(token, name + '(address,uint256)', [spender, amount], '0', { title: 'Approve token spending', params: ['Spender', 'Amount'], maxFee: 45000 }, new Check(
-        allowance(token, '__account__', spender, checkName),
+const approve = (token = '__token__', spender = '__target__', amount = '__amount__', name='approve', check='allowance') =>
+    new Call(token, name + '(address,uint256)', [spender, amount], '0', { title: 'Approve token spending', params: ['Spender', 'Amount'], approve: true, maxFee: 45000 }, new Check(
+        allowance(token, '__account__', spender, check),
         View.EQUAL,
         amount
     ));
 // Get transfer call
 const transfer = (token = '__token__', to = '__account__', amount = '__amount__') =>
-    new Call(token, 'transfer(address,uint256)', [to, amount], '0', { title: 'Transfer token', params: ['Receiver', 'Amount'], maxFee: 65000 }, new Check(
+    new Call(token, 'transfer(address,uint256)', [to, amount], '0', { title: 'Transfer token', params: ['Receiver', 'Amount'], transfer: true, maxFee: 65000 }, new Check(
         getBalanceView(to, token),
         View.MORETHAN,
         amount

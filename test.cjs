@@ -2,40 +2,82 @@
  * Test a single strategy
 */
 
-async function test(strategy, account, amount, merge = true, error = null) {
-    const { process, debug, processError, autoAvailability, getStrategy, serialize, state } =
+const A0 = '0x'+'0'.repeat(40);
+const prices = {
+    [A0]: 300,
+    "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c": 300,
+    "0x55d398326f99059ff775485246999027b3197955": 1,
+    "0xe9e7cea3dedca5984780bafc599bd69add087d56": 1
+};
+
+async function test(strategy, account, amount, arg = { usd: true, merge: true, test: true, autoonly: false, testonly: false, error: null }) {
+    const { process, debug, processError, autoAvailability, getStrategy, helpers, serialize, state } =
         global.module ??
         (global.module = await import('./strategyen.js'));
-    let res = {}, fs;
-    (typeof strategy === 'string') &&
-        (fs = await import('fs')) &&
-        fs.existsSync(strategy) &&
-        (strategy = JSON.parse(fs.readFileSync(strategy)));
     const starttime = Date.now();
-    const maps = { account, amount };
+    let res = null;
     // handler
     try {
-        if (false) {
+        // if it is file or id, fetch it
+        (typeof strategy === 'string') &&
+            (strategy = (await import('fs')).existsSync(strategy) ?
+            JSON.parse((await import('fs')).readFileSync(strategy)) :
+            await getStrategy(strategy));
+        const id = strategy.strategy_id ?? strategy;
+        if (arg.testonly) {
             return debug(strategy) && serialize(await getStrategy(strategy));
         }
-        debug('STRATEGY:', strategy.id ?? strategy.strategy_id ?? strategy);
-        res = await autoAvailability(strategy);
-        debug('AUTO:', res, (Date.now() - starttime)+'ms');
-        res = await process(strategy, maps, null, merge);
+        // minimal test
+        debug('STRATEGY:', id, strategy.steps.map(step => step.strategy_id));
+        //
+        if (arg.autoonly) {
+            res = await autoAvailability(strategy);
+            debug('AUTO:', res, (Date.now() - starttime) + 'ms');
+            res = !res;
+            return serialize([id, strategy.steps?.length ?? 0, res]);
+        }
+        //
+        const addresses = Object.keys(strategy?.strategy?.capital ?? strategy?.capital ?? {});
+        //price(addresses[0], helpers.contract(helpers.getAddress('swap.factory'), 'swaps'), helpers.getAddress('token.usd'), true)
+        (arg.usd) && (amount = (amount / await helpers.getPrice(addresses[0])).toFixed(8));
+        //
+        const maps = { account, amount };
+        res = await process(strategy, maps, res, arg.merge);
+        if (arg.merge && res.steps?.length) {
+            res.strategy.roi_history && (res.strategy.roi_history = []);
+            res.steps.forEach(step => (step.roi_history = []));
+        }
+        //
         debug('PROCESS:',
             [res.calls?.length, (res.calls ?? []).map(call => call.method.slice(0, call.method.indexOf('('))).join(', ')],
-            [res.auto?.calls?.length ?? 0, res.auto?.call?.tx?.data?.length/2 - 1],
-            res.ran+'ms'
+            [res.auto?.calls?.length, res.auto?.call?.tx?.data?.length/2 - 1],
+            res.ran + 'ms'
         );
+        if (arg.test) {
+            let ins = res.auto?.transfers?.ins;
+            if (ins && (ins = ins.filter(e => e.tx).map(e => [e.tx.to, e.tx.data]))) {
+                const approved = ins.length === 0;
+                try {
+                    const con = res.auto.call.contract();
+                    debug.apply(null, ['TEST:'].concat(
+                        approved ?
+                            ['auto', 'GAS => ' + (await con.estimate()).toString() + ' <=', "\n", '-> ', await con.probe(), '<-'] :
+                            ['need approval', ins, 'approve it and test again'],
+                    ));
+                } catch (err) {
+                    debug('TEST.FAILED:', err);
+                }
+            }
+        }
     } catch (err) {
-        error = err;
-        console.error("---->\n\tERROR:", err.stack, serialize(err), "\n<----");
+        arg.error = err;
+        console.error("<----\n\tERROR:", err.stack, serialize(err), "\n---->");
     }
     try {
         //
-        if (error) { throw error; }
+        if (arg.error) { throw arg.error; }
     } catch (error) {
-        debug('ERROR:', serialize(res = await processError(JSON.parse(error), res.calls[1])));
+        debug('ERROR:', serialize(res = await processError(JSON.parse(serialize(error)))));
     }
     // result
     return serialize(res);
@@ -45,10 +87,11 @@ module.exports = test;
 
 // import.meta?.url === 'file://'+process.argv[1]
 if (process && require.main === module) {
-    const accounts = ['0x70D86bF17B30D268285eCFD204F83522797bad6C', '0x871dbce2b9923a35716e7e83ee402b535298538e']
-    const amounts = ['1', '200', '1000'];
+    const accounts = ['0x68a6c841040B05D60434d81000f523Bf6355b31D', '0x70D86bF17B30D268285eCFD204F83522797bad6C', '0x871dbce2b9923a35716e7e83ee402b535298538e']
+    const amounts = ['1', '2', '3'];
     const args = process.argv.slice(2);
+    // const amountInUSD = '1';
     // fs.readFileSync('cache/error.json')
     // single test
-    test(args[0] ?? 'cache/test.json', accounts[0], args[1] ?? amounts[1]).then(console.log);
+    test(args[0] ?? 'cache/test.json', accounts[0], args[1] ?? amounts[ Math.floor(Math.random() * amounts.length) ]).then(console.log);
 }
