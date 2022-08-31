@@ -42,8 +42,8 @@ env node << EOM
 	let img_prefix = arr[0].img_url.slice(0, arr[0].img_url.indexOf('/tokens'));
 	obj = { '': { img_prefix, chainId: lib.state.chainId } };
 	//
-	const infos = await Promise.all(arr.map((info, i) =>
-		ethers.utils.isAddress(info.address) ?
+	const infos = await Promise.all(arr.filter(info => ethers.utils.isAddress(info.address)).map((info, i) =>
+		info.address != ethers.constants.AddressZero ?
 			(i=con.attach(info.address)) && Promise.all([i.name(), i.symbol(), i.decimals()]) :
 			['Native token', 'ETH', 18]
 	));
@@ -56,7 +56,7 @@ env node << EOM
 		process.stderr.write('\r'+(++i)+'/'+arr.length);
 	});
 	//
-	obj[ethers.constants.AddressZero] = obj['0x'];
+	!obj[ethers.constants.AddressZero] && (obj[ethers.constants.AddressZero] = obj['0x']);
 	obj[''].keys = Object.keys(arr[0]);
 	//
 	fs.writeFileSync(file, JSON.stringify(obj, null, "\t"));

@@ -3,12 +3,6 @@
 */
 
 const A0 = '0x'+'0'.repeat(40);
-const prices = {
-    [A0]: 300,
-    "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c": 300,
-    "0x55d398326f99059ff775485246999027b3197955": 1,
-    "0xe9e7cea3dedca5984780bafc599bd69add087d56": 1
-};
 
 async function test(strategy, account, amount, arg = { usd: true, merge: true, test: true, autoonly: false, testonly: false, error: null }) {
     const { process, debug, processError, autoAvailability, getStrategy, helpers, serialize, state } =
@@ -57,15 +51,17 @@ async function test(strategy, account, amount, arg = { usd: true, merge: true, t
             let ins = res.auto?.transfers?.ins;
             if (ins && (ins = ins.filter(e => e.tx).map(e => [e.tx.to, e.tx.data]))) {
                 const approved = ins.length === 0;
+                debug('TEST.IN:', res.auto?.transfers?.ins, res.auto?.call?.tx?.value);
                 try {
                     const con = res.auto.call.contract();
-                    debug.apply(null, ['TEST:'].concat(
+                    debug.apply(null, ['TEST.SUCESS:'].concat(
+                        id,
                         approved ?
                             ['auto', 'GAS => ' + (await con.estimate()).toString() + ' <=', "\n", '-> ', await con.probe(), '<-'] :
-                            ['need approval', ins, 'approve it and test again'],
+                            ['APPROVALS', ins, 'please send approve tx and test again'],
                     ));
                 } catch (err) {
-                    debug('TEST.FAILED:', err);
+                    debug('TEST.FAILED:', id, err.code === 'UNPREDICTABLE_GAS_LIMIT' ? [err.reason, err.error] : err.stack);
                 }
             }
         }

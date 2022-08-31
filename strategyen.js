@@ -7,7 +7,7 @@
  *
  */
 
-//use strict'
+'use strict';
 
 import state from './state.js';
 import config from './config.js';
@@ -60,12 +60,14 @@ async function allCalls (steps, funcname, maps, process = null) {
         const action = (step.method ?? step.methods[0]);
         const callprops = { action, step: i, ...(i == steps.length) && { lastStep: true } };
         const addprops = { ...step.maps, ...callprops };
+        const parentprops = { [funcname]: true };
         //
-        return id && action && (get = actions[action][funcname]) &&
+        return id &&
+            action &&
+            (get = actions[action][funcname]) &&
             (get = await get(id, OA(maps, addprops))) &&
-            (debug(funcname, action, (time() - ms) + 'ms') ?
-                get.map(call => OA(call, callprops)) :
-                []);
+            debug(funcname, action, (time() - ms) + 'ms') &&
+            get.map(call => OA(call, callprops));
     };
     // do it sequential or in parallel
     try {
@@ -132,39 +134,35 @@ async function optimizeApproves (calls, maps, method = approve().method) {
  * Can process both custom approve and normal, tx might be address or call
  */
 async function processTransfer (maps, tx, i) {
+    const res = { token: null, amount: null, custom: false };
     // !input
-    const input = maps['amount' + i] ?? maps.amount ?? state.maps.amount;
-    let custom = tx.target ?
-        (maps.token = tx.target) && true :
-        (tx = approve(maps.token = tx, getAddress())) && false;
-    const amount = await parseAmount(input, maps.token);
+    if (tx.target) {
+        [res.token, res.tx, res.custom] = [tx.target, tx, true];
+        res.amount = tx.params[1];
+    } else {
+        res.input = maps['amount' + i] ?? maps.amount ?? state.maps.amount;
+        res.tx = approve(res.token = tx, getAddress());
+        res.amount = await parseAmount(res.input, res.token);
+    }
     // amount update here
-    tx = tx.update({...maps, amount});
-    debug(custom ? 'approval' : 'capital', maps.token, input, amount);
+    res.tx = res.tx.update({...maps, amount: res.amount});
+    debug(res.custom ? 'approval' : 'capital', res.token, [res.input ?? res.tx.method, res.amount]);
     // native or token
-    if (invalidAddresses.includes(maps.token)) {
-        let bal;
-        if (
-            state.config.fixedGasEthLeft &&
-            (bal = await getProvider().getBalance(maps.account)) &&
-            amount.add(state.config.fixedGasEthLeft).gte(bal)
-        ) {
-            throw 'Not enough fee left';
+    if (invalidAddresses.includes(res.token)) {
+        const balance = await getProvider().getBalance(maps.user);
+        if (res.amount.add(state.config.fixedGasEthLeft ?? '0').gte(balance)) {
+            throw 'Not enough eth left';
         }
         // send eth along
-        tx = null, maps.send = amount;
+        res.tx = null, maps.send = res.amount;
     } else {
         // remove call if unnecessary, only for corner cases
-        maps.allowance = await tx.check?.view?.get() ?? toBN(0);
-        tx = maps.allowance.gte(amount) ? null : tx.get(maps.account, ++maps.nonce ?? null);
+        const allowance = await res.tx.check?.view?.get() ?? toBN(0);
+        res.tx = allowance.gte(res.amount) ? null : res.tx.get(maps.account, ++maps.nonce ?? null);
     }
-    return {
-        token: maps.token,
-        amount,
-        tx,
-        custom,
-        ...(await getToken(maps.token))
-    };
+    //
+    OA(res, await getToken(res.token));
+    return res;
 };
 
 /**
@@ -297,7 +295,7 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
             auto.call.tx = auto.call.get(auto.maps.account, ++auto.maps.nonce ?? NaN);
             // final
             res.auto = auto;
-        } catch(err) {
+        } catch (err) {
             debug('!auto', err.message, err.stack);
         }
     }
@@ -380,6 +378,7 @@ const AutoPrefixs = Object.freeze([
     'TransferOut'
 ]);
 
+//
 export { ErrorType, Suggest, AutoPrefixs };
 
 /**

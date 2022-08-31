@@ -401,4 +401,6 @@ contract DefiAggregator is Context {
         selfdestruct(payable(_msgSender()));
     }
 
+    fallback() external payable {}
+
 }

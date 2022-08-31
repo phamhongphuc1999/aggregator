@@ -111,7 +111,7 @@ Call.prototype = Object.freeze({
         //
         const trimAddress = (address) => address.slice(0,8)+'...'+address.slice(-6);
         const printToken = (amount, token) =>
-            (amount.eq(ethers.constants.MaxUint256) ? 'MAX' : ethers.utils.formatUnits(amount, token.getDecimals)) + ' ' + token.symbol;
+            (amount.eq(ethers.constants.MaxUint256) ? 'MAX' : ethers.utils.formatUnits(amount, token.decimals)) + ' ' + token.symbol;
         const getName = async (target, name='name', temp = null) => {
             try {
                 target = target.toLowerCase();
@@ -121,7 +121,8 @@ Call.prototype = Object.freeze({
         };
         //
         const formatParam = async (val, i) => {
-            const orig = val;
+            const orig = val instanceof Object ? Object.assign({}, val) : val;
+            //
             if (typeof val === 'string' && val.startsWith('__')) {
                 val = val.slice(2, val.lastIndexOf('__'));
             } else if (ethers.utils.isAddress(val)) {

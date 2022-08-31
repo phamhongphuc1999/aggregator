@@ -87,6 +87,19 @@ export async function findPairInfo (pair) {
     return res;
 };
 
+export async function findPairAddress (router, token0, token1) {
+    const con = contract(router, 'swaps');
+    const [factory, pair0] = await Promise.all([con.factory(), con.allPairs(0)]);
+    const codehash = ethers.utils.keccak256(await getProvider().getCode(pair0)) ??
+        '0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f'
+    return '0x' + ethers.utils.keccak256(
+        '0xff' +
+        factory.slice(2) +
+        ethers.utils.keccak256(token0.slice(2) + token1.slice(2)) +
+        codehash.slice(2)
+    ).slice(24 + 2);
+};
+
 /**
  * find contract definition (onchain)
  * @param {address} target
@@ -179,8 +192,8 @@ const getAddress = (name = 'aggregator', id = state.chainId) => config.addresses
 
 //
 const getToken = (address = A0, cacheOnly = false, id = state.chainId) =>
-    config.tokens[address.toLowerCase()] ??
-    null; // (!cacheOnly || debug('tokens', 'unknown = ' + address)
+    config.tokens[address.toLowerCase()] ?? null;
+    // (!cacheOnly || debug('tokens', 'unknown = ' + address)
 
 /**
  * Return, cache provider and fixes
@@ -329,8 +342,33 @@ export function serialize (obj) {
 };
 
 //
-export function subSlippage(num, name) {
-    return toBN(num).mul(parseInt((1.0 - state.slippage[name] ?? 0.001) * 1e4)).div(1e4);
+const slippage = function (name, auto = false) {
+    const n = state.slippage[name] ?? 0.0001;
+    return state.config.autoSlippage ? n * (1.0 - state.slippage['autoAdj']) : n;
+}
+
+// subtract slippage by config name or percentage
+export function subSlippage(num, pn = 0.0, auto = false) {
+    return toBN(num)
+        .mul(parseInt((1.0 - (isNaN(pn) ? slippage(pn, auto) : pn)) * 1e4))
+        .div(1e4);
+};
+
+//export function cutAmount (num, pct = 0.0) { return toBN(num).mul(toBN(parseInt((1.0 - pct) * 10000))).div(toBN(10).pow(4)) };
+
+// Calculate LP balance
+export async function lpAmount (pair, amounts, auto = false) {
+    debug('lpa', pair, amounts.join());
+    const min = (a, b) => a.gt(b) ? b : a;
+    const con = contract(pair, 'swaps');
+    const [ts, reserves] = await Promise.all([con.totalSupply(), con.getReserves()]);
+    return subSlippage(
+        min(
+            amounts[0].mul(ts).div(reserves[0]),
+            amounts[1].mul(ts).div(reserves[1])
+        ),
+        slippage('mintlps') ?? slippage('providinglps', auto)
+    );
 };
 
 //
@@ -338,6 +376,7 @@ export async function getPrice (token, tofloat = true, chain = state.chainId) {
     const endpoint = state.config.priceAPI.base;
     const platform = state.config.priceAPI.platform[chain];
     const to = state.config.priceAPI.to;
+    const fbprice = state.cache.prices[''];
     try {
         // [(endpoint + '/asset_platforms'), (endpoint + '/coins/list')]
         const res = (await axios(
@@ -346,15 +385,15 @@ export async function getPrice (token, tofloat = true, chain = state.chainId) {
             endpoint + `/simple/token_price/${platform[0]}?vs_currencies=${to}&contract_addresses=${token}`,
             { responseType: 'json' }
         )).data;
-        let price = Object.values(res)[0]?.[to] ?? 1.0;
+        let price = Object.values(res)[0]?.[to] ?? fbprice;
         !tofloat && (price = ethers.utils.parseUnits('' + price, 8));
         debug('price', token, price);
         return price;
         // (await Promise.all(usds.concat([weth]).map(address => con.getPair(token, address)))).filter(address => address != A0);
     } catch (err) {
-        debug('!price', err.message);
+        debug('!price', token, err.message);
     }
-    return 0.0;
+    return state.cache.prices[token] ?? fbprice;
 };
 
 export { ethers };

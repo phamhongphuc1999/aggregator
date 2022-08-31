@@ -1,8 +1,8 @@
 /**
  * Test multiple strategies
 */
-
-async function test_all (args = process.argv.slice(2), infile = 'cache/testIda.json') {
+const _infile = 'cache/testIda.json';
+async function test_all (args = process.argv.slice(2), infile = _infile) {
     const accounts = ['0x68a6c841040B05D60434d81000f523Bf6355b31D', '0x70D86bF17B30D268285eCFD204F83522797bad6C', '0x871dbce2b9923a35716e7e83ee402b535298538e']
     const amounts = ['1', '2', '3'];
     const params = { autoonly: true };
@@ -46,7 +46,7 @@ async function test_all (args = process.argv.slice(2), infile = 'cache/testIda.j
     if (args.find(e => e == '-s')) {
         // sequential
         console.error('[sequential]');
-        for (const f of funcs) arr.push(await f());
+        for (const f of funcs) results.push(await f());
     } else {
         // reduced parallel aka. multiprocessing
         const p = args.find(e => e == '-p');
@@ -59,7 +59,7 @@ async function test_all (args = process.argv.slice(2), infile = 'cache/testIda.j
     }
     // print all result
     console.log('[');
-    console.log(funcs.join(",\n\n\n\n"));
+    console.log(results.join(",\n\n\n\n"));
     console.log(']');
 };
 

@@ -128,11 +128,12 @@ const vaults = [
         delegate: true,
         url: 'https://github.com/TravaLendingPool/GovernanceContract',
         fetchs: {
-            deposittoken: new View('tokens(uint256)', [0], 'address'),
+            //deposittoken: new View('tokens(uint256)', [0], 'address'),
+            deposittoken: { get: maps => maps.token },
             outputtoken: { get: maps => maps.target },
             reward: new View('rewardToken()', [], 'address')
         },
-        deposit: new Call(null, 'create_lock_for(address,uint256,uint256,address)', ['__deposittoken__', '__amount__', '__time__', '__account__'], '0', { title: 'Lock token for voting power and rewards', params: ['Token', 'Amount', 'Lock duration', 'Receiver'], editable: 1 }, new Check(
+        deposit: new Call(null, 'create_lock_for(address,uint256,uint256,address)', ['__token__', '__amount__', '__time__', '__account__'], '0', { title: 'Lock token for voting power and rewards', params: ['Token', 'Amount', 'Lock duration', 'Receiver'], editable: 1 }, new Check(
             getBalanceView('__account__', '__target__'),
             View.INCREASE,
             '1'

@@ -38,20 +38,24 @@ export default Object.seal({
             max: {
                 'swaps': 0.05,
                 'providinglps': 0.05,
-                'mintlps': 0.02,
+                //'mintlps': 0.02,
                 'borrows': 0.25,
-                'lendings': 0.125
+                'lendings': 0.125,
+                'autoAdj': 1.0
             },
             min: {
                 'swaps': 0.0025,
                 'providinglps': 0.0025,
-                'mintlps': 0.001,
+                //'mintlps': 0.001,
                 'borrows': 0.025,
-                'lendings': 0.0125
+                'lendings': 0.0125,
+                'autoAdj': 0.0
             }
         },
+        //
         fixedGasEthLeft: '1000000000000000',
-        findCache: false
+        findCache: false,
+        autoSlippage: true
     }),
     timeout: Object.seal({
         process: 40,
@@ -63,10 +67,11 @@ export default Object.seal({
     slippage: Object.seal({
         'swaps': 0.005,
         'providinglps': 0.005,
-        'mintlps': 0.002,
+        //'mintlps': 0.002,
         'borrows': 0.05,
         'lendings': 0.025,
-        'wraps': 0.0
+        'wraps': 0.0,
+        'autoAdj': 0.75
     }),
     view: {
         options: {
@@ -81,7 +86,18 @@ export default Object.seal({
         provider: {},
         def: {},
         user: {},
-        ts: {}
+        ts: {},
+        prices: {
+            '0x0000000000000000000000000000000000000000': 280,
+            '0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c': 280,
+            '0x55d398326f99059ff775485246999027b3197955': 1,
+            '0xe9e7cea3dedca5984780bafc599bd69add087d56': 1,
+            '0x7083609fce4d1d8dc0c979aab8c869ea2c873402': 7,
+            '0x7130d2a12b9bcbfae4f2634d864a1ee1ce3ead9c': 20000,
+            '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82': 1450,
+            '0xcf6bb5389c92bdda8a3747ddb454cb7a64626c63': 4,
+            '': 0.1
+        }
     },
     logs: []
 });
