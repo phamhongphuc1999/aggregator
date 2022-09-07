@@ -15,7 +15,7 @@ const updateIf = (maps, def, names) => {
 };
 
 // Check if address is special
-const isEth = (address) => invalidAddresses.includes(address.toLowerCase());
+const isEth = (address, erc = false) => invalidAddresses.concat(erc ? [getAddress('token.eth')] : []).includes(address.toLowerCase());
 
 // Update new amount shortcut
 const setAmount = (maps, val = maps.oamount) => ([maps._amount, maps.amount] = [maps.amount, val]);
@@ -32,7 +32,7 @@ const actions = {
             debug('swaps', id);
             //
             const funcs = await functions('swaps');
-            const callNames = ['call', 'calle2', 'call2e'];
+            const callTypes = ['call', 'calle2', 'call2e'];
             const calls = [];
             [maps.chain, maps.target, ...maps.tokens] = id.split('_');
             [maps.token, maps.otoken] = maps.tokens;
@@ -40,11 +40,11 @@ const actions = {
             [maps.path, maps.oamount] = await findSwapPath(maps.target, [maps.token, maps.otoken], maps.amount = await parseAmount(maps.amount, maps.token));
             maps.ts = ts() + state.timeout?.['swaps'];
             //
-            maps.oamount = subSlippage(maps.oamount, 'swaps');
+            maps.oamount = subSlippage(maps.oamount, 'swaps', auto);
             //
             !isEth(maps.token) &&
                 calls.push(approve().update(maps));
-            calls.push(funcs[callNames[maps.tokens.indexOf(invalidAddresses[0]) + 1]].update(maps));
+            calls.push(funcs[callTypes[maps.tokens.indexOf(invalidAddresses[0]) + 1]].update(maps));
             //
             setAmount(maps);
             return calls;
@@ -86,18 +86,19 @@ const actions = {
             debug('providinglps', id);
             const funcs = await functions('providinglps');
             const calls = [];
+            // first half are almost same as auto calls
             [maps.chain, maps.target, ...maps.tokens] = id.split('_');
-            [maps.token, maps.otoken, maps.pair] = maps.tokens;
+            [maps.token, maps.pair] = maps.tokens;
             [maps.amount, maps.amounts, maps.split] = [await parseAmount(maps.amount, maps.token), ['0', '0'], false];
             //
             try {
                 // one input token, need to, swap half
-                [maps.tokens, maps.reserves] = await findPairInfo(maps.otoken);
-                maps.token != maps.tokens[0] && maps.tokens.reverse();
-                [maps.pair, maps.otoken] = [maps.otoken, maps.tokens[1]];
-                maps.split = true;
+                [maps.tokens, maps.reserves] = await findPairInfo(maps.pair);
+                maps.tokens[1] == (isEth(maps.token) ? getAddress('token.eth') : maps.token) && maps.tokens.reverse();
+                [maps.otoken, maps.split] = [maps.tokens[1], true];
             } catch (err) {
-                debug('!lps', err.message);
+                [maps.pair, maps.otoken] = [await findSwapPair(maps.target, maps.tokens), maps.tokens[1]];
+                //debug('!lps', err.message);
             }
             if (maps.split) {
                 const _id = id.replace(maps.pair, maps.otoken);
@@ -124,7 +125,7 @@ const actions = {
                 throw 'pair not existed';
             }
             //
-            maps.minamounts = maps.amounts.map(amount => subSlippage(amount, 'providinglps'));
+            maps.minamounts = maps.amounts.map(amount => subSlippage(amount, 'providinglps', auto));
             maps.oamount = await lpAmount(maps.pair, maps.minamounts);
             maps.ts = ts() + state.timeout?.['providinglps'];
             //
@@ -132,7 +133,8 @@ const actions = {
             [maps.token, maps.otoken].forEach((token, i) => {
                 isEth(token) ?
                     (maps.eth = maps.amounts[i]) :
-                    calls.push(approve(token).update(OA(maps, { amount: maps.amounts[i] })))
+                    calls.push(approve(token).update(OA(maps, { amount: maps.amounts[i] }))) &&
+                    (maps.token = token)
             });
             calls.push(funcs[ maps.eth !== '0' ? 'calle' : 'call' ].update(maps))
             //
@@ -144,6 +146,7 @@ const actions = {
                 debug('providinglps', 'auto', id);
                 const funcs = await functions('providinglps');
                 const calls = [];
+                // first half are almost same as normal calls
                 [maps.chain, maps.target, ...maps.tokens] = id.split('_');
                 [maps.token, maps.otoken, maps.pair] = maps.tokens;
                 [maps.amount, maps.amounts, maps.split] = [await parseAmount(maps.amount, maps.token), ['0', '0'], false];
@@ -151,7 +154,7 @@ const actions = {
                 try {
                     // one input token, need to, swap half
                     [maps.tokens, maps.reserves] = await findPairInfo(maps.otoken);
-                    maps.token != maps.tokens[0] && maps.tokens.reverse();
+                    maps.token == maps.tokens[1] && maps.tokens.reverse();
                     [maps.pair, maps.otoken] = [maps.otoken, maps.tokens[1]];
                     maps.split = true;
                 } catch (err) {
@@ -161,7 +164,7 @@ const actions = {
                         calls.push(funcs.create.update(maps));
                         maps.pair = await findPairAddress(maps.target, maps.tokens[0], maps.tokens[1]);
                     } else {
-                        throw 'not impl';
+                        throw 'noimpl';
                     }
                 }
                 if (maps.split) {
@@ -181,7 +184,7 @@ const actions = {
                     else maps.amounts[0] = (await findSwapPath(maps.target, [maps.otoken, maps.token], maps.amounts[1]))[1];
                 }
                 maps.lpamount = await lpAmount(maps.pair, maps.amounts);
-                maps.oamount = subSlippage(maps.lpamount, 'providinglps');
+                maps.oamount = subSlippage(maps.lpamount, 'providinglps', true);
                 //
                 maps.target = maps.pair;
                 if (isEth(maps.token)) {
@@ -205,7 +208,7 @@ const actions = {
             [maps.chain, maps.target, maps.token] = id.split('_');
             //
             maps.amount = await parseAmount(maps.amount, maps.token);
-            //if (maps.target != getAddress('token.eth')) throw 'not impl';
+            //if (maps.target != getAddress('token.eth')) throw 'noimpl';
             return [
                 funcs[maps.token == maps.target ? 'unwrap' : 'call'].update(maps)
             ];

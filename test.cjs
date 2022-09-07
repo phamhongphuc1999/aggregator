@@ -32,7 +32,7 @@ async function test(strategy, account, amount, arg = { usd: true, merge: true, t
         }
         //
         const addresses = Object.keys(strategy?.strategy?.capital ?? strategy?.capital ?? {});
-        //price(addresses[0], helpers.contract(helpers.getAddress('swap.factory'), 'swaps'), helpers.getAddress('token.usd'), true)
+        //price(addresses[0], helpers.contract(helpers.getAddress('swaps.factory'), 'swaps'), helpers.getAddress('token.usd'), true)
         (arg.usd) && (amount = (amount / await helpers.getPrice(addresses[0])).toFixed(8));
         //
         const maps = { account, amount };
@@ -49,7 +49,7 @@ async function test(strategy, account, amount, arg = { usd: true, merge: true, t
         );
         if (arg.test) {
             let ins = res.auto?.transfers?.ins;
-            if (ins && (ins = ins.filter(e => e.tx).map(e => [e.tx.to, e.tx.data]))) {
+            if (ins && (ins = ins.filter(e => e.tx).map(e => [e.tx.to, e.tx.data, e.custom]))) {
                 const approved = ins.length === 0;
                 debug('TEST.IN:', res.auto?.transfers?.ins, res.auto?.call?.tx?.value);
                 try {

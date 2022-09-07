@@ -21,3 +21,12 @@ Borrows use bring user risk of liquidation
 ###
 
 ## Limitations
+
+
+### Current bugs
+
+# Unpredictable maps
+
+# Strategy with auto add liquidity needs wraps
+
+# Strategy with ETH returns from router

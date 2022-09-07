@@ -31,7 +31,7 @@ const time = Date.now;
  * @typedef {Object} StrategyExecs
  */
 
-export const version = config.package.version;
+export const version = config.package.version + (state.config.debug ? '-dbg' : '-rel');
 
 export { state, config, helpers };
 
@@ -94,35 +94,46 @@ async function allCalls (steps, funcname, maps, process = null) {
  * @param {Promise<Call[]>} calls
  * @returns {Promise<Call[]>}
  */
-async function optimizeApproves (calls, maps, method = approve().method) {
-    try {
-        return (await Promise.all(calls
-            .filter(call => call.method === method) //startsWith('approve')
-            //
-            .filter((call, i, approves) => {
-                let found = approves.findIndex(call => call.target == call.target);
-                return (found !== -1 && found != i && (found = approves[found].params)) ?
-                    (found[1] = found[1].add(call.params[1])) && false :
-                    true;
-            })
-            .map(async call =>
-                OA(call, {_allowance: await (call.check?.view ?? allowance(call.target, maps.account, call.params[0])).get()}))
-            ))
-            //
-            .filter(call => {
-                if (call._allowance && call._allowance.gte(toBN(call.params[1]))) {
-                    //debug('skip', call.method, [call.target, call._allowance]);
-                    return false;
-                } else if (state.config.approveMax) {
-                    call.params[1] = toBN(state.config.approveMaxValue);
-                }
-                return true;
-            })
-            .map(call => OA(call, { step: -1, action: 'approve' }))
-            //
-            .concat(calls.filter(call => call.method !== method));
-    } catch (err) {
-        debug('!approves', err.message, err.stack);
+async function optimizeApproves (calls, maps = {}, methods = [ approve().method ]) {
+    if (state.config.optimizeApproves) {
+        try {
+            return (await Promise.all(calls
+                //
+                .filter(call => methods.includes(call.method)) //startsWith('approve')
+                .filter((call, i, approves) => {
+                    let found = approves.findIndex(e => e.target == call.target);
+                    let index;
+                    // a little messy
+                    return (found !== -1 && found != i && (found = approves[found].params) && (index = 1)) ?
+                        (found[index] = found[index].add(call.params[1])) && false :
+                        true;
+                })
+                .map(async call =>
+                    OA(call, { _allowance: await (call.check?.view ?? allowance(call.target, maps.account, call.params[0])).get() }))
+                ))
+                //
+                .filter(call => {
+                    if (call._allowance && call._allowance.gte(toBN(call.params[1]))) {
+                        if (state.config.removeApproves) {
+                            debug('remove', call.method, str([call.target, call._allowance]));
+                            return false;
+                        } else {
+                            call.tx = null, call.check = null;
+                        }
+                    } else if (state.config.approveMax) {
+                        // max value will not be set if approve is not needed
+                        const index = 1;
+                        call.params[index] = toBN(state.config.approveMaxValue);
+                    }
+                    return true;
+                })
+                //
+                .sort((call, ) => (!state.config.orderedApproves && call.tx === null) ? -1 : 0)
+                .map(call => OA(call, { step: -1, action: 'approve' }))
+                .concat(calls.filter(call => !methods.includes(call.method)));
+        } catch (err) {
+            debug('!approves', err.message, err.stack);
+        }
     }
     //
     return calls;
@@ -183,7 +194,7 @@ function formatCall (call, maps) {
             comment: call.descs?.params?.[i] ?? '',
             ...(call.descs?.editable == i) && { _value: value, editable: true }
         })),
-        tx: call.get(maps.account, ++maps.nonce),
+        ...(call.tx !== null) && { tx: call.get(maps.account, ++maps.nonce) },
         descs: undefined
     });
 };
@@ -215,11 +226,10 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
     // run analysis
     const logstart = state.logs.length;
     const ms = time();
-    const from = maps.retry?.realCall ?? maps.retry?.call ?? null;
     const transfers = {ins: [], out: []};
+    const capitals = strategy.strategy?.capital ?? strategy.capital ?? {};
     const steps = strategy.steps ?? [];
-    let auto = {};
-    let temp;
+    const auto = {};
 
     // default map values
     const addmaps = {
@@ -239,8 +249,25 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
     res.maps = { ...state.maps, ...addmaps };
     auto.maps = { ...res.maps, auto: true, account: addmaps.aggregator };
 
-    if (from !== null) {
-        //
+    if (maps.retry) {
+        // not work yet
+        const from = maps.retry?.realCall ?? maps.retry?.call ?? null;
+    }
+
+    if (maps.test) {
+        // also handled by inner functions
+        if (maps.test.swapFrom) {
+            const from = (isAddress(maps.test.swapFrom) ? maps.test.swapFrom : getAddress('token.usd')[0]).toLowerCase();
+            const to = Object.keys(capitals)[0];
+            if (from != to) {
+                steps.unshift({
+                    id: `_${getAddress('swaps.router')}_${from}_${to}`
+                });
+            }
+        }
+        if (maps.test.views?.length) {
+
+        }
     }
 
     // Generate manual call/params and checks
@@ -270,13 +297,15 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
                 }).check
             ];
             // tramsfer ins: from capital property and weth
-            if (temp = strategy.strategy?.capital ?? strategy.capital ?? {}) {
-                temp = (auto.maps.approve ? [auto.maps.approve] : []).concat(Object.keys(temp));
-                transfers.ins = await Promise.all(temp.map(processTransfer.bind(this, auto.maps)));
+            if (capitals) {
+                transfers.ins = await Promise.all(
+                    (auto.maps.approve ? [auto.maps.approve] : []).concat(Object.keys(capitals))
+                    .map(processTransfer.bind(this, auto.maps))
+                );
             }
             // transfer outs, NOT USED anymore, calls already has transfer or equivalent
-            if (temp = {}) {
-                transfers.outs = Object.keys(temp).map(processTransfer.bind(this, auto.maps));
+            if (state.config.transferOuts && maps.outs) {
+                transfers.outs = Object.keys(maps.outs).map(processTransfer.bind(this, auto.maps));
             }
             //
             auto.calls = auto.calls
@@ -301,9 +330,9 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
     }
     //
     if (res.calls?.length) {
-        temp = { ...res.maps, ...addmaps };
+        const _maps = { ...res.maps, ...addmaps };
         res.calls = (await Promise.all(res.calls.map(call => call.meta())))
-            .map(call => formatCall(call, temp));
+            .map(call => formatCall(call, _maps));
     }
     if (logs) {
         res.logs = state.logs.slice(logstart).map(([time, log]) => time + ': ' + log);

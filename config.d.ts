@@ -24,9 +24,9 @@ declare namespace _default {
             "0": string;
             aggregator: string;
             aggregator_old: string;
-            "swap.router": string;
-            "swap.factory": string;
-            "swap.fee": string;
+            "swaps.router": string;
+            "swaps.factory": string;
+            "swaps.fee": string;
             "token.usd": string[];
             "token.eth": string;
         };

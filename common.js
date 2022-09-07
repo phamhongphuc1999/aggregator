@@ -373,8 +373,43 @@ const getBalanceEth = (account = '__account__') => new View('balance(address)', 
 // get balance view
 const getBalanceView = (account = '__account__', token = '__token__') => new View('balanceOf(address)', [ account ], ['uint256'], -1, token);
 
-
 // get ERC balance
 const getBalance = (account = '__account__', token = ethers.constants.AddressZero) => getBalanceView(account, null).get({}, token);
 
 export { approve, transfer, getBalance, allowance, getBalanceEth, getBalanceView };
+
+// serilized types
+const types ={
+    'bignumber': ethers.BigNumber.prototype,
+    'call': Call.prototype,
+    'view': View.prototype,
+    'check': Check.prototype
+};
+
+/**
+ * Simple object cache
+ * @param {Function} get
+ * @param {prototype} type
+ * @param {string} name
+ * @param {number} expire
+ * @returns
+ */
+const cached = async function (get = ()=>null, type = Object.prototype, name = get.name, expire = 7200) {
+    const { cache } = state;
+    if (!name) name = get.toString();
+    if (name == get.name) name += '()';
+    if (cache.user[name] && cache.ts[name] && (ts() - cache.ts[name]) <= expire) {
+        return cache.user[name];
+    }
+    const value = await get();
+    cache.user[name] = value;
+    cache.ts[name] = ts();
+    // only if value is usable
+    if (value && type) {
+        Object.setPrototypeOf(value, (typeof type === 'string') ? types[type].prototype : type );
+    }
+    return value;
+}
+
+export { types, cached };
+

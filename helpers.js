@@ -22,10 +22,11 @@ export async function functions (name) {
 // Get swapsdk on-demand
 export async function swapsdk() {
     try {
-        const swapsdk = await import ('@uniswap/sdk');
+        const swapsdk = null;
+        //await import ('@uniswap/sdk');
         // init uniswap sdk
         swapsdk.ChainId = state.chainId;
-        swapsdk.FACTORY_ADDRESS = getAddress('swap.factory');
+        swapsdk.FACTORY_ADDRESS = getAddress('swaps.factory');
         swapsdk.WETH[state.chainId] = new swapsdk.Token(state.chainId, getAddress('token.eth'), 18, 'WETH', 'Wrapped');
         return swapsdk;
     } catch (err) {
@@ -75,7 +76,7 @@ export function findSwapPath (router, tokens = [], amount = toBN(10000), final =
 // Get pair address
 export async function findSwapPair (router, tokens = []) {
     let con = contract(router, 'swaps');
-    con = con.attach(router.toLowerCase() == getAddress('swap.router') ? getAddress('swap.factory') : await con.factory());
+    con = con.attach(router.toLowerCase() == getAddress('swaps.router') ? getAddress('swaps.factory') : await con.factory());
     return await con.getPair.apply(con, tokens);
 };
 
@@ -168,7 +169,7 @@ const toPow = (n) => toBN(10).pow(n);
 //const fmUnits = ethers.utils.formatUnits;
 //const abiEncode = ethers.utils.defaultAbiCoder.encode;
 const str = (a) => a.length ?
-    '[' + a.map(e => e.toString()).join(', ') + ']' :
+    '[' + a.map(e => (e ?? '').toString()).join(', ') + ']' :
     (a instanceof Object ? str(Object.values(a)) : a.toString());
 
 // Parse amount
@@ -281,41 +282,6 @@ const getSimulateApi = (maps = {}) => {
 
 export { getABI, getChain, getAddress, getToken, getProvider, getSigner, getScanApi, getDecimals };
 
-// serilized types
-const types ={
-    'bignumber': ethers.BigNumber,
-    //'call': Call,
-    //'view': View,
-    //'check': Check
-};
-
-/**
- * Simple object cache
- * @param {Function} get
- * @param {prototype} type
- * @param {string} name
- * @param {number} expire
- * @returns
- */
-const cached = async function (get = ()=>null, type = Object.prototype, name = get.name, expire = 7200) {
-    const { cache } = state;
-    if (!name) name = get.toString();
-    if (name == get.name) name += '()';
-    if (cache.user[name] && cache.ts[name] && (ts() - cache.ts[name]) <= expire) {
-        return cache.user[name];
-    }
-    const value = await get();
-    cache.user[name] = value;
-    cache.ts[name] = ts();
-    // only if value is usable
-    if (value && type) {
-        Object.setPrototypeOf(value, (typeof type === 'string') ? types[type].prototype : type );
-    }
-    return value;
-}
-
-export { types, cached };
-
 // debug print
 
 // general debugging
@@ -342,15 +308,15 @@ export function serialize (obj) {
 };
 
 //
-const slippage = function (name, auto = false) {
+const slippage = function (name, maps = {}) {
     const n = state.slippage[name] ?? 0.0001;
-    return state.config.autoSlippage ? n * (1.0 - state.slippage['autoAdj']) : n;
-}
+    return (state.config.autoSlippage && maps.auto && state.config.autoSlippageActions.includes(maps.action)) ? n * (1.0 - (state.slippage['autoAdj'] ?? 0.5)) : n;
+};
 
 // subtract slippage by config name or percentage
-export function subSlippage(num, pn = 0.0, auto = false) {
+export function subSlippage(num, pn = 0.0, maps = {}) {
     return toBN(num)
-        .mul(parseInt((1.0 - (isNaN(pn) ? slippage(pn, auto) : pn)) * 1e4))
+        .mul(parseInt((1.0 - (isNaN(pn) ? slippage(pn, maps) : pn)) * 1e4))
         .div(1e4);
 };
 
@@ -371,29 +337,68 @@ export async function lpAmount (pair, amounts, auto = false) {
     );
 };
 
-//
-export async function getPrice (token, tofloat = true, chain = state.chainId) {
-    const endpoint = state.config.priceAPI.base;
-    const platform = state.config.priceAPI.platform[chain];
-    const to = state.config.priceAPI.to;
-    const fbprice = state.cache.prices[''];
+// Coingecko -> Tokens list (come with build) -> Cache (static) -> default value
+export async function getPrice (token, tobn = false, chain = state.chainId) {
+    const [endpoint, platform, to] =
+        ((o = state.config.priceAPI) => [o.base, o.platform[chain], o.to])();
+    let price;
     try {
         // [(endpoint + '/asset_platforms'), (endpoint + '/coins/list')]
         const res = (await axios(
-            (!token || token == A0) ?
+            invalidAddresses.includes(token.toLowerCase()) ?
             endpoint + `/simple/price?vs_currencies=${to}&ids=${platform[1]}` :
             endpoint + `/simple/token_price/${platform[0]}?vs_currencies=${to}&contract_addresses=${token}`,
             { responseType: 'json' }
         )).data;
-        let price = Object.values(res)[0]?.[to] ?? fbprice;
-        !tofloat && (price = ethers.utils.parseUnits('' + price, 8));
-        debug('price', token, price);
-        return price;
+        price = Object.values(res)[0]?.[to] ?? fbprice;
         // (await Promise.all(usds.concat([weth]).map(address => con.getPair(token, address)))).filter(address => address != A0);
     } catch (err) {
+        try {
+            const info = await getToken(token);
+            if (isNaN(info.price)) throw '';
+            price = info.price;
+        } catch (err) {
+            price = state.cache.prices[token] ?? state.cache.prices[''];
+        }
         debug('!price', token, err.message);
     }
-    return state.cache.prices[token] ?? fbprice;
+    tobn && (price = ethers.utils.parseUnits('' + price, 8));
+    debug('price', token, price);
+    return price;
+};
+
+/**
+ * Deep merge two objects.
+ * @credit salakar
+ * @param obj
+ * @param ...sources
+ */
+const merge = function (obj, ...srcs) {
+    if (!srcs.length) return obj;
+    const src = srcs.shift();
+    const isObject = (item) => item && typeof item === 'object' && !Array.isArray(item);
+    //
+    if (isObject(obj) && isObject(src)) {
+        for (const key in src) {
+            if (isObject(src[key])) {
+                if (!obj[key]) Object.assign(obj, { [key]: {} });
+                merge(obj[key], src[key]);
+            } else {
+                Object.assign(obj, { [key]: src[key] });
+            }
+        }
+    }
+    return merge(obj, ...srcs);
+};
+
+/**
+ * Restore state object from storage
+  */
+export async function restoreState (obj = {}) {
+    if (obj.cache) {
+        delete obj.cache;
+    }
+    merge(state, obj);
 };
 
 export { ethers };

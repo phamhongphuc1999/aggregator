@@ -10,7 +10,7 @@ interface IERC20 {
 interface IERC721 is IERC20 {
 }
 
-contract Context {
+abstract contract Context {
     function _msgSender() internal view virtual returns (address) {
         return msg.sender;
     }
@@ -87,14 +87,22 @@ contract DefiAggregator is Context {
     }
 
     modifier onlyStatic() {
+        // only allow static call to pass
         try this.staticCheck() {
-            revert("Prohibited");
+            revert("Aggregate: prohibited");
         } catch {}
         _;
     }
 
+    function staticCheck() external {
+        require(_msgSender() == address(this));
+        // emit a event
+        emit StaticCheck();
+    }
+
     modifier guarded() {
-        require(!guard && tx.origin == _msgSender(), "Aggregator: guarded");
+        // only allow EOA
+        require(!guard && tx.origin == _msgSender(), "Aggregate: guarded");
         guard = true;
         _;
         // may yield
@@ -105,12 +113,8 @@ contract DefiAggregator is Context {
         guard = false;
     }
 
-    function staticCheck() external {
-        require(_msgSender() == address(this));
-        emit StaticCheck();
-    }
-
     function name() external pure returns (string memory) {
+        // some idenitifying
         return "Strategy Automatic Aggregator";
     }
 
@@ -120,34 +124,45 @@ contract DefiAggregator is Context {
      * Main aggregator proxy support
      * Issues:
      */
-    function aggregate(Call[] calldata calls, Expectation[] calldata expect, Transfer[] calldata ins) public payable guarded returns (uint256 blockNumber, bytes[] memory results) {
-        require(ins.length != 0 && calls.length != 0, "Aggregator: no capitals or calls");
-
+    function aggregate(Call[] calldata calls, Expectation[] calldata expects, Transfer[] calldata ins) public payable guarded returns (uint256 blockNumber, bytes[] memory results) {
         uint256 gas = gasleft();
-        uint256 last;
-        results = new bytes[](calls.length);
+
+        require(ins.length != 0 && calls.length != 0, "Aggregate: no capitals or calls");
 
         if (verity) {
             uint256 offset;
             assembly {
+                // determine the size of call params in msg.data
                 offset := ins.offset
                 offset := add(add(offset, mul(calldataload(offset), 0x40)), 0x20)
             }
+            // actual verity logic
             _verify(offset);
         }
 
-        if (expect.length != 0 && expect[0].expecting != Expecting.PASS) {
-            (, last) = _callgetvalue(expect[0].call, expect[0].vpos);
-        }
-        _handletransfers(ins);
+        results = new bytes[](calls.length + expects.length);
 
-        for(uint256 i; i != calls.length; i++) {
+        Expectation memory expect;
+        uint256 last;
+
+        if (expects.length != 0) {
+            // only the first expectation is handled
+            expect = expects[0];
+            if (expect.expecting == Expecting.INCREASE || expect.expecting == Expecting.DECREASE) {
+                (, last, ) = _callgetvalue(expect.call, expect.vpos);
+            }
+        }
+
+        _transfers(ins);
+
+        uint256 i;
+        for(; i != calls.length; i++) {
             bytes calldata data = calls[i].data;
 
             assembly {
                 let sig := calldataload(data.offset)
                 // high level assembly, eq() cast value before comparison
-                // block transfer calls, prevent user fund loss
+                // block delegated transfer calls, prevent user fund loss due to unspent approvals
                 //if eq(sig, TRANFSER_SIG) { revert(0, 0) }
                 if eq(sig, TRANSFERFROM_SIG) { revert(0, 0) }
                 if eq(sig, PERMIT_SIG) { revert(0, 0) }
@@ -156,10 +171,18 @@ contract DefiAggregator is Context {
             results[i] = _call(calls[i], i);
         }
 
-        // Expecting handler
-        _handleexpect(expect[0], last);
+        if (expects.length != 0) {
+            // Expecting handling, only one needed
+            bool success;
+            (success, blockNumber, results[++i]) = _callgetvalue(expect.call, expect.vpos);
+            _expect(expect.expecting, success, blockNumber, last);
+        }
 
-        //_handletransfers(outs);
+        //_transferOuts(outs);
+
+        if (address(this).balance != 0) {
+            payable(msg.sender).transfer(address(this).balance);
+        }
 
         blockNumber = block.number;
         emit Aggregated(_msgSender(), gas - gasleft());
@@ -229,8 +252,7 @@ contract DefiAggregator is Context {
     /**
      * Get view value
      */
-    function _callgetvalue(Call calldata call, uint256 vpos) internal view returns (bool success, uint256 value) {
-        bytes memory ret;
+    function _callgetvalue(Call memory call, uint256 vpos) internal view returns (bool success, uint256 value, bytes memory ret) {
         (success, ret) = _staticcall(call);
         assembly {
             value := mload(add(ret, mul(0x20, add(vpos, 1))))
@@ -264,7 +286,7 @@ contract DefiAggregator is Context {
     /**
      * do view-only call
      */
-    function _staticcall(Call calldata call) internal view returns (bool success, bytes memory ret) {
+    function _staticcall(Call memory call) internal view returns (bool success, bytes memory ret) {
         (success, ret) = call.target.staticcall(call.data);
     }
 
@@ -294,22 +316,20 @@ contract DefiAggregator is Context {
     /**
      * expectation checking helper
      */
-    function _handleexpect(Expectation calldata expect, uint256 last) internal view {
-        (bool success, uint256 value) = _callgetvalue(expect.call, expect.vpos);
-        bytes memory reason;
+    function _expect(Expecting expecting, bool success, uint256 value, uint256 last) internal view {
         if (!success) {
-            success = expect.expecting == Expecting.FAIL;
+            success = expecting == Expecting.FAIL;
         } else {
-            if (expect.expecting == Expecting.EQUAL) {
-                success = expect.value == value;
-            } else if (expect.expecting == Expecting.INCREASE) {
-                success = (value - last) == expect.value;
-            } else if (expect.expecting == Expecting.DECREASE) {
-                success = (last - value) == expect.value;
-            } else if (expect.expecting == Expecting.MORETHAN) {
-                success = value >= expect.value;
-            } else if (expect.expecting == Expecting.NOTEQUAL) {
-                success = value != expect.value;
+            if (expecting == Expecting.EQUAL) {
+                success = value == value;
+            } else if (expecting == Expecting.INCREASE) {
+                success = (value - last) == value;
+            } else if (expecting == Expecting.DECREASE) {
+                success = (last - value) == value;
+            } else if (expecting == Expecting.MORETHAN) {
+                success = value >= value;
+            } else if (expecting == Expecting.NOTEQUAL) {
+                success = value != value;
             }
         }
         // pass also
@@ -317,9 +337,9 @@ contract DefiAggregator is Context {
     }
 
     /**
-     * capitals transfer helper
+     * capitals / token outs transfer helper
      */
-    function _handletransfers(Transfer[] calldata transfers) internal {
+    function _transfers(Transfer[] calldata transfers) internal {
         for (uint256 i; i != transfers.length; i++) {
             uint256 amount = transfers[i].amount;
             bool success;
@@ -394,13 +414,21 @@ contract DefiAggregator is Context {
 
     /**
      * Prevent further usage
+     * Can not be undone
      */
-    function destroy(uint256 secret) external onlyOwner {
-        require(secret == 982173);
+    function destroy(uint256 confirm) external onlyOwner {
+        require(confirm == 842917232);
         emit OwnerAction();
         selfdestruct(payable(_msgSender()));
     }
 
-    fallback() external payable {}
+    receive() external payable {
+        // allow eth to be send back by, eg: swap router
+    }
+
+    fallback() external {
+        // do nothing on wrong calls
+        revert();
+    }
 
 }

@@ -4,8 +4,8 @@ const env = {};
 export default Object.seal({
     chainId: env.CHAIN ?? 56,
     maps: {
-        account: '0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF',
-        amount: '1000',
+        account: '0x68a6c841040B05D60434d81000f523Bf6355b31D',
+        amount: '1',
         eth: '0',
         nonce: 0
     },
@@ -20,7 +20,7 @@ export default Object.seal({
             },
             to: 'usd'
         },
-        baseAPI: 'https://scoringapi.trava.finance/aggregator_test',
+        baseAPI: 'https://scoringapi.trava.finance/aggregator',
         // allow calls generation to be async
         enableAsync: false,
         optimizeSwaps: false,
@@ -31,6 +31,10 @@ export default Object.seal({
         optimalSplit: false,
         gasPrice: false,
         needNonce: true,
+        optimizeApproves: true,
+        splitApproves: true,
+        removeApproves: false,
+        orderedApproves: false,
         noautoSkipCalls: true,
         fixCapitalField: true,
         existingLiquidity: false,
@@ -55,7 +59,9 @@ export default Object.seal({
         //
         fixedGasEthLeft: '1000000000000000',
         findCache: false,
-        autoSlippage: true
+        autoSlippage: true,
+        autoSlippageActions: ['swaps', 'providinglps'],
+        transferOuts: false
     }),
     timeout: Object.seal({
         process: 40,
@@ -71,7 +77,7 @@ export default Object.seal({
         'borrows': 0.05,
         'lendings': 0.025,
         'wraps': 0.0,
-        'autoAdj': 0.75
+        'autoAdj': 0.9
     }),
     view: {
         options: {
