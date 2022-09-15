@@ -4,7 +4,7 @@
 
 const A0 = '0x'+'0'.repeat(40);
 
-async function test(strategy, account, amount, arg = { usd: true, merge: true, test: true, autoonly: false, testonly: false, error: null }) {
+module.exports = async function (strategy, account, amount, args = { usd: true, merge: true, test: true, autoonly: false, testonly: false, error: null, serialize: true }) {
     const { process, debug, processError, autoAvailability, getStrategy, helpers, serialize, state } =
         global.module ??
         (global.module = await import('./strategyen.js'));
@@ -18,13 +18,13 @@ async function test(strategy, account, amount, arg = { usd: true, merge: true, t
             JSON.parse((await import('fs')).readFileSync(strategy)) :
             await getStrategy(strategy));
         const id = strategy.strategy_id ?? strategy;
-        if (arg.testonly) {
+        if (args.testonly) {
             return debug(strategy) && serialize(await getStrategy(strategy));
         }
         // minimal test
         debug('STRATEGY:', id, strategy.steps.map(step => step.strategy_id));
         //
-        if (arg.autoonly) {
+        if (args.autoonly) {
             res = await autoAvailability(strategy);
             debug('AUTO:', res, (Date.now() - starttime) + 'ms');
             res = !res;
@@ -33,11 +33,11 @@ async function test(strategy, account, amount, arg = { usd: true, merge: true, t
         //
         const addresses = Object.keys(strategy?.strategy?.capital ?? strategy?.capital ?? {});
         //price(addresses[0], helpers.contract(helpers.getAddress('swaps.factory'), 'swaps'), helpers.getAddress('token.usd'), true)
-        (arg.usd) && (amount = (amount / await helpers.getPrice(addresses[0])).toFixed(8));
+        (args.usd) && (amount = (amount / await helpers.getPrice(addresses[0])).toFixed(8));
         //
         const maps = { account, amount };
-        res = await process(strategy, maps, res, arg.merge);
-        if (arg.merge && res.steps?.length) {
+        res = await process(strategy, maps, res, args.merge);
+        if (args.merge && res.steps?.length) {
             res.strategy.roi_history && (res.strategy.roi_history = []);
             res.steps.forEach(step => (step.roi_history = []));
         }
@@ -47,7 +47,7 @@ async function test(strategy, account, amount, arg = { usd: true, merge: true, t
             [res.auto?.calls?.length, res.auto?.call?.tx?.data?.length/2 - 1],
             res.ran + 'ms'
         );
-        if (arg.test) {
+        if (args.test) {
             let ins = res.auto?.transfers?.ins;
             if (ins && (ins = ins.filter(e => e.tx).map(e => [e.tx.to, e.tx.data, e.custom]))) {
                 const approved = ins.length === 0;
@@ -66,20 +66,19 @@ async function test(strategy, account, amount, arg = { usd: true, merge: true, t
             }
         }
     } catch (err) {
-        arg.error = err;
+        args.error = err;
         console.error("<----\n\tERROR:", err.stack, serialize(err), "\n---->");
     }
     try {
         //
-        if (arg.error) { throw arg.error; }
+        if (args.error) { throw args.error; }
     } catch (error) {
         debug('ERROR:', serialize(res = await processError(JSON.parse(serialize(error)))));
     }
+    if (args.serialize) res = serialize(res);
     // result
-    return serialize(res);
+    return res;
 };
-
-module.exports = test;
 
 // import.meta?.url === 'file://'+process.argv[1]
 if (process && require.main === module) {
@@ -89,5 +88,5 @@ if (process && require.main === module) {
     // const amountInUSD = '1';
     // fs.readFileSync('cache/error.json')
     // single test
-    test(args[0] ?? 'cache/test.json', accounts[0], args[1] ?? amounts[ Math.floor(Math.random() * amounts.length) ]).then(console.log);
+    module.exports(args[0] ?? 'cache/test.json', accounts[0], args[1] ?? amounts[ Math.floor(Math.random() * amounts.length) ]).then(console.log);
 }

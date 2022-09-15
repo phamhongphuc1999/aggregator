@@ -300,6 +300,10 @@ Check.prototype = Object.freeze({
                 // very primitive
                 const n = toBN(ret);
                 switch (this.expecting) {
+                    case View.INCREASE:
+                        this.values = !this.value.length ? [this.value.shr(128), this.value.and(toBN('0xffffffffffffffffffffffffffffffff'))] : this.value;
+                        match = n.gte(this.values[0]) && n.lte(this.values[1]);
+                    break;
                     case View.EQUAL:
                         match = n.eq(this.value) || ret == this.value;
                     break;
@@ -345,7 +349,8 @@ Object.assign(View, {
     DECREASE: 3,
     MORETHAN: 4,
     FAIL: 5,
-    NOTEQUAL: 6
+    NOTEQUAL: 6,
+    RANGE: 7
 });
 
 export { Call, Check, View };
@@ -355,14 +360,14 @@ const allowance = (token = '__token__', owner = '__account__', spender = '__to__
     new View(name + '(address,address)', [owner, spender], 'uint256', -1, token);
 // Get approve call
 const approve = (token = '__token__', spender = '__target__', amount = '__amount__', name='approve', check='allowance') =>
-    new Call(token, name + '(address,uint256)', [spender, amount], '0', { title: 'Approve token spending', params: ['Spender', 'Amount'], approve: true, maxFee: 45000 }, new Check(
+    new Call(token, name + '(address,uint256)', [spender, amount], '0', { title: 'Approve token spending', params: ['Spender', 'Amount'], approve: true, gas: '45500' }, new Check(
         allowance(token, '__account__', spender, check),
         View.EQUAL,
         amount
     ));
 // Get transfer call
 const transfer = (token = '__token__', to = '__account__', amount = '__amount__') =>
-    new Call(token, 'transfer(address,uint256)', [to, amount], '0', { title: 'Transfer token', params: ['Receiver', 'Amount'], transfer: true, maxFee: 65000 }, new Check(
+    new Call(token, 'transfer(address,uint256)', [to, amount], '0', { title: 'Transfer token', params: ['Receiver', 'Amount'], transfer: true, gas: '68000' }, new Check(
         getBalanceView(to, token),
         View.MORETHAN,
         amount

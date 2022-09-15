@@ -1,11 +1,10 @@
 /**
  * Test multiple strategies
 */
-const _infile = 'cache/testIda.json';
-async function test_all (args = process.argv.slice(2), infile = _infile) {
+
+module.exports = async function (args, infile, params = null) {
     const accounts = ['0x68a6c841040B05D60434d81000f523Bf6355b31D', '0x70D86bF17B30D268285eCFD204F83522797bad6C', '0x871dbce2b9923a35716e7e83ee402b535298538e']
     const amounts = ['1', '2', '3'];
-    const params = { autoonly: true };
     // config
     //const where = ['./cache', 'strategy.', '.json'];
     //const queues = [];
@@ -19,7 +18,7 @@ async function test_all (args = process.argv.slice(2), infile = _infile) {
         { readFileSync, readdirSync } = require('fs'),
         test = require('./test.cjs'),
         ids = JSON.parse(readFileSync(infile)),
-        by = { step: {}, token: {}, all: [], tokens: Object.keys(ids) };
+        by = { both: ids, step: {}, token: {}, all: [], tokens: Object.keys(ids) };
     // AOP
     Object.entries(ids).forEach(([t, obj]) =>
         Object.entries(obj).forEach(([n, ids]) => {
@@ -30,38 +29,42 @@ async function test_all (args = process.argv.slice(2), infile = _infile) {
         })
     );
     // parallel processing may stress provider
-    const funcs = (() => {
+    const calls = (() => {
             // object array filter function
             const margs = args.filter(e => !e.startsWith('-'));
             if (margs.length >= 2) {
-                return ids[ margs[0] ][ by.tokens[ margs[1] ] ];
+                return by.both[ margs[0] ][ by.tokens[ margs[1] ] ];
             } else if (margs.length >= 1) {
                 return Object.values(margs[0].startsWith('0x') ? by.token[margs[0]] : by.step[margs[0]]);
             }
             return by.all;
         })()
-        .map(id => test.bind(this, id, account, amounts[ Math.floor(Math.random() * amounts.length) ]));
+        .map(id =>
+            [id, account, amounts[ Math.floor(Math.random() * amounts.length) ]].concat(params ? [ params ] : [])
+        );
     //
     const results = [];
-    if (args.find(e => e == '-s')) {
+    if (args.includes('-s')) {
         // sequential
         console.error('[sequential]');
-        for (const f of funcs) results.push(await f());
+        for (const c of calls) results.push(await test.apply(this, c));
     } else {
+        const a = args.includes('-a');
         // reduced parallel aka. multiprocessing
-        const p = args.find(e => e == '-p');
-        const cpus = p ? 8 : funcs.length;
-        console.error('[multiprocessing]', `[${cpus}]`);
+        const cpus = a ? calls.length : require('os').cpus().length;
+        console.error('[multiprocessing]', calls.length, `[${cpus}]`);
         //
-        while (funcs.length) {
-            [].push.apply(results, await Promise.all(funcs.splice(0, cpus).map(e => e())));
+        while (calls.length) {
+            [].push.apply(results, await Promise.all(calls.splice(0, cpus).map(c => test.apply(this, c))));
         }
     }
     // print all result
-    console.log('[');
-    console.log(results.join(",\n\n\n\n"));
-    console.log(']');
+    if (false) {
+        console.log('[', results.join(",\n\n"), ']');
+    }
+    //
+    return results;
 };
 
-(require.main === module) && test_all();
+(require.main === module) && module.exports(process.argv.slice(2), 'cache/testIds.json');
 

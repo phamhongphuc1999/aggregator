@@ -20,3 +20,4 @@ error.json
 *.min.*
 *.map
 abis.json
+logs/*

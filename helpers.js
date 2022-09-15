@@ -108,7 +108,7 @@ export async function findPairAddress (router, token0, token1) {
  * @param {Object} maps
  * @returns {Object}
  */
-export async function findContract (target, action = '', maps = {}) {
+export async function findContract (target, action = '', maps = {}, mapNames = []) {
     //const findAbis = (match) => Object.keys(ABIS).filter((e) => e.match(new RegExp(match))).map(e => ABIS[e]);
     //const con = contract(address, findAbis(type).reduce((o, e) => o.concat(e), []));
     const key = target+'_'+maps.token;
@@ -139,11 +139,16 @@ export async function findContract (target, action = '', maps = {}) {
                         (view.length ? view : [view])
                         .map(view => view && view.get && view.get(maps, def.target ?? target))
                     )) {
-                        fetchs[name] = view.toLowerCase();
+                        IA(view) && (view = view.toLowerCase());
+                        fetchs[name] = view;
                     }
                 })
             );
-            debug('find', key, def.title, str(fetchs));
+            // Sometimes target needs update
+            let set = 0;
+            for (const name of mapNames) fetchs.hasOwnProperty(name) && (maps[name] = fetchs[name]) && set++;
+            //
+            debug('find', key, def.title, set, str(fetchs));
             maps.detect = detect;
             return (state.cache.def[key] = { ...def, ...fetchs, detect });
         } catch (err) {
@@ -162,7 +167,8 @@ export async function findContract (target, action = '', maps = {}) {
 const ts = () => Math.round(Date.now()/1000);
 const A0 = ethers.constants.AddressZero;
 const AE = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-const invalidAddresses = [A0, AE, '']; // undefined
+const IA = ethers.utils.isAddress;
+const invalidAddresses = [A0, AE, '', null]; // undefined
 const toBN = ethers.BigNumber.from;
 const isBN = ethers.BigNumber.isBigNumber;
 const toPow = (n) => toBN(10).pow(n);
@@ -173,7 +179,7 @@ const str = (a) => a.length ?
     (a instanceof Object ? str(Object.values(a)) : a.toString());
 
 // Parse amount
-const parseAmount = async (amount, token = null) => ethers.BigNumber.isBigNumber(amount) ? amount : ethers.utils.parseUnits('' + amount, ethers.utils.isAddress(token) ? await getDecimals(token) : 18);
+const parseAmount = async (amount, token = null) => ethers.BigNumber.isBigNumber(amount) ? amount : ethers.utils.parseUnits('' + amount, IA(token) ? await getDecimals(token) : 18);
 
 export { ts, invalidAddresses, toBN, isBN, parseAmount, toPow, str };
 
@@ -226,7 +232,7 @@ const getProvider = (id = state.chainId) =>
  * @param {number|string} id
  * @returns {ethers.Wallet}
  */
-const getSigner = (a, id = state.chainId) => new ethers[ethers.utils.isAddress(a) ? 'VoidSigner' : 'Wallet'](a ?? '0'.repeat(63) + '1', getProvider(id));
+const getSigner = (a, id = state.chainId) => new ethers[IA(a) ? 'VoidSigner' : 'Wallet'](a ?? '0'.repeat(63) + '1', getProvider(id));
 
 /**
  * Get transaction simulation/backtracing API instance
@@ -339,29 +345,38 @@ export async function lpAmount (pair, amounts, auto = false) {
 
 // Coingecko -> Tokens list (come with build) -> Cache (static) -> default value
 export async function getPrice (token, tobn = false, chain = state.chainId) {
-    const [endpoint, platform, to] =
-        ((o = state.config.priceAPI) => [o.base, o.platform[chain], o.to])();
+    const cfg = state.config.priceAPI;
     let price;
-    try {
-        // [(endpoint + '/asset_platforms'), (endpoint + '/coins/list')]
-        const res = (await axios(
-            invalidAddresses.includes(token.toLowerCase()) ?
-            endpoint + `/simple/price?vs_currencies=${to}&ids=${platform[1]}` :
-            endpoint + `/simple/token_price/${platform[0]}?vs_currencies=${to}&contract_addresses=${token}`,
-            { responseType: 'json' }
-        )).data;
-        price = Object.values(res)[0]?.[to] ?? fbprice;
-        // (await Promise.all(usds.concat([weth]).map(address => con.getPair(token, address)))).filter(address => address != A0);
-    } catch (err) {
+    //
+    if (cfg.enabled) {
         try {
+            // [(endpoint + '/asset_platforms'), (endpoint + '/coins/list')]
+            const res = (await axios(
+                invalidAddresses.includes(token.toLowerCase()) ?
+                cfg.endpoint + `/simple/price?vs_currencies=${cfg.to}&ids=${cfg.platform[chain][1]}` :
+                cfg.endpoint + `/simple/token_price/${cfg.platform[chain][0]}?vs_currencies=${cfg.to}&contract_addresses=${token}`,
+                { responseType: 'json' }
+            )).data;
+            price = Object.values(res)[0]?.[cfg.to];
+            // (await Promise.all(usds.concat([weth]).map(address => con.getPair(token, address)))).filter(address => address != A0);
+        } catch (err) {
+            debug('!price', token, err.message);
+        }
+    }
+    //
+    !token && (token = A0);
+    if (!price) {
+        try {
+            //
             const info = await getToken(token);
             if (isNaN(info.price)) throw '';
             price = info.price;
         } catch (err) {
+            //
             price = state.cache.prices[token] ?? state.cache.prices[''];
         }
-        debug('!price', token, err.message);
     }
+    //
     tobn && (price = ethers.utils.parseUnits('' + price, 8));
     debug('price', token, price);
     return price;

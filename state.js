@@ -13,6 +13,7 @@ export default Object.seal({
     config: Object.seal({
         debug: true,
         priceAPI: {
+            enabled: false,
             base: 'https://api.coingecko.com/api/v3',
             platform: {
                 '1': ['ethereum', 'ethereum'],
@@ -58,6 +59,9 @@ export default Object.seal({
         },
         //
         fixedGasEthLeft: '1000000000000000',
+        gasDefault: '21000',
+        gasEstimate: true,
+        gasEstimateUSD: true,
         findCache: false,
         autoSlippage: true,
         autoSlippageActions: ['swaps', 'providinglps'],

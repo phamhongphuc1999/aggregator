@@ -13,7 +13,7 @@ import state from './state.js';
 import config from './config.js';
 
 import * as helpers from './helpers.js';
-const { ts, serialize, toBN, debug, str, functions, getAddress, getToken, parseAmount, invalidAddresses, findContract, getProvider, axios } = helpers;
+const { ts, serialize, toBN, toPow, debug, str, functions, getAddress, getToken, parseAmount, invalidAddresses, findContract, getProvider, getPrice, axios } = helpers;
 import * as common from './common.js';
 const { approve, allowance } = common;
 
@@ -224,7 +224,7 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
         ...(merge == true) && strategy
     };
     // run analysis
-    const logstart = state.logs.length;
+    const logslen = state.logs.length;
     const ms = time();
     const transfers = {ins: [], out: []};
     const capitals = strategy.strategy?.capital ?? strategy.capital ?? {};
@@ -329,13 +329,31 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
         }
     }
     //
+    const sumGas = async (res = {}, usd = false) => {
+        // sum of average gas for each call
+        res.gas = null;
+        if (res.calls?.length) {
+            const value = res.calls.reduce((num, call) => num.add(call.tx ? call.descs?.gas ?? state.config.gasDefault : '0'), toBN(0))
+            res.gas = {
+                value,
+                cost: value.mul(sumGas.gp = sumGas.gp ?? await getProvider().getGasPrice())
+            };
+            (usd) && (res.gas.usd = res.gas.cost.mul(sumGas.p = sumGas.p ?? await getPrice(invalidAddresses[0], true)).div(toPow(18)) / 1e8);
+        }
+    };
+    //
     if (res.calls?.length) {
         const _maps = { ...res.maps, ...addmaps };
-        res.calls = (await Promise.all(res.calls.map(call => call.meta())))
+        res.calls =
+            (await Promise.all(res.calls.map(call => call.meta())))
             .map(call => formatCall(call, _maps));
     }
+    // gas might update in meta
+    if (state.config.gasEstimate) {
+        await Promise.all([res, res.auto].filter(res => res).map(res => sumGas(res, state.config.gasEstimateUSD)));
+    }
     if (logs) {
-        res.logs = state.logs.slice(logstart).map(([time, log]) => time + ': ' + log);
+        res.logs = state.logs.slice(logslen).map(([time, log]) => time + ': ' + log);
     }
 
     // final result
@@ -346,7 +364,7 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
 /**
  * Allow update to state
  */
-export function setState(func = state=>state) {
+export function setState(func = state => state) {
     OA(state, func(state));
 };
 
