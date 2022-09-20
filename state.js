@@ -12,6 +12,7 @@ export default Object.seal({
     deprecate: false,
     config: Object.seal({
         debug: true,
+        debugExtra: true,
         priceAPI: {
             enabled: false,
             base: 'https://api.coingecko.com/api/v3',

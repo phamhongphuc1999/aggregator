@@ -300,7 +300,7 @@ Check.prototype = Object.freeze({
                 // very primitive
                 const n = toBN(ret);
                 switch (this.expecting) {
-                    case View.INCREASE:
+                    case View.RANGE:
                         this.values = !this.value.length ? [this.value.shr(128), this.value.and(toBN('0xffffffffffffffffffffffffffffffff'))] : this.value;
                         match = n.gte(this.values[0]) && n.lte(this.values[1]);
                     break;

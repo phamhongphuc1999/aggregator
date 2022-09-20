@@ -33,7 +33,7 @@ const time = Date.now;
 
 export const version = config.package.version + (state.config.debug ? '-dbg' : '-rel');
 
-export { state, config, helpers };
+export { state, config, helpers, common };
 
 /**
  * Get
@@ -51,7 +51,7 @@ export async function getStrategy(id, amount = state.maps.amount) {
  * @param {number} i
  * @returns
  */
-async function allCalls (steps, funcname, maps, process = null) {
+async function allCalls (steps, funcname, maps, process = o=>o) {
     let calls = [];
     // merge calls helper
     const get = async (step, i, get) => {
@@ -59,13 +59,13 @@ async function allCalls (steps, funcname, maps, process = null) {
         const id = (step.id ?? step.strategy_id);
         const action = (step.method ?? step.methods[0]);
         const callprops = { action, step: i, ...(i == steps.length) && { lastStep: true } };
-        const addprops = { ...step.maps, ...callprops };
-        const parentprops = { [funcname]: true };
+        const props = { ...step.maps, ...callprops };
+        const parent = { [funcname]: true };
         //
         return id &&
             action &&
             (get = actions[action][funcname]) &&
-            (get = await get(id, OA(maps, addprops))) &&
+            (get = await get(id, OA(maps, props, parent))) &&
             debug(funcname, action, (time() - ms) + 'ms') &&
             get.map(call => OA(call, callprops));
     };
@@ -83,7 +83,7 @@ async function allCalls (steps, funcname, maps, process = null) {
         debug('!all.' + funcname, err.message, err.stack);
     }
     //
-    if (process instanceof Function) {
+    if (process) {
         calls = await process(calls, maps);
     }
     return calls;
@@ -103,7 +103,7 @@ async function optimizeApproves (calls, maps = {}, methods = [ approve().method 
                 .filter((call, i, approves) => {
                     let found = approves.findIndex(e => e.target == call.target);
                     let index;
-                    // a little messy
+                    // if approve already existed
                     return (found !== -1 && found != i && (found = approves[found].params) && (index = 1)) ?
                         (found[index] = found[index].add(call.params[1])) && false :
                         true;
@@ -197,6 +197,25 @@ function formatCall (call, maps) {
         ...(call.tx !== null) && { tx: call.get(maps.account, ++maps.nonce) },
         descs: undefined
     });
+};
+
+/**
+ * sum of average gas for each call
+ * @param {Call[]} calls
+ * @returns {object} gas
+ */
+async function sumGas (calls = []) {
+    const gas = {};
+    // gas might update in meta or remove in format
+    if (state.config.gasEstimate && calls?.length) {
+        debug('gas', str(calls.map(call => call.method+' '+call.descs?.gas)));
+        gas.value = calls.reduce((num, call) => num.add(call.descs?.gas ?? state.config.gasDefault), toBN(0));
+        gas.cost = gas.value.mul(sumGas.g = sumGas.g ?? await getProvider().getGasPrice());
+        (state.config.gasEstimateUSD) &&
+            (gas.usd = gas.cost.mul(sumGas.p = sumGas.p ?? await getPrice(invalidAddresses[0], true)).div(toPow(18)) / 1e8);
+    }
+    //
+    return gas;
 };
 
 /**
@@ -308,6 +327,7 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
                 transfers.outs = Object.keys(maps.outs).map(processTransfer.bind(this, auto.maps));
             }
             //
+            auto.gas = await sumGas(auto.calls);
             auto.calls = auto.calls
                 .map((call, i, arr) => OA(call, { ...(arr.length-1 != i) && { check: null } }))
                 .map(call => formatCall(call, auto.maps))
@@ -316,7 +336,7 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
                 target: getAddress(),
                 eth: auto.maps.send ?? "0",
                 calls: auto.calls.map(call => Object.values(call.tx).slice(0,3)),
-                checks: auto.checks.map(check => check.encode()),
+                expects: auto.checks.map(check => check.encode()),
                 ins: transfers.ins.filter(tf => !tf.custom).map(tf => Object.values(tf).slice(0,2)),
                 outs: []
             });
@@ -328,29 +348,14 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
             debug('!auto', err.message, err.stack);
         }
     }
-    //
-    const sumGas = async (res = {}, usd = false) => {
-        // sum of average gas for each call
-        res.gas = null;
-        if (res.calls?.length) {
-            const value = res.calls.reduce((num, call) => num.add(call.tx ? call.descs?.gas ?? state.config.gasDefault : '0'), toBN(0))
-            res.gas = {
-                value,
-                cost: value.mul(sumGas.gp = sumGas.gp ?? await getProvider().getGasPrice())
-            };
-            (usd) && (res.gas.usd = res.gas.cost.mul(sumGas.p = sumGas.p ?? await getPrice(invalidAddresses[0], true)).div(toPow(18)) / 1e8);
-        }
-    };
-    //
+    // final calls
     if (res.calls?.length) {
         const _maps = { ...res.maps, ...addmaps };
+        //
+        res.gas = await sumGas(res.calls);
         res.calls =
             (await Promise.all(res.calls.map(call => call.meta())))
             .map(call => formatCall(call, _maps));
-    }
-    // gas might update in meta
-    if (state.config.gasEstimate) {
-        await Promise.all([res, res.auto].filter(res => res).map(res => sumGas(res, state.config.gasEstimateUSD)));
     }
     if (logs) {
         res.logs = state.logs.slice(logslen).map(([time, log]) => time + ': ' + log);

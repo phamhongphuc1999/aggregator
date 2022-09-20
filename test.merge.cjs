@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const files = {
     "0x0000000000000000000000000000000000000000": "0",
     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c": "wbnb",
@@ -12,15 +14,17 @@ const files = {
 };
 const args = process.argv.slice(2);
 const infile = 'cache/testIds.json';
-const outfile = null;
+const outfile = 'cache/testIda.json';
 
 const fs = require('fs');
 
+//
 Object.keys(files).forEach(
     token => files[token] = 'logs/all.' + files[token] + '.json'
 );
 
 async function merge(files) {
+    //
     const obj = {};
     for (const [token, file] of Object.entries(files)) {
         !obj[token] && (obj[token] = Array.from({ length: 4 }, ()=>[]));
@@ -33,19 +37,28 @@ async function merge(files) {
     return JSON.stringify(obj, null, "\t");
 };
 
-async function all(files) {
+async function all(files, infile) {
+    //
     const test_all = require('./test.all.cjs');
     for (const token in files) {
         fs.writeFileSync(files[token], token);
-        const out = await test_all([token], infile);
+        const out = await test_all([token], infile, { autoonly: true });
         fs.writeFileSync(files[token], '[' + out.join(',') + ']');
     }
 };
 
 if (args.includes('-m')) {
-    merge(files).then(out => (outfile ? fs.writeFileSync(outfile, out) : console.log(out)));
+    //
+    merge(files).then(
+    	out => (outfile ? fs.writeFileSync(outfile, out) : console.log(out))
+    );
 } else if (args.includes('-a')) {
-    all(files).then(out => console.log);
+    //
+    all(files, args.includes('-o') ? outfile : infile).then(
+        out => console.log(out)
+	);
 } else {
+    //
     console.error('Usage:', process.argv[1], '[-m|-a]')
 }
+

@@ -25,16 +25,16 @@ const lendings = [
             stabledebttoken: temp.update({}, 8),
             debttoken: temp.update({}, 9)
         },
-        deposit: new Call(null, 'deposit(address,uint256,address,uint16)', ['__token__', '__amount__', '__user__', '0'], '0', { title: 'Deposit asset to pool', params: ['Asset address', 'Asset amount', 'On behalf of', 'Referral code'], editable: 1, gas: '238000' }, new Check(
+        deposit: new Call(null, 'deposit(address,uint256,address,uint16)', ['__token__', '__amount__', '__user__', '0'], '0', { title: 'Deposit tokens to pool', params: ['Asset address', 'Asset amount', 'On behalf of', 'Referral code'], editable: 1, gas: '238000' }, new Check(
             getBalanceView('__account__', '__token__'),
             View.PASS
         )),
         approve: approve('__debttoken__', '__aggregator__', '__available__', 'approveDelegation', 'borrowAllowance'),
-        borrow: new Call(null, 'borrow(address,uint256,uint256,uint16,address)', ['__token__', '__amount__', '1', '0', '__user__'], '__eth__', { title: 'Borrow reserve asset', params: ['Asset address', 'Amount', 'Interest rate mode', 'Referal code', 'On behalf of'], editable: 1, gas: '305000' }, new Check(
+        borrow: new Call(null, 'borrow(address,uint256,uint256,uint16,address)', ['__token__', '__amount__', '1', '0', '__user__'], '__eth__', { title: 'Borrow from reserves', params: ['Asset address', 'Amount', 'Interest rate mode', 'Referal code', 'On behalf of'], editable: 1, gas: '305000' }, new Check(
             getBalanceView('__account__', '__token__'),
             View.PASS
         )),
-        redeem: new Call(null, 'withdraw(address,uint256,address)', ['__token__', '__amount', '__account__'], '0', { title: 'Withdraw deposited asset', params: ['Asset address', 'Amount', 'Receiver'], editable: 1, gas: '100000' }),
+        redeem: new Call(null, 'withdraw(address,uint256,address)', ['__token__', '__amount', '__account__'], '0', { title: 'Withdraw deposited tokens', params: ['Asset address', 'Amount', 'Receiver'], editable: 1, gas: '100000' }),
         repay: new Call(null, 'repay(address,uint256,uint256,address)', ['__token__', '__amount', '1', '__account__'], '__eth__', { title: 'Repay borrow', params: ['Asset address', 'Amount', 'Interest rate mode', 'On behalf of'], editable: 1, gas: '100000' }, new Check(
             getBalanceView('__account__', '__token__'),
             View.PASS
@@ -114,11 +114,11 @@ const lendings = [
             getBalanceView('__account__', '__token__'),
             View.PASS
         )),
-        borrow: new Call(null, 'borrow(address,uint256,uint16,address)', ['__token__', '__amount__', '0', '__user__'], '0', { title: 'Borrow reserve asset', params: ['Asset address', 'Amount', 'Referal code', 'On behalf of'], editable: 1, gas: '332000' }, new Check(
+        borrow: new Call(null, 'borrow(address,uint256,uint16,address)', ['__token__', '__amount__', '0', '__user__'], '0', { title: 'Borrow from reserves', params: ['Asset address', 'Amount', 'Referal code', 'On behalf of'], editable: 1, gas: '332000' }, new Check(
             getBalanceView('__account__', '__token__'),
             View.PASS
         )),
-        redeem: new Call(null, 'withdraw(address,uint256,address)', ['__token__', '__amount', '__account__'], '0', { title: 'Withdraw deposited asset', params: ['Asset address', 'Amount', 'Receiver'], editable: 1, gas: '100000' }),
+        redeem: new Call(null, 'withdraw(address,uint256,address)', ['__token__', '__amount', '__account__'], '0', { title: 'Withdraw deposited tokens', params: ['Asset address', 'Amount', 'Receiver'], editable: 1, gas: '100000' }),
         repay: new Call(null, 'repay(address,uint256,address)', ['__token__', '__amount', '1', '__account__'], '0', { title: 'Repay borrow', params: ['Asset address', 'Amount', 'On behalf of'], editable: 1, gas: '100000' }, new Check(
             getBalanceView('__account__', '__token__'),
             View.PASS
@@ -221,13 +221,13 @@ const lendings = [
             '__amount__'
         )),
         redeemable: temp=new View('balanceOfUnderlying(address)', ['__account__'], 'uint256'),
-        borrow: new Call(null, 'borrow(uint256)', ['__amount__'], '0', { title: 'Borrow underlying asset', params: ['Amount'], editable: 0, gas: '342000' }, new Check(
+        borrow: new Call(null, 'borrow(uint256)', ['__amount__'], '0', { title: 'Borrow from pool', params: ['Amount'], editable: 0, gas: '342000' }, new Check(
             temp,
             View.PASS,
             '__borrowable__'
         )),
-        redeem: new Call(null, 'redeemUnderlying(uint256)', ['__amount__'], '0', { title: 'Redeem underlying assets', params: ['Amount'], editable: 0 }),
-        repay: new Call(null, 'repayBorrowBehalf(address,uint256)', ['__account__', '__amount__'], '0', { title: 'Repay borrow on', params: ['For', 'Amount'], editable: 1 }, new Check(
+        redeem: new Call(null, 'redeem(uint256)', ['__amount__'], '0', { title: 'Redeem underlying tokens', params: ['Amount'], editable: 0, gas: '279000' }),
+        repay: new Call(null, 'repayBorrowBehalf(address,uint256)', ['__account__', '__amount__'], '0', { title: 'Repay borrow on', params: ['For', 'Amount'], editable: 1, gas: '100000' }, new Check(
             new View(),
             View.PASS
         )),
@@ -265,7 +265,7 @@ const lendings = [
                             .mul(BASE18).div(toPow(odecimals));
                         maps.borrowable = res[1] = subSlippage(res[2], maps.action ?? 'borrows', maps.auto);
                         //await ctrl.callStatic.borrowAllowed(maps.otarget, maps.user ?? maps.account, borrowable);
-                        debug('available', str(maps.amount), [maps.itoken, maps.otoken], str([iprice, oprice]), str(res));
+                        debug('available', str(maps.amount), str([maps.itoken, maps.otoken]), str([iprice, oprice]), str(res));
                     } catch (err) {
                         debug('!available', maps, err.stack);
                     }
@@ -281,13 +281,13 @@ const lendings = [
                     deposittoken: { get () { return ethers.constants.AddressZero } },
                     outputtoken: { get (maps) { return maps.target } }
                 },
-                deposit: new Call(null, 'mint()', [], '__amount__', { title: 'Deposit ETH to pool', params: ['Amount'], editable: 0, gas: '158000' }, new Check(
+                deposit: new Call(null, 'mint()', [], '__amount__', { title: 'Deposit ETH to pool', params: ['Amount'], editable: 0, gas: '265000' }, new Check(
                     new View(),
                     View.PASS
                 )),
                 borrow: this.borrow,
                 redeem: this.redeem,
-                repay: new Call(null, 'repayBorrowBehalf(address)', ['__account__'], '__amount__', { title: 'Repay all ETH', params: ['For'], editable: -1, gas: '125000' }, new Check(
+                repay: new Call(null, 'repayBorrowBehalf(address)', ['__account__'], '__amount__', { title: 'Repay all ETH', params: ['For'], editable: -1, gas: '195000' }, new Check(
                     new View(),
                     View.PASS
                 ))

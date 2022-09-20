@@ -35,7 +35,8 @@ contract DefiAggregator is Context {
         DECREASE,
         MORETHAN,
         FAIL,
-        NOTEQUAL
+        NOTEQUAL,
+        RANGE
     }
 
     struct Call {
@@ -66,6 +67,7 @@ contract DefiAggregator is Context {
     bytes4 constant internal TRANSFER_SIG = 0xa9059cbb;
     bytes4 constant internal TRANSFERFROM_SIG = 0x23b872dd;
     bytes4 constant internal PERMIT_SIG = 0xd505accf;
+    bytes4 constant internal SPECIAL_SIG = 0xafffffff;
 
     /* VARIABLES */
 
@@ -75,7 +77,7 @@ contract DefiAggregator is Context {
 
     bool internal guard;
 
-    constructor() {
+    function initialize() external {
         owner = _msgSender();
     }
 
@@ -124,11 +126,12 @@ contract DefiAggregator is Context {
      * Main aggregator proxy support
      * Issues:
      */
-    function aggregate(Call[] calldata calls, Expectation[] calldata expects, Transfer[] calldata ins) public payable guarded returns (uint256 blockNumber, bytes[] memory results) {
+    function aggregate(Call[] calldata calls, Transfer[] calldata ins, Expectation memory expect) public payable guarded returns (uint256 blockNumber, bytes[] memory results) {
         uint256 gas = gasleft();
 
         require(ins.length != 0 && calls.length != 0, "Aggregate: no capitals or calls");
 
+/*
         if (verity) {
             uint256 offset;
             assembly {
@@ -139,17 +142,13 @@ contract DefiAggregator is Context {
             // actual verity logic
             _verify(offset);
         }
+*/
 
-        results = new bytes[](calls.length + expects.length);
+        results = new bytes[](calls.length + 1);
 
-        Expectation memory expect;
-        uint256 last;
-
-        if (expects.length != 0) {
-            // only the first expectation is handled
-            expect = expects[0];
+        if (expect.call.target != address(0)) {
             if (expect.expecting == Expecting.INCREASE || expect.expecting == Expecting.DECREASE) {
-                (, last, ) = _callgetvalue(expect.call, expect.vpos);
+                (, blockNumber, ) = _staticcall(expect.call, expect.vpos);
             }
         }
 
@@ -157,7 +156,8 @@ contract DefiAggregator is Context {
 
         uint256 i;
         for(; i != calls.length; i++) {
-            bytes calldata data = calls[i].data;
+            Call calldata call = calls[i];
+            bytes calldata data = call.data;
 
             assembly {
                 let sig := calldataload(data.offset)
@@ -166,41 +166,31 @@ contract DefiAggregator is Context {
                 //if eq(sig, TRANFSER_SIG) { revert(0, 0) }
                 if eq(sig, TRANSFERFROM_SIG) { revert(0, 0) }
                 if eq(sig, PERMIT_SIG) { revert(0, 0) }
+/*
+                if eq(sig, TRANSFER_SIG) {
+                    if eq(calldataload(add(data.offset, 4), msg.sender)) {
+                        revert(0, 0)
+                    }
+                }
+*/
             }
 
-            results[i] = _call(calls[i], i);
+            results[i] = _call(call.target, data, call.eth, i);
         }
 
-        if (expects.length != 0) {
+        if (expect.call.target != address(0)) {
             // Expecting handling, only one needed
             bool success;
-            (success, blockNumber, results[++i]) = _callgetvalue(expect.call, expect.vpos);
-            _expect(expect.expecting, success, blockNumber, last);
+            uint256 value;
+            (success, value, results[++i]) = _staticcall(expect.call, expect.vpos);
+            _expect(expect.expecting, expect.value, success, value, blockNumber);
         }
 
         //_transferOuts(outs);
 
-        if (address(this).balance != 0) {
-            payable(msg.sender).transfer(address(this).balance);
-        }
-
         blockNumber = block.number;
         emit Aggregated(_msgSender(), gas - gasleft());
     }
-
-    /**
-     * Simpler multicall for views
-     */
-    /*
-    function all(Call[] calldata calls) external view onlyStatic returns (uint256 blockNumber, bytes[] memory results) {
-        bool success;
-        for(uint256 i; i != calls.length; i++) {
-            (success, results[i]) = _staticcall(calls[i]);
-            require(success, string(abi.encodePacked("All: failed at ", _tostring(i), ": ", results[i])));
-        }
-        blockNumber = block.number;
-    }
-    */
 
     /**
      * Stop at first success, no state saved, only parallel calls allowed
@@ -215,12 +205,27 @@ contract DefiAggregator is Context {
         revert("Any: all: rejected");
     }
 
+    /**
+     * Simpler multicall for views
+     */
+/*
+    function all(Call[] calldata calls) external view onlyStatic returns (uint256 blockNumber, bytes[] memory results) {
+        bool success;
+        for(uint256 i; i != calls.length; i++) {
+            (success, results[i]) = _staticcall(calls[i]);
+            require(success, string(abi.encodePacked("All: failed at ", _tostring(i), ": ", results[i])));
+        }
+        blockNumber = block.number;
+    }
+*/
+
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
      * Check aggregate signature if required
      * @dev sigs is append right after aggregate() arguments
      */
+/*
     function _verify(uint256 offset) internal view {
         address user;
         uint64 time;
@@ -241,6 +246,7 @@ contract DefiAggregator is Context {
         require(time <= 3600, "Signature: expired");
         require(user == _msgSender(), "Signature: wrong sender");
     }
+*/
 
     /**
      * Require helper
@@ -252,7 +258,7 @@ contract DefiAggregator is Context {
     /**
      * Get view value
      */
-    function _callgetvalue(Call memory call, uint256 vpos) internal view returns (bool success, uint256 value, bytes memory ret) {
+    function _staticcall(Call memory call, uint256 vpos) internal view returns (bool success, uint256 value, bytes memory ret) {
         (success, ret) = _staticcall(call);
         assembly {
             value := mload(add(ret, mul(0x20, add(vpos, 1))))
@@ -293,18 +299,18 @@ contract DefiAggregator is Context {
     /**
      * do state-altering call
      */
-    function _call(Call calldata call, uint256 i) internal returns (bytes memory ret) {
+    function _call(address target, bytes calldata data, uint256 eth, uint256 i) internal returns (bytes memory ret) {
         bool success;
-        (success, ret) = call.target.call{value: call.eth}(call.data);
+        (success, ret) = target.call{value: eth}(data);
         _require(success, "Aggregate", i, ret);
     }
 
     /**
      * transfer helper
      */
-     function _transfer(address token, address to, uint256 amount) internal returns (bool) {
+    function _transfer(address token, address to, uint256 amount) internal returns (bool) {
         return IERC20(token).transfer(to, (amount == 0) ? IERC20(token).balanceOf(address(this)) : amount);
-     }
+    }
 
     /**
      * send eth helper
@@ -316,23 +322,26 @@ contract DefiAggregator is Context {
     /**
      * expectation checking helper
      */
-    function _expect(Expecting expecting, bool success, uint256 value, uint256 last) internal view {
+    function _expect(Expecting expecting, uint256 eval, bool success, uint256 value, uint256 last) internal view {
         if (!success) {
             success = expecting == Expecting.FAIL;
         } else {
             if (expecting == Expecting.EQUAL) {
-                success = value == value;
-            } else if (expecting == Expecting.INCREASE) {
-                success = (value - last) == value;
-            } else if (expecting == Expecting.DECREASE) {
-                success = (last - value) == value;
+                success = value == eval;
+            } else if (expecting == Expecting.RANGE) {
+                success = value >= (eval >> 128) && value <= (eval & 0xffffffffffffffffffffffffffffffff);
             } else if (expecting == Expecting.MORETHAN) {
-                success = value >= value;
+                success = value >= eval;
             } else if (expecting == Expecting.NOTEQUAL) {
-                success = value != value;
+                success = value != eval;
+            } else if (expecting == Expecting.INCREASE) {
+                success = (value - last) == eval;
+            } else if (expecting == Expecting.DECREASE) {
+                success = (last - value) == eval;
+            } else {
+                success = true;
             }
         }
-        // pass also
         _require(success, "Expect", value, "failed");
     }
 
@@ -344,11 +353,21 @@ contract DefiAggregator is Context {
             uint256 amount = transfers[i].amount;
             bool success;
             bytes memory ret;
-
             if (transfers[i].asset == address(0)) {
                 success = msg.value == amount;
                 ret = "not enough eth";
             } else {
+                (success, ret) = transfers[i].asset.call(abi.encodePacked(
+                    TRANSFERFROM_SIG,
+                    abi.encode(_msgSender(), address(this), amount)
+                ));
+                // Safe ERC20 standard
+                if (ret.length == 32 && success) {
+                    assembly {
+                        success := mload(add(ret, 32))
+                    }
+                }
+/*
                 try IERC20(transfers[i].asset).transferFrom(_msgSender(), address(this), amount) returns (bool ok) {
                     success = ok;
                 } catch Error(string memory ok) {
@@ -356,8 +375,8 @@ contract DefiAggregator is Context {
                 } catch (bytes memory ok) {
                     ret = ok;
                 }
+*/
             }
-
             //_require(success, out ? "TransferOut" : "TransferIn", i, ret);
             _require(success, "TransferIn", amount, ret);
         }
@@ -389,20 +408,27 @@ contract DefiAggregator is Context {
     /**
      * Toggle verity status
      */
+
+/*
     function toggleVerity() external onlyOwner {
         verity = !verity;
         emit OwnerAction();
     }
+*/
 
     /**
      * Allow owner to send arbitrary calls to help users recover mishap actions
      */
+
+/*
     function recoverActions(Call[] calldata calls) external onlyOwner {
         for(uint256 i; i != calls.length; i++) {
-            _call(calls[i], i);
+            Call calldata call = calls[i];
+            _call(call.target, call.data, call.eth, i);
         }
         emit OwnerAction();
     }
+*/
 
     /**
      * Transfer owner
@@ -423,7 +449,7 @@ contract DefiAggregator is Context {
     }
 
     receive() external payable {
-        // allow eth to be send back by, eg: swap router
+        // allow eth to be send back by, by swap router
     }
 
     fallback() external {

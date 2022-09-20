@@ -128,13 +128,14 @@ export async function findContract (target, action = '', maps = {}, mapNames = [
                         ))
                     ))
             , []);
+            // Sometimes target needs to be set
+            const setMaps = (obj) => mapNames.forEach(name => obj.hasOwnProperty(name) && (maps[name] = obj[name]) && setMaps.count++);
             // find fallback definitions
             [def, detect, index] = await Promise.any(checks);
-            (def.ref instanceof Function) && (def = await def.ref({ ...maps, target }, index));
-            // fetch designated tokens
+            (def.ref instanceof Function) && (def = await def.ref({ ...maps, target }, index)) && setMaps(def);
+            // fetch designated views
             await Promise.all(
-                Object.entries(def.fetchs).map(async ([name, view]) => {
-                    //name.endsWith('token') || (name += 'token');
+                Object.entries(def.fetchs ?? {}).map(async ([name, view]) => {
                     if (view = await Promise.any(
                         (view.length ? view : [view])
                         .map(view => view && view.get && view.get(maps, def.target ?? target))
@@ -144,11 +145,10 @@ export async function findContract (target, action = '', maps = {}, mapNames = [
                     }
                 })
             );
-            // Sometimes target needs update
-            let set = 0;
-            for (const name of mapNames) fetchs.hasOwnProperty(name) && (maps[name] = fetchs[name]) && set++;
             //
-            debug('find', key, def.title, set, str(fetchs));
+            setMaps(fetchs);
+            //
+            debug('find', key, def.title, setMaps.count, str(fetchs));
             maps.detect = detect;
             return (state.cache.def[key] = { ...def, ...fetchs, detect });
         } catch (err) {

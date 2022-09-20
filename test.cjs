@@ -1,11 +1,23 @@
+#!/usr/bin/env node
+
 /**
  * Test a single strategy
 */
 
 const A0 = '0x'+'0'.repeat(40);
 
-module.exports = async function (strategy, account, amount, args = { usd: true, merge: true, test: true, autoonly: false, testonly: false, error: null, serialize: true }) {
-    const { process, debug, processError, autoAvailability, getStrategy, helpers, serialize, state } =
+module.exports = async function (strategy, account, amount, args = {
+    usd: true,
+    merge: true,
+    ensuretest: true,
+    test: true,
+    autoonly: false,
+    testonly: false,
+    error: null,
+    serialize: true
+}) {
+    // keep module instance
+    const { process, debug, processError, autoAvailability, getStrategy, helpers, common, serialize, state } =
         global.module ??
         (global.module = await import('./strategyen.js'));
     const starttime = Date.now();
@@ -31,9 +43,26 @@ module.exports = async function (strategy, account, amount, args = { usd: true, 
             return serialize([id, strategy.steps?.length ?? 0, res]);
         }
         //
-        const addresses = Object.keys(strategy?.strategy?.capital ?? strategy?.capital ?? {});
+        const capitals = Object.keys(strategy?.strategy?.capital ?? strategy?.capital ?? {});
         //price(addresses[0], helpers.contract(helpers.getAddress('swaps.factory'), 'swaps'), helpers.getAddress('token.usd'), true)
-        (args.usd) && (amount = (amount / await helpers.getPrice(addresses[0])).toFixed(8));
+        (args.usd) && (amount = (amount / await helpers.getPrice(capitals[0])).toFixed(8));
+        //
+        if (args.ensuretest) {
+            const token = capitals[0];
+            const iseth = helpers.invalidAddresses.includes(token);
+            amount = await helpers.parseAmount(amount, token);
+            const balance = helpers.toBN(iseth ?
+                await helpers.getProvider().getBalance(account) :
+                await common.getBalance(account, token)
+            );
+            if (balance.lt(1e8)) {
+                throw 'balance too small';
+            }
+            if (amount.gt(balance)) {
+                amount = balance;
+            }
+            debug('ENSURE:', token, amount);
+        }
         //
         const maps = { account, amount };
         res = await process(strategy, maps, res, args.merge);
@@ -47,11 +76,13 @@ module.exports = async function (strategy, account, amount, args = { usd: true, 
             [res.auto?.calls?.length, res.auto?.call?.tx?.data?.length/2 - 1],
             res.ran + 'ms'
         );
+        //
         if (args.test) {
             let ins = res.auto?.transfers?.ins;
             if (ins && (ins = ins.filter(e => e.tx).map(e => [e.tx.to, e.tx.data, e.custom]))) {
                 const approved = ins.length === 0;
                 debug('TEST.IN:', res.auto?.transfers?.ins, res.auto?.call?.tx?.value);
+                //
                 try {
                     const con = res.auto.call.contract();
                     debug.apply(null, ['TEST.SUCESS:'].concat(
