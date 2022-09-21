@@ -29,7 +29,7 @@ const lendings = [
             getBalanceView('__account__', '__token__'),
             View.PASS
         )),
-        approve: approve('__debttoken__', '__aggregator__', '__available__', 'approveDelegation', 'borrowAllowance'),
+        approve: approve('__debttoken__', '__aggregator__', '__borrowable__', 'approveDelegation', 'borrowAllowance'),
         borrow: new Call(null, 'borrow(address,uint256,uint256,uint16,address)', ['__token__', '__amount__', '1', '0', '__user__'], '__eth__', { title: 'Borrow from reserves', params: ['Asset address', 'Amount', 'Interest rate mode', 'Referal code', 'On behalf of'], editable: 1, gas: '305000' }, new Check(
             getBalanceView('__account__', '__token__'),
             View.PASS
@@ -109,7 +109,7 @@ const lendings = [
             outputtoken: temp=new View('getReserveData(address)', ['__token__'], '(uint256),uint128,uint128,uint128,uint128,uint40,address,address,address,uint8', 6),
             debttoken: temp.update({}, 7)
         },
-        approve: approve('__debttoken__', '__aggregator__', '__available__', 'approveDelegation', 'borrowAllowance'),
+        approve: approve('__debttoken__', '__aggregator__', '__borrowable__', 'approveDelegation', 'borrowAllowance'),
         deposit: new Call(null, 'deposit(address,uint256,address,uint16)', ['__token__', '__amount__', '__user__', '0'], '0', { title: 'Deposit to lending pool', params: ['Asset address', 'Asset amount', 'On behalf of', 'Referral code'], editable: 1, gas: '225000' }, new Check(
             getBalanceView('__account__', '__token__'),
             View.PASS
@@ -150,8 +150,8 @@ const lendings = [
         ],
         sanity: {
             deposit: new View('mintGuardianPaused(address)', ['__target__'], 'bool', -1, '__ctrl__'),
-            borrow: new View('borrowGuardianPaused(address)', ['__target__'], 'bool', -1, '__ctrl__'),
-            repay: new View('repayBorrowAllowed(address)', ['__target__'], 'bool', -1, '__ctrl__')
+            borrow: new View('borrowGuardianPaused(address)', ['__target__'], 'bool', -1, '__ctrl__')
+            //repay: new View('repayBorrowAllowed(address)', ['__target__'], 'bool', -1, '__ctrl__')
         },
         delegate: false,
         url: 'https://github.com/compound-finance/compound-protocol',
@@ -166,25 +166,24 @@ const lendings = [
                     maps.ctrl = maps.target;
                     // target not a cntoken
                     const apiGetPools = async (tokens = [], res = null) =>
-                    (res = (await axios({ url: this.poolsApi + maps.target, responseType: 'json' })).data) &&
-                    (res = res?.['lendings']?.['reserves_list'] ?? []) &&
-                    tokens.map(
-                        token =>
-                        (token = res[ ((token = token.toLowerCase()) == getAddress('token.eth')) ? A0 : token ]) &&
-                        (token = token['cToken'] ?? token['vToken'] ?? token['token'] ?? token)
-                    ) || new Array(tokens.length).fill(A0);
+                        (res = (await axios({ url: this.poolsApi + maps.target, responseType: 'json' })).data) &&
+                        (res = res?.['lendings']?.['reserves_list'] ?? []) &&
+                        tokens.map(
+                            token =>
+                            (token = res[ ((token = token.toLowerCase()) == getAddress('token.eth')) ? A0 : token ]) &&
+                            (token = token['cToken'] ?? token['vToken'] ?? token['token'] ?? token)
+                        ) || new Array(tokens.length).fill(A0);
                     //
-                    const tokens = [maps.itoken ?? maps.tokens?.[0] ?? maps.token, maps.otoken ?? maps.tokens?.[1] ?? maps.token];
-                    //!maps.targets && ();
-                    maps.targets = await apiGetPools(tokens);
+                    const tokens = [maps.tokens?.[0] ?? maps.token, maps.tokens?.[1] ?? maps.token];
+                    !maps.targets && (maps.targets = await apiGetPools(tokens));
                     //
                     const def = {
                         ...this,
                         ...isEth(maps.token ?? maps.tokens[0]) && this.ether,
                         // !prone to error!
-                        target: maps.targets[tokens.indexOf(maps.token)],
+                        target: maps.targets[tokens.indexOf(maps.token)] ?? maps.targets[0],
+                        otarget: maps.targets[1] ?? maps.targets[0],
                         itarget: maps.targets[0],
-                        otarget: maps.targets[1],
                         //targets: maps.targets
                     };
                     Object.entries({

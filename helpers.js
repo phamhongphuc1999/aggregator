@@ -145,10 +145,14 @@ export async function findContract (target, action = '', maps = {}, mapNames = [
                     }
                 })
             );
-            //
+            // update
             setMaps(fetchs);
             //
-            debug('find', key, def.title, setMaps.count, str(fetchs));
+            await Promise.all(
+                Object.entries(def.sanity ?? {}).map(e => e)
+            );
+            //
+            debug('find', key, def.title, setMaps.count, str(fetchs), def.target);
             maps.detect = detect;
             return (state.cache.def[key] = { ...def, ...fetchs, detect });
         } catch (err) {
@@ -326,7 +330,9 @@ export function subSlippage(num, pn = 0.0, maps = {}) {
         .div(1e4);
 };
 
-//export function cutAmount (num, pct = 0.0) { return toBN(num).mul(toBN(parseInt((1.0 - pct) * 10000))).div(toBN(10).pow(4)) };
+export function cutAmount (num, pct = 0.0) {
+    return toBN(num).mul(toBN(parseInt((1.0 - pct) * 10000))).div(toBN(10).pow(4))
+};
 
 // Calculate LP balance
 export async function lpAmount (pair, amounts, auto = false) {

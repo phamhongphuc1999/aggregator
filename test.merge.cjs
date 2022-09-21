@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+/**
+ * Test combined strategies
+ */
+
+//
 const files = {
     "0x0000000000000000000000000000000000000000": "0",
     "0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c": "wbnb",
@@ -12,6 +17,7 @@ const files = {
     "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82": "cake",
     "0xcf6bb5389c92bdda8a3747ddb454cb7a64626c63": "xvs"
 };
+//
 const args = process.argv.slice(2);
 const infile = 'cache/testIds.json';
 const outfile = 'cache/testIda.json';
@@ -37,23 +43,26 @@ async function merge(files) {
     return JSON.stringify(obj, null, "\t");
 };
 
-async function all(files, infile) {
+async function all(files, infile, params = null) {
     //
     const test_all = require('./test.all.cjs');
     for (const token in files) {
         fs.writeFileSync(files[token], token);
-        const out = await test_all([token], infile, { autoonly: true });
+        const out = await test_all([token], infile, params);
         fs.writeFileSync(files[token], '[' + out.join(',') + ']');
     }
 };
 
 if (args.includes('-m')) {
     //
+    console.error('Merging:');
     merge(files).then(
     	out => (outfile ? fs.writeFileSync(outfile, out) : console.log(out))
     );
 } else if (args.includes('-a')) {
     //
+    console.error('ProcessAll:');
+    //{ autoonly: true }
     all(files, args.includes('-o') ? outfile : infile).then(
         out => console.log(out)
 	);

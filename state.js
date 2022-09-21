@@ -66,7 +66,8 @@ export default Object.seal({
         findCache: false,
         autoSlippage: true,
         autoSlippageActions: ['swaps', 'providinglps'],
-        transferOuts: false
+        transferOuts: false,
+        customApproveAdd: 0.002
     }),
     timeout: Object.seal({
         process: 40,

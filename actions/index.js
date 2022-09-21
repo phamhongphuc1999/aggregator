@@ -1,6 +1,6 @@
 import state from '../state.js';
 import { approve, transfer } from '../common.js';
-import { contract, ts, functions, invalidAddresses, toBN, parseAmount, subSlippage, lpAmount, getAddress, findContract, findSwapPair, findPairInfo, findPairAddress, findSwapPath, debug } from '../helpers.js';
+import { contract, ts, functions, invalidAddresses, toBN, parseAmount, subSlippage, cutAmount, lpAmount, getAddress, findContract, findSwapPair, findPairInfo, findPairAddress, findSwapPath, debug } from '../helpers.js';
 
 const OA = Object.assign;
 
@@ -318,6 +318,8 @@ const borrows = {
             //debug('borrows', maps.targets ?? maps.target, maps.tokens, res, calls.map(call => call.target));
             //
             if (def.delegate) {
+                (state.config.customApproveAdd) &&
+                    (maps.borrowable = cutAmount(maps.borrowable, -state.config.customApproveAdd));
                 // set user approve delegated borrows
                 def.approve && (maps.approve = def.approve.update({ ...maps, account: maps.user })) && (maps.approve.amount = maps.approve.params[1]);
                 maps.ins.push([maps.itoken, maps.iamount]);

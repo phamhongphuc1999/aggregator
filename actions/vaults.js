@@ -24,6 +24,7 @@ const vaults = [
         )),
         redeem: new Call(null, 'redeem(address,uint256)', ['__account__', '__amount__'], '0', { title: 'Redeem', params: ['Receiver', 'Amount'], editable: 1, gas: '100000' })
     },
+/*
     {
         id: '766a9d887b464cd0960b1fc4aab211d3',
         title: 'Olympus compatible',
@@ -42,6 +43,7 @@ const vaults = [
         )),
         redeem: new Call(null, 'unstake(address,uint256,bool)', ['__account__', '__amount__', false], '0', { title: 'Unstake', params: ['Receiver', 'Amount', 'Trigger rebasing'], editable: 1, gas: '100000' })
     },
+*/
     {
         id: 'cd7907a180b14082850be75bac891857',
         title: 'Pancake CAKE compatible',
@@ -103,7 +105,7 @@ const vaults = [
         redeem: new Call(null, 'withdraw(uint256)', ['__balance__'], '0', { title: 'Withdraw token', params: ['Share amount'], editable: 0, gas: '100000' }, new Check(
             new View(),
             View.INCREASE,
-            '____'
+            '__balance__'
         ))
     },
 /*

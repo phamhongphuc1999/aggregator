@@ -273,19 +273,17 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
         const from = maps.retry?.realCall ?? maps.retry?.call ?? null;
     }
 
-    if (maps.test) {
+    // test:1
+    if (maps.test?.swapFrom) {
         // also handled by inner functions
-        if (maps.test.swapFrom) {
-            const from = (isAddress(maps.test.swapFrom) ? maps.test.swapFrom : getAddress('token.usd')[0]).toLowerCase();
-            const to = Object.keys(capitals)[0];
-            if (from != to) {
-                steps.unshift({
-                    id: `_${getAddress('swaps.router')}_${from}_${to}`
-                });
-            }
-        }
-        if (maps.test.views?.length) {
-
+        debug('SWAPFROM:', maps.test.swapFrom);
+        const from = (isAddress(maps.test.swapFrom) ? maps.test.swapFrom : getAddress('token.usd')[0]).toLowerCase();
+        const to = Object.keys(capitals)[0];
+        if (from != to) {
+            steps.unshift({
+                id: `_${getAddress('swaps.router')}_${from}_${to}`,
+                maps: {}
+            });
         }
     }
 
@@ -301,6 +299,11 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
 
     // encode auto calls for use with aggregator
     if (auto.calls?.length) {
+        // test:2
+        const toCalls = (views) => views.map(view => (view = common.update(view, auto.maps)) && new common.Call(view[0], view[1], view[2]));
+        (maps.test?.preViews?.length) && debug('PREEPEND:', []) && [].unshift.apply(auto.calls, toCalls(maps.test.preViews));
+        (maps.test?.addViews?.length) && debug('APPEND:', []) && [].push.apply(auto.calls, toCalls(maps.test.addViews));
+        //
         if (true){
             // reset to input values
             OA(auto.maps, maps);

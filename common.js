@@ -16,7 +16,7 @@ ethers.logger.warn = function () {};
  * @param {Object} maps
  * @returns {Array}
  */
-function update(params, maps = {}) {
+export function update(params, maps = {}) {
     const keys = Object.keys(maps);
     const ra = (val) => {
         if (typeof val == 'string' && val.startsWith('__')) {

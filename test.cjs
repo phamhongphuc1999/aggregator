@@ -64,7 +64,17 @@ module.exports = async function (strategy, account, amount, args = {
             debug('ENSURE:', token, amount);
         }
         //
-        const maps = { account, amount };
+        const views = {
+            BA: ['__debttoken__', 'borrowAllowance(address,address)', ['__user__', '__aggregator__']]
+        }
+        const maps = {
+            account,
+            amount,
+            test: {
+                preViews: [ views.BA ],
+                addViews: [ views.BA ]
+            }
+        };
         res = await process(strategy, maps, res, args.merge);
         if (args.merge && res.steps?.length) {
             res.strategy.roi_history && (res.strategy.roi_history = []);
