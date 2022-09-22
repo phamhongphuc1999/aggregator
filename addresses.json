@@ -1,6 +1,6 @@
 {
 	"1": {
-		"aggregator": "0xfb4392e3431b9cc820362ad2b6a3fda4f8a7712d",
+		"aggregator": "0x1ae4ab57647b87eacea8a598ccf2d5c239f7fd3b",
 		"swaps.router": "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
 		"swaps.factory": "0x5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f",
 		"swaps.fee": "3",
@@ -18,7 +18,7 @@
 	},
 	"56": {
 		"": "0x0000000000000000000000000000000000000000",
-		"aggregator": "0x1ae4ab57647b87eacea8a598ccf2d5c239f7fd3b",
+		"aggregator": "0x61ecda42512bb9cb26a2d971b62d4ce8d119ebc1",
 		"aggregator_old": "0x308d85243bbc67cd3d595f0b4fe4a5af473bce50",
 		"swaps.router": "0x10ed43c718714eb63d5aa57b78b54704e256024e",
 		"swaps.factory": "0xca143ce32fe78f1f7019d7d551a6402fc5350c73",

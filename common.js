@@ -213,11 +213,12 @@ View.prototype = Object.freeze({
      * @param {Object} maps
      * @return any
      */
-    async get(maps = {}, target = this.target, detect = false) {
+    async get(maps = {}, target = null, detect = false) {
         //const ms = Date.now();
         if (!this.method) {
             return null;
         }
+        !target && (target = update([this.target], maps).pop());
         const con = this.contract(target).callStatic;
         const params = update(this.params ?? [], maps ?? {});
         let res = null;
@@ -229,7 +230,7 @@ View.prototype = Object.freeze({
             detect && debug('view', 'HIT', target, this.name());
         } catch (err) {
             if (!maps) { throw err; }
-            !detect && debug('!view', err.code, target, this.name(), params, this.index, err.stack);
+            !detect && debug('!view', err.code, target, this.name(), params, this.index, state.config.debugExtra ? err.stack : '');
         }
         return res;
     },

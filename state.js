@@ -13,6 +13,7 @@ export default Object.seal({
     config: Object.seal({
         debug: true,
         debugExtra: true,
+        enforceAmountValue: null,
         priceAPI: {
             enabled: false,
             base: 'https://api.coingecko.com/api/v3',
@@ -23,7 +24,6 @@ export default Object.seal({
             to: 'usd'
         },
         baseAPI: 'https://scoringapi.trava.finance/aggregator',
-        // allow calls generation to be async
         enableAsync: false,
         optimizeSwaps: false,
         optimizeLPs: true,
@@ -58,16 +58,18 @@ export default Object.seal({
                 'autoAdj': 0.0
             }
         },
-        //
-        fixedGasEthLeft: '1000000000000000',
+        fixedGasEthLeft: '500000000000000000',
         gasDefault: '21000',
         gasEstimate: true,
         gasEstimateUSD: true,
         findCache: false,
         autoSlippage: true,
         autoSlippageActions: ['swaps', 'providinglps'],
-        transferOuts: false,
-        customApproveAdd: 0.002
+        autoApproveAdd: 0.0,
+        customApproveAdd: 0.002,
+        noTransferOuts: false,
+        noAutoExpects: true,
+        includeBlacklist: true
     }),
     timeout: Object.seal({
         process: 40,

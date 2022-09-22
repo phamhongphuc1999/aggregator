@@ -149,9 +149,9 @@ const lendings = [
             //new View('vTokenMetadataAll(address[])', [[]], 'bytes32')
         ],
         sanity: {
-            deposit: new View('mintGuardianPaused(address)', ['__target__'], 'bool', -1, '__ctrl__'),
-            borrow: new View('borrowGuardianPaused(address)', ['__target__'], 'bool', -1, '__ctrl__')
-            //repay: new View('repayBorrowAllowed(address)', ['__target__'], 'bool', -1, '__ctrl__')
+            deposit: new View('mintGuardianPaused(address)', ['__target__'], 'bool', -1, '__controller__'),
+            borrow: new View('borrowGuardianPaused(address)', ['__target__'], 'bool', -1, '__controller__')
+            //repay: new View('repayBorrowAllowed(address)', ['__target__'], 'bool', -1, '__controller__')
         },
         delegate: false,
         url: 'https://github.com/compound-finance/compound-protocol',
@@ -161,19 +161,17 @@ const lendings = [
         ref: async function (maps = {}, index = -1) {
             // find target by our own api
             const isEth = (address) => invalidAddresses.concat([getAddress('token.eth')]).includes(address.toLowerCase())
+            const apiGetPools = async (tokens = [], res = null) =>
+            (res = (await axios({ url: this.poolsApi + maps.target, responseType: 'json' })).data) &&
+            (res = res?.['lendings']?.['reserves_list'] ?? []) &&
+            tokens.map(
+                token =>
+                (token = res[ ((token = token.toLowerCase()) == getAddress('token.eth')) ? A0 : token ]) &&
+                (token = token['cToken'] ?? token['vToken'] ?? token['token'] ?? token)
+            ) || new Array(tokens.length).fill(A0);
             try {
                 if (index > 1) {
-                    maps.ctrl = maps.target;
-                    // target not a cntoken
-                    const apiGetPools = async (tokens = [], res = null) =>
-                        (res = (await axios({ url: this.poolsApi + maps.target, responseType: 'json' })).data) &&
-                        (res = res?.['lendings']?.['reserves_list'] ?? []) &&
-                        tokens.map(
-                            token =>
-                            (token = res[ ((token = token.toLowerCase()) == getAddress('token.eth')) ? A0 : token ]) &&
-                            (token = token['cToken'] ?? token['vToken'] ?? token['token'] ?? token)
-                        ) || new Array(tokens.length).fill(A0);
-                    //
+                    // target not a ctoken, is comptroller
                     const tokens = [maps.tokens?.[0] ?? maps.token, maps.tokens?.[1] ?? maps.token];
                     !maps.targets && (maps.targets = await apiGetPools(tokens));
                     //
@@ -186,14 +184,15 @@ const lendings = [
                         itarget: maps.targets[0],
                         //targets: maps.targets
                     };
+                    //
+                    def.controller = maps.controller = maps.target
+                    //
                     Object.entries({
                         'deposit': 0,
                         'redeem': 0,
                         'borrow': 1,
                         'repay': 1
-                    }).forEach(([name, index]) => {
-                        def[name] = def[name].update({ target: maps.targets[index] });
-                    });
+                    }).forEach(([name, index]) => (def[name] = def[name].update({ target: maps.targets[index] })));
                     // no delegate for borrowss
                     (maps.action === 'borrows' || maps.targets[0] != maps.targets[1]) && (def.delegate = false);
                     debug('ref', 'found', str([def.target].concat(maps.targets)), [index, def.delegate]);
@@ -244,10 +243,10 @@ const lendings = [
                     try {
                         // check eth pool
                         //[maps.itoken, maps.otoken] = await Promise.all([maps.itarget, maps.otarget].map(target => con.attach(target).underlying()));
-                        const ctrl = con.attach(maps.ctrl = await con.comptroller());
+                        const controller = con.attach(maps.controller = await con.comptroller());
                         //const bbr = await con.borrowRatePerBlock();
-                        const oracle = con.attach(maps.oracle = await ctrl.oracle());
-                        const [{ 1:icollateralfactor }, { 1:totalliquidity }, iprice, oprice, idecimals, odecimals] = await Promise.all([ctrl.markets(maps.itarget), ctrl.getAccountLiquidity(maps.account), oracle.getUnderlyingPrice(maps.itarget), oracle.getUnderlyingPrice(maps.otarget), getDecimals(maps.itoken), getDecimals(maps.otoken)]);
+                        const oracle = con.attach(maps.oracle = await controller.oracle());
+                        const [{ 1:icollateralfactor }, { 1:totalliquidity }, iprice, oprice, idecimals, odecimals] = await Promise.all([controller.markets(maps.itarget), controller.getAccountLiquidity(maps.account), oracle.getUnderlyingPrice(maps.itarget), oracle.getUnderlyingPrice(maps.otarget), getDecimals(maps.itoken), getDecimals(maps.otoken)]);
                         // price: x decimals, liquidity: always 18 decimals and in USD
                         maps.available = res[0] = toBN(
                                 state.config.existingLiquidity ?
@@ -263,7 +262,7 @@ const lendings = [
                             .mul(BASE18).div(oprice)
                             .mul(BASE18).div(toPow(odecimals));
                         maps.borrowable = res[1] = subSlippage(res[2], maps.action ?? 'borrows', maps.auto);
-                        //await ctrl.callStatic.borrowAllowed(maps.otarget, maps.user ?? maps.account, borrowable);
+                        //await controller.callStatic.borrowAllowed(maps.otarget, maps.user ?? maps.account, borrowable);
                         debug('available', str(maps.amount), str([maps.itoken, maps.otoken]), str([iprice, oprice]), str(res));
                     } catch (err) {
                         debug('!available', maps, err.stack);

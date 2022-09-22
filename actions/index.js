@@ -25,7 +25,7 @@ const swaps = {
     calls: async function (id, maps = {}, parent = {}, auto = false) {
         debug('swaps', id);
         //
-        const funcs = await functions('swaps');
+        const def = await functions('swaps');
         const callTypes = ['call', 'calle2', 'call2e'];
         const calls = [];
         [maps.chain, maps.target, ...maps.tokens] = id.split('_');
@@ -38,16 +38,23 @@ const swaps = {
         //
         !isEth(maps.token) &&
             calls.push(approve().update(maps));
-        calls.push(funcs[callTypes[maps.tokens.indexOf(invalidAddresses[0]) + 1]].update(maps));
+        calls.push(def[callTypes[maps.tokens.indexOf(invalidAddresses[0]) + 1]].update(maps));
         //
         setAmount(maps);
+        //
+        if (def.delegate) {
+            maps.outs.push(maps.token);
+            (def.delegate == 'transfer') && maps.outs.push(maps.otoken);
+        } else if (auto) {
+            return null;
+        }
         return calls;
     },
     auto: function (id, maps = {}, parent = {}) {
         return state.config.optimizeSwaps ? (async () => {
             debug('swaps', 'auto', id);
             //
-            const funcs = await functions('swaps');
+            const def = await functions('swaps');
             const calls = [];
             [maps.chain, maps.target, ...maps.tokens] = id.split('_');
             [maps.token, maps.otoken] = maps.tokens;
@@ -64,10 +71,17 @@ const swaps = {
                 (token0s[i].toLowerCase() == path[i]) && maps.amounts.reverse();
                 [maps.target, maps.itoken, maps.otoken] = [pairs[i], path[i_], path[i]];
                 //
-                [].push.apply(calls, funcs.auto.map(call => call.update(maps)));
+                [].push.apply(calls, def.auto.map(call => call.update(maps)));
             }
             //
             setAmount(maps);
+            //
+            if (def.delegate) {
+                maps.outs.push(maps.token);
+                (def.delegate == 'transfer') && maps.outs.push(maps.otoken);
+            } else {
+                return null;
+            }
             return calls;
         })() : swaps.calls(id, maps, parent, true);
     }
@@ -78,7 +92,7 @@ const providinglps = {
     abis: [],
     calls: async function (id, maps = {}, parent = {}, auto = false) {
         debug('providinglps', id);
-        const funcs = await functions('providinglps');
+        const def = await functions('providinglps');
         const calls = [];
         // first half are almost same as auto calls
         [maps.chain, maps.target, ...maps.tokens] = id.split('_');
@@ -130,7 +144,7 @@ const providinglps = {
                 calls.push(approve(token).update(OA(maps, { amount: maps.amounts[i] }))) &&
                 (maps.token = token)
         });
-        calls.push(funcs[ maps.eth !== '0' ? 'calle' : 'call' ].update(maps))
+        calls.push(def[ maps.eth !== '0' ? 'calle' : 'call' ].update(maps))
         //
         setAmount(maps);
         return calls;
@@ -203,6 +217,8 @@ const wraps = {
         //
         maps.amount = await parseAmount(maps.amount, maps.token);
         //if (maps.target != getAddress('token.eth')) throw 'noimpl';
+        if (def.delegate) (def.delegate == 'transfer') && maps.outs.push(maps.target);
+        else return null;
         return [
             funcs[maps.token == maps.target ? 'unwrap' : 'call'].update(maps)
         ];
@@ -223,7 +239,7 @@ const vaults = {
         //
         const def = await findContract(maps.target, 'vaults', maps, ['target', 'token', 'deposittoken', 'outputtoken']);
         if (def) {
-            const { deposit:call } = def;
+            let { deposit:call } = def;
             maps.amount = await parseAmount(maps.amount, maps.token);
             //
             if (true) {
@@ -234,23 +250,24 @@ const vaults = {
             isEth(maps.token) ?
                 (maps.eth = maps.amount) :
                 calls.push(approve().update(maps));
-            calls.push(call.update(maps));
             //
             maps.ins.push([maps.token, maps.amount]);
-            if (auto) {
-                if (!def.delegate) {
-                    return null;
+            if (def.delegate) {
+                !maps.otoken && (maps.otoken = maps.outputtoken ?? def.outputtoken ?? def.otoken ?? def.token1);
+                if (def.delegate == 'transfer') {
+                    //calls.push(transfer(maps.otoken, maps.user, maps.oamount));
+                    maps.outs.push([maps.otoken, maps.oamount ?? '0']);
+                } else if (maps.lastStep) {
+                    // aggregator -> address
+                    call = call.update({ account: maps.user });
+                } else {
+                    throw 'notimpl';
                 }
-                (maps.otoken = def.outputtoken ?? def.otoken ?? def.token1) && maps.outs.push([maps.otoken, maps.oamount]);
-                if (maps.lastStep) {
-                    if (def.delegate == 'transfer') {
-                        calls.push(transfer(maps.otoken, maps.user, maps.oamount));
-                    } else {
-                        // replace aggregator with user address
-                        calls[calls.length-1] = call.update({...maps, account: maps.user});
-                    }
-                }
+            } else if (auto) {
+                return null;
             }
+            //
+            calls.push(call.update(maps));
         }
         setAmount(maps, maps.amount);
         return calls;
@@ -264,7 +281,7 @@ const vaults = {
 const lendings = {
     abis: [],
     find: true,
-    mapNames: ['target', 'itarget', 'otarget', 'token', 'deposittoken', 'outputtoken', 'debttoken'],
+    mapNames: ['target', 'controller', 'itarget', 'otarget', 'token', 'deposittoken', 'outputtoken', 'debttoken'],
     calls: async function (id, maps = {}, parent = {}, auto = false) {
         debug('lendings', id);
         const calls = [];
@@ -323,7 +340,12 @@ const borrows = {
                 // set user approve delegated borrows
                 def.approve && (maps.approve = def.approve.update({ ...maps, account: maps.user })) && (maps.approve.amount = maps.approve.params[1]);
                 maps.ins.push([maps.itoken, maps.iamount]);
-                maps.outs.push([maps.debttoken ?? maps.otoken, '0']);
+                if (def.delegate == 'transfer') {
+                    maps.outs.push([maps.debttoken ?? maps.otoken, '0']);
+                }
+                if (true) {
+                    maps.outs.push([maps.token]);
+                }
             } else if (auto) {
                 return null;
             }

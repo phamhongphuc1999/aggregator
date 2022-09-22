@@ -67,6 +67,7 @@ contract DefiAggregator is Context {
     bytes4 constant internal TRANSFER_SIG = 0xa9059cbb;
     bytes4 constant internal TRANSFERFROM_SIG = 0x23b872dd;
     bytes4 constant internal PERMIT_SIG = 0xd505accf;
+    bytes4 constant internal BALANCEOF_SIG = 0x70a08231;
     bytes4 constant internal SPECIAL_SIG = 0xafffffff;
 
     /* VARIABLES */
@@ -77,9 +78,12 @@ contract DefiAggregator is Context {
 
     bool internal guard;
 
+/*
     function initialize() external {
+        require(owner == address(0));
         owner = _msgSender();
     }
+*/
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -107,10 +111,6 @@ contract DefiAggregator is Context {
         require(!guard && tx.origin == _msgSender(), "Aggregate: guarded");
         guard = true;
         _;
-        // may yield
-        if (balance(address(this)) != 0) {
-            _eth(_msgSender(), balance(address(this)));
-        }
         // final
         guard = false;
     }
@@ -126,10 +126,10 @@ contract DefiAggregator is Context {
      * Main aggregator proxy support
      * Issues:
      */
-    function aggregate(Call[] calldata calls, Transfer[] calldata ins, Expectation memory expect) public payable guarded returns (uint256 blockNumber, bytes[] memory results) {
+    function aggregate(Call[] calldata calls, Transfer[] calldata ins, address[] calldata outs, Expectation[] memory expects) public payable guarded returns (uint256 blockNumber, bytes[] memory results) {
         uint256 gas = gasleft();
 
-        require(ins.length != 0 && calls.length != 0, "Aggregate: no capitals or calls");
+        require(ins.length != 0 && calls.length != 0, "Aggregate: empty");
 
 /*
         if (verity) {
@@ -144,15 +144,15 @@ contract DefiAggregator is Context {
         }
 */
 
-        results = new bytes[](calls.length + 1);
+        results = new bytes[](calls.length + expects.length);
 
-        if (expect.call.target != address(0)) {
-            if (expect.expecting == Expecting.INCREASE || expect.expecting == Expecting.DECREASE) {
-                (, blockNumber, ) = _staticcall(expect.call, expect.vpos);
+        if (expects.length != 0) {
+            if (expects[0].expecting == Expecting.INCREASE || expects[0].expecting == Expecting.DECREASE) {
+                (, blockNumber, ) = _staticcall(expects[0].call, expects[0].vpos);
             }
         }
 
-        _transfers(ins);
+        _transferIns(ins);
 
         uint256 i;
         for(; i != calls.length; i++) {
@@ -178,15 +178,15 @@ contract DefiAggregator is Context {
             results[i] = _call(call.target, data, call.eth, i);
         }
 
-        if (expect.call.target != address(0)) {
+        if (expects.length != 0) {
             // Expecting handling, only one needed
             bool success;
             uint256 value;
-            (success, value, results[++i]) = _staticcall(expect.call, expect.vpos);
-            _expect(expect.expecting, expect.value, success, value, blockNumber);
+            (success, value, results[i + 1]) = _staticcall(expects[0].call, expects[0].vpos);
+            _expect(expects[0].expecting, expects[0].value, success, value, blockNumber);
         }
 
-        //_transferOuts(outs);
+        _transferOuts(outs);
 
         blockNumber = block.number;
         emit Aggregated(_msgSender(), gas - gasleft());
@@ -308,9 +308,11 @@ contract DefiAggregator is Context {
     /**
      * transfer helper
      */
+/*
     function _transfer(address token, address to, uint256 amount) internal returns (bool) {
         return IERC20(token).transfer(to, (amount == 0) ? IERC20(token).balanceOf(address(this)) : amount);
     }
+*/
 
     /**
      * send eth helper
@@ -348,16 +350,16 @@ contract DefiAggregator is Context {
     /**
      * capitals / token outs transfer helper
      */
-    function _transfers(Transfer[] calldata transfers) internal {
+    function _transferIns(Transfer[] calldata transfers) internal {
         for (uint256 i; i != transfers.length; i++) {
-            uint256 amount = transfers[i].amount;
+            (address asset, uint256 amount) = (transfers[i].asset, transfers[i].amount);
             bool success;
             bytes memory ret;
-            if (transfers[i].asset == address(0)) {
+            if (asset == address(0)) {
                 success = msg.value == amount;
                 ret = "not enough eth";
             } else {
-                (success, ret) = transfers[i].asset.call(abi.encodePacked(
+                (success, ret) = asset.call(abi.encodePacked(
                     TRANSFERFROM_SIG,
                     abi.encode(_msgSender(), address(this), amount)
                 ));
@@ -367,18 +369,29 @@ contract DefiAggregator is Context {
                         success := mload(add(ret, 32))
                     }
                 }
-/*
-                try IERC20(transfers[i].asset).transferFrom(_msgSender(), address(this), amount) returns (bool ok) {
-                    success = ok;
-                } catch Error(string memory ok) {
-                    ret = bytes(ok);
-                } catch (bytes memory ok) {
-                    ret = ok;
-                }
-*/
             }
-            //_require(success, out ? "TransferOut" : "TransferIn", i, ret);
             _require(success, "TransferIn", amount, ret);
+        }
+    }
+
+    function _transferOuts(address[] calldata assets) internal {
+        for (uint256 i; i != assets.length; i++) {
+            if (assets[i] == address(0)) {
+                uint256 amount = balance(address(this));
+                if (amount != 0) {
+                    _eth(_msgSender(), amount);
+                }
+            } else {
+                (, uint256 amount, ) = _staticcall(Call(assets[i], abi.encodePacked(BALANCEOF_SIG, address(this)), 0), 0);
+                //IERC20(assets[i]).balanceOf(address(this));
+                if (amount != 0) {
+                    (bool success, bytes memory ret) = assets[i].call(abi.encodePacked(
+                        TRANSFER_SIG,
+                        abi.encode(address(this), _msgSender(), amount)
+                    ));
+                    _require(success, "TransferOut", i, ret);
+                }
+            }
         }
     }
 

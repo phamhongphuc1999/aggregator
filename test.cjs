@@ -14,7 +14,9 @@ module.exports = async function (strategy, account, amount, args = {
     autoonly: false,
     testonly: false,
     error: null,
-    serialize: true
+    serialize: true,
+    debug: true,
+    steps: null
 }) {
     // keep module instance
     const { process, debug, processError, autoAvailability, getStrategy, helpers, common, serialize, state } =
@@ -47,6 +49,8 @@ module.exports = async function (strategy, account, amount, args = {
         //price(addresses[0], helpers.contract(helpers.getAddress('swaps.factory'), 'swaps'), helpers.getAddress('token.usd'), true)
         (args.usd) && (amount = (amount / await helpers.getPrice(capitals[0])).toFixed(8));
         //
+        //amount = '0.5';
+        //
         if (args.ensuretest) {
             const token = capitals[0];
             const iseth = helpers.invalidAddresses.includes(token);
@@ -65,17 +69,20 @@ module.exports = async function (strategy, account, amount, args = {
         }
         //
         const views = {
+            N: ['__aggregator__', 'name()', []],
+            BO: ['__token__', 'balanceOf(address)', ['__aggregator__']],
             BA: ['__debttoken__', 'borrowAllowance(address,address)', ['__user__', '__aggregator__']]
         }
+        debug('INPUT:', account, amount);
         const maps = {
             account,
             amount,
-            test: {
-                preViews: [ views.BA ],
-                addViews: [ views.BA ]
-            }
+            test: args.debug ? {
+                //preViews: [ views.BO ],
+                //addViews: [ views.BO ]
+            } : null
         };
-        res = await process(strategy, maps, res, args.merge);
+        res = await process(strategy, maps, args.test ? false : res, args.merge);
         if (args.merge && res.steps?.length) {
             res.strategy.roi_history && (res.strategy.roi_history = []);
             res.steps.forEach(step => (step.roi_history = []));
@@ -91,7 +98,7 @@ module.exports = async function (strategy, account, amount, args = {
             let ins = res.auto?.transfers?.ins;
             if (ins && (ins = ins.filter(e => e.tx).map(e => [e.tx.to, e.tx.data, e.custom]))) {
                 const approved = ins.length === 0;
-                debug('TEST.IN:', res.auto?.transfers?.ins, res.auto?.call?.tx?.value);
+                debug('TEST.IN:', res.auto?.transfers?.ins, 'eth =', res.auto?.call?.tx?.value);
                 //
                 try {
                     const con = res.auto.call.contract();
@@ -123,11 +130,12 @@ module.exports = async function (strategy, account, amount, args = {
 
 // import.meta?.url === 'file://'+process.argv[1]
 if (process && require.main === module) {
-    const accounts = ['0x68a6c841040B05D60434d81000f523Bf6355b31D', '0x70D86bF17B30D268285eCFD204F83522797bad6C', '0x871dbce2b9923a35716e7e83ee402b535298538e']
+    const accounts = ['0x68a6c841040B05D60434d81000f523Bf6355b31D', '0x70D86bF17B30D268285eCFD204F83522797bad6C', '0x871dbce2b9923a35716e7e83ee402b535298538e', '0xFf1D8eE7aCED36DB15669833D9F3aDc94213B3d1'];
+    const aindex = 0;
     const amounts = ['1', '2', '3'];
     const args = process.argv.slice(2);
     // const amountInUSD = '1';
     // fs.readFileSync('cache/error.json')
     // single test
-    module.exports(args[0] ?? 'cache/test.json', accounts[0], args[1] ?? amounts[ Math.floor(Math.random() * amounts.length) ]).then(console.log);
+    module.exports(args[0] ?? 'cache/test.json', accounts[aindex], args[1] ?? amounts[ Math.floor(Math.random() * amounts.length) ]).then(console.log);
 }

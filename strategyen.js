@@ -13,7 +13,7 @@ import state from './state.js';
 import config from './config.js';
 
 import * as helpers from './helpers.js';
-const { ts, serialize, toBN, toPow, debug, str, functions, getAddress, getToken, parseAmount, invalidAddresses, findContract, getProvider, getPrice, axios } = helpers;
+const { ts, serialize, toBN, toPow, debug, str, IA, functions, getAddress, getToken, parseAmount, invalidAddresses, findContract, getProvider, getPrice, axios } = helpers;
 import * as common from './common.js';
 const { approve, allowance } = common;
 
@@ -40,7 +40,8 @@ export { state, config, helpers, common };
  * @param {string} id
  */
 export async function getStrategy(id, amount = state.maps.amount) {
-    return (await axios({ url: `${state.config.baseAPI}/strategies/${id}?amount=${amount}`, responseType: 'json' })).data;
+    const ib = 'includeBlacklist';
+    return (await axios({ url: `${state.config.baseAPI}/strategies/${id}?amount=${amount}&${state.config[ib] ? ib+'=1' : ''}`, responseType: 'json' })).data;
 }
 
 /**
@@ -58,7 +59,7 @@ async function allCalls (steps, funcname, maps, process = o=>o) {
         const ms = time();
         const id = (step.id ?? step.strategy_id);
         const action = (step.method ?? step.methods[0]);
-        const callprops = { action, step: i, ...(i == steps.length) && { lastStep: true } };
+        const callprops = { action, step: i, ...(i == steps.length - 1) && { lastStep: true } };
         const props = { ...step.maps, ...callprops };
         const parent = { [funcname]: true };
         //
@@ -72,6 +73,7 @@ async function allCalls (steps, funcname, maps, process = o=>o) {
     // do it sequential or in parallel
     try {
         if (state.config.enableAsync) {
+            // allow calls generation to be async
             calls = (await Promise.all(steps.map(get))).reduce((calls, items) => calls.concat(items), []);
         } else {
             let i = 0;
@@ -157,12 +159,11 @@ async function processTransfer (maps, tx, i) {
     }
     // amount update here
     res.tx = res.tx.update({...maps, amount: res.amount});
-    debug(res.custom ? 'approval' : 'capital', res.token, [res.input ?? res.tx.method, res.amount]);
+    debug(res.custom ? 'approval' : 'capital', res.token, str([res.input ?? res.tx.method, res.amount]));
     // native or token
     if (invalidAddresses.includes(res.token)) {
-        const balance = await getProvider().getBalance(maps.user);
-        if (res.amount.add(state.config.fixedGasEthLeft ?? '0').gte(balance)) {
-            throw 'Not enough eth left';
+        if (res.amount.add(state.config.fixedGasEthLeft ?? '0').gte(maps.balance = await getProvider().getBalance(maps.user))) {
+            throw 'not enough eth left';
         }
         // send eth along
         res.tx = null, maps.send = res.amount;
@@ -194,7 +195,7 @@ function formatCall (call, maps) {
             comment: call.descs?.params?.[i] ?? '',
             ...(call.descs?.editable == i) && { _value: value, editable: true }
         })),
-        ...(call.tx !== null) && { tx: call.get(maps.account, ++maps.nonce) },
+        ...(call.tx !== null) && { tx: call.get(maps.auto ? null : maps.account, ++maps.nonce) },
         descs: undefined
     });
 };
@@ -245,7 +246,7 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
     // run analysis
     const logslen = state.logs.length;
     const ms = time();
-    const transfers = {ins: [], out: []};
+    const transfers = {ins: [], outs: []};
     const capitals = strategy.strategy?.capital ?? strategy.capital ?? {};
     const steps = strategy.steps ?? [];
     const auto = {};
@@ -277,7 +278,7 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
     if (maps.test?.swapFrom) {
         // also handled by inner functions
         debug('SWAPFROM:', maps.test.swapFrom);
-        const from = (isAddress(maps.test.swapFrom) ? maps.test.swapFrom : getAddress('token.usd')[0]).toLowerCase();
+        const from = (IA(maps.test.swapFrom) ? maps.test.swapFrom : getAddress('token.usd')[0]).toLowerCase();
         const to = Object.keys(capitals)[0];
         if (from != to) {
             steps.unshift({
@@ -310,6 +311,7 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
         }
         try {
             // only last check is needed, must be a check available
+            debug('acalls', auto.calls.map(call => call?.method ?? call));
             auto.checks = [
                 auto.calls.slice().reverse().find(call => {
                     if (!call) {
@@ -326,9 +328,12 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
                 );
             }
             // transfer outs, NOT USED anymore, calls already has transfer or equivalent
-            if (state.config.transferOuts && maps.outs) {
-                transfers.outs = Object.keys(maps.outs).map(processTransfer.bind(this, auto.maps));
+            const hasOuts = !state.config.noTransferOuts && auto.maps.outs?.length;
+            if (hasOuts) {
+                //transfers.outs = Object.keys(maps.outs).map(processTransfer.bind(this, auto.maps));
             }
+            //
+            auto.maps.nonce = null;
             //
             auto.gas = await sumGas(auto.calls);
             auto.calls = auto.calls
@@ -337,28 +342,36 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
             auto.call = (await functions('aggregate')).call.update({
                 ...auto.maps,
                 target: getAddress(),
-                eth: auto.maps.send ?? "0",
+                eth: auto.maps.send ?? '0',
                 calls: auto.calls.map(call => Object.values(call.tx).slice(0,3)),
-                expects: auto.checks.map(check => check.encode()),
+                expects: state.config.noAutoExpects ? [] : auto.checks.map(check => check.encode()),
                 ins: transfers.ins.filter(tf => !tf.custom).map(tf => Object.values(tf).slice(0,2)),
-                outs: []
+                outs: hasOuts ?
+                    auto.maps.outs.map(out => out[0]).filter(token => IA(token)).filter((token, i, arr) => arr.indexOf(token) === i) :
+                    []
             });
+            debug('outs', str(auto.maps.outs));
+            //
             auto.transfers = transfers;
             auto.call.tx = auto.call.get(auto.maps.account, ++auto.maps.nonce ?? NaN);
             // final
             res.auto = auto;
         } catch (err) {
-            debug('!auto', err.message, err.stack);
+            debug('!auto', err.message ?? err, err.stack);
         }
     }
     // final calls
     if (res.calls?.length) {
         const _maps = { ...res.maps, ...addmaps };
         //
-        res.gas = await sumGas(res.calls);
-        res.calls =
-            (await Promise.all(res.calls.map(call => call.meta())))
-            .map(call => formatCall(call, _maps));
+        try {
+            res.gas = await sumGas(res.calls);
+            res.calls =
+                (await Promise.all(res.calls.map(call => call.meta())))
+                .map(call => formatCall(call, _maps));
+        } catch (err) {
+            debug('!misc:', err.message);
+        }
     }
     if (logs) {
         res.logs = state.logs.slice(logslen).map(([time, log]) => time + ': ' + log);

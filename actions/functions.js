@@ -14,7 +14,15 @@ const aggregate = {
     //
     url: 'https://github.com/TravaDataAnalysis/strategy-interface',
     title: 'Defi Aggregator',
-    call: new Call('__target__', 'aggregate((address,bytes,uint256)[],((address,bytes,uint256),uint8,uint256,uint16)[],(address,uint256)[])', ['__calls__', '__expects__', '__ins__'], '__eth__', { title: 'Execute Aggregated Calls', params: [], returns: 'uint256 block,bytes[] memory results', gas: null }),
+    call: new Call(
+        '__target__',
+        'aggregate(' +
+            ['(address,bytes,uint256)[]', '(address,uint256)[]', 'address[]', '((address,bytes,uint256),uint8,uint256,uint16)[]'].join(',') +
+        ')',
+        ['__calls__', '__ins__', '__outs__', '__expects__'],
+        '__eth__',
+        { title: 'Execute Aggregated Calls', params: [], returns: 'uint256 block,bytes[] memory results', gas: null }
+    ),
     any: new View('any((address,bytes,uint256)[])', ['__calls__'], 'uint256,bytes,uint16', 1),
     delegate: 'transfer'
 };

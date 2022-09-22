@@ -129,28 +129,37 @@ export async function findContract (target, action = '', maps = {}, mapNames = [
                     ))
             , []);
             // Sometimes target needs to be set
-            const setMaps = (obj) => mapNames.forEach(name => obj.hasOwnProperty(name) && (maps[name] = obj[name]) && setMaps.count++);
+            const setMaps = (obj) => mapNames.forEach(name => obj && obj[name] && (maps[name] = obj[name]) && setMaps.count++);
             // find fallback definitions
             [def, detect, index] = await Promise.any(checks);
             (def.ref instanceof Function) && (def = await def.ref({ ...maps, target }, index)) && setMaps(def);
             // fetch designated views
-            await Promise.all(
-                Object.entries(def.fetchs ?? {}).map(async ([name, view]) => {
-                    if (view = await Promise.any(
-                        (view.length ? view : [view])
-                        .map(view => view && view.get && view.get(maps, def.target ?? target))
-                    )) {
-                        IA(view) && (view = view.toLowerCase());
-                        fetchs[name] = view;
-                    }
-                })
-            );
+            if (def.fetchs) {
+                await Promise.all(
+                    Object.entries(def.fetchs).map(async ([name, view]) => {
+                        if (view = await Promise.any(
+                            (view.length ? view : [view])
+                            .map(view => view && view.get && view.get(maps, def.target ?? target))
+                        )) {
+                            IA(view) && (view = view.toLowerCase());
+                            fetchs[name] = view;
+                        }
+                    })
+                );
+            }
             // update
             setMaps(fetchs);
-            //
-            await Promise.all(
-                Object.entries(def.sanity ?? {}).map(e => e)
-            );
+            // break methods if sanity return true
+            if (def.sanity && maps.controller) {
+                await Promise.all(
+                    Object.entries(def.sanity).map(async ([name, view]) => {
+                        if (view && view.get && (view = await view.get(maps))) {
+                            def[name] = null;
+                            debug('!sanity', name, maps.target);
+                        }
+                    })
+                );
+            }
             //
             debug('find', key, def.title, setMaps.count, str(fetchs), def.target);
             maps.detect = detect;
@@ -185,7 +194,7 @@ const str = (a) => a.length ?
 // Parse amount
 const parseAmount = async (amount, token = null) => ethers.BigNumber.isBigNumber(amount) ? amount : ethers.utils.parseUnits('' + amount, IA(token) ? await getDecimals(token) : 18);
 
-export { ts, invalidAddresses, toBN, isBN, parseAmount, toPow, str };
+export { ts, invalidAddresses, toBN, isBN, parseAmount, toPow, IA, str };
 
 // stateful getters
 
@@ -313,8 +322,8 @@ export async function rans (get = () => null) {
 };
 
 // json helper
-export function serialize (obj) {
-    return JSON.stringify(obj, (key, value) => key.startsWith('_') ? undefined : value, "\t");
+export function serialize (obj, pretty = true) {
+    return JSON.stringify(obj, (key, value) => key.startsWith('_') ? undefined : value, pretty ? "\t" : '');
 };
 
 //
