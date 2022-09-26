@@ -12,7 +12,7 @@ export default Object.seal({
     deprecate: false,
     config: Object.seal({
         debug: true,
-        debugExtra: true,
+        debugExtra: false,
         enforceAmountValue: null,
         priceAPI: {
             enabled: false,
@@ -58,7 +58,7 @@ export default Object.seal({
                 'autoAdj': 0.0
             }
         },
-        fixedGasEthLeft: '500000000000000000',
+        //fixedGasEthLeft: '500000000000000000',
         gasDefault: '21000',
         gasEstimate: true,
         gasEstimateUSD: true,

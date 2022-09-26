@@ -17,7 +17,7 @@ const vaults = [
         fetchs: {
             deposittoken: new View('STAKED_TOKEN()', [], 'address')
         },
-        deposit: new Call(null, 'stake(address,uint256)', ['__account__', '__amount__'], '0', { title: 'Deposit token to pool', params: ['Receiver', 'Amount'], editable: 1, gas: '100000' }, new Check(
+        deposit: new Call(null, 'stake(address,uint256)', ['__account__', '__amount__'], '0', { title: 'Deposit token to pool', params: ['Receiver', 'Amount'], editable: 1, gas: '124500' }, new Check(
             getBalanceView('__account__', '__target__'),
             View.INCREASE,
             '__amount__'
@@ -137,7 +137,7 @@ const vaults = [
             outputtoken: { get: maps => maps.target },
             reward: new View('rewardToken()', [], 'address')
         },
-        deposit: new Call(null, 'create_lock_for(address,uint256,uint256,address)', ['__token__', '__amount__', '__time__', '__account__'], '0', { title: 'Lock token for voting power and rewards', params: ['Token', 'Amount', 'Lock duration', 'Receiver'], editable: 1, gas: '100000' }, new Check(
+        deposit: new Call(null, 'create_lock_for(address,uint256,uint256,address)', ['__token__', '__amount__', '__time__', '__account__'], '0', { title: 'Lock token for voting power and rewards', params: ['Token', 'Amount', 'Lock duration', 'Receiver'], editable: 1, gas: '475000' }, new Check(
             getBalanceView('__account__', '__target__'),
             View.INCREASE,
             '1'

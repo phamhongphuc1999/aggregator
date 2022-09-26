@@ -159,6 +159,7 @@ const lendings = [
         // data provided is flawed, ref() is for both correcting address and interfacing detection
         // compound need special function to determine correct target and interface
         ref: async function (maps = {}, index = -1) {
+            const def = {...this};
             // find target by our own api
             const isEth = (address) => invalidAddresses.concat([getAddress('token.eth')]).includes(address.toLowerCase())
             const apiGetPools = async (tokens = [], res = null) =>
@@ -175,39 +176,38 @@ const lendings = [
                     const tokens = [maps.tokens?.[0] ?? maps.token, maps.tokens?.[1] ?? maps.token];
                     !maps.targets && (maps.targets = await apiGetPools(tokens));
                     //
-                    const def = {
-                        ...this,
+                    Object.assign(def, {
                         ...isEth(maps.token ?? maps.tokens[0]) && this.ether,
                         // !prone to error!
                         target: maps.targets[tokens.indexOf(maps.token)] ?? maps.targets[0],
                         otarget: maps.targets[1] ?? maps.targets[0],
                         itarget: maps.targets[0],
                         //targets: maps.targets
-                    };
+                    });
                     //
                     def.controller = maps.controller = maps.target
                     //
                     Object.entries({
-                        'deposit': 0,
-                        'redeem': 0,
-                        'borrow': 1,
-                        'repay': 1
-                    }).forEach(([name, index]) => (def[name] = def[name].update({ target: maps.targets[index] })));
+                        'deposit': 'i',
+                        'redeem': 'i',
+                        'borrow': 'o',
+                        'repay': 'o'
+                    }).forEach(([name, id]) => (def[name] = def[name].update({ target: def[id+'target'] })));
                     // no delegate for borrowss
                     (maps.action === 'borrows' || maps.targets[0] != maps.targets[1]) && (def.delegate = false);
                     debug('ref', 'found', str([def.target].concat(maps.targets)), [index, def.delegate]);
-                    return def;
                 } else if (index == 1) {
                     // target is cether
                     debug('ref', 'ether', maps.target);
-                    return { ...this, ...this.ether };
+                    Object.assign(def, this.ether);
+                } else {
+                    debug('ref', 'erc20', maps.target);
                 }
             } catch(err) {
                 debug('!ref', this.title, err.message, err.stack);
             }
             // target is ctoken
-            debug('ref', 'erc20', maps.target);
-            return this;
+            return def;
         },
         fetchs: {
             deposittoken: new View('underlying()', [], 'address'),

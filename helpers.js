@@ -63,9 +63,10 @@ export function findSwapPath (router, tokens = [], amount = toBN(10000), final =
     const paths = [[], ...mtokens.map(token => [token]), mtokens.slice(0,2), mtokens.slice(0,2).reverse() ];
     //toBN(amount).eq(0) && (amount = toBN(10000));
     //swapsdk.Trade.bestTradeExactIn(apairs, new swapsdk.TokenAmount(new swapsdk.Token(), maps.amount.toHexString()), new swapsdk.Token(), { maxHops: 3, maxNumResults: 1 })[0];
-    //
+    debug('swap.path', str(tokens), paths.map(a => str(a)));
     return Promise.any(paths.map(path => [tokens[0], ...path, tokens[1]]).map(async path => {
         const amounts = await con.getAmountsOut(amount, path);
+        //if (path[0] != tokens[0] || path[path.length - 1] != tokens[1]) throw new Error('not work');
         return [path, final ? amounts[amounts.length - 1] : amounts];
     })).catch(err => {
         debug.apply(null, ['!path', router, tokens].concat(paths));
@@ -122,9 +123,10 @@ export async function findContract (target, action = '', maps = {}, mapNames = [
             // only parallel detections, only valid method checks
             const checks = def.reduce(
                 (arr, app) => arr.concat(
-                    (app.detect.length ? app.detect : [app.detect]).map((detect, i) => new Promise((resolve, reject) =>
+                    (app.detect.length ? app.detect : [app.detect])
+                    .map((detect, i) => new Promise((resolve, reject) =>
                         detect.get(maps, target, true).then(
-                            (ret) => (ret == null) ? reject('') : resolve([app, ret, i])
+                            (ret) => (ret == null) ? reject('') : resolve([{...app}, ret, i])
                         ))
                     ))
             , []);
@@ -132,7 +134,7 @@ export async function findContract (target, action = '', maps = {}, mapNames = [
             const setMaps = (obj) => mapNames.forEach(name => obj && obj[name] && (maps[name] = obj[name]) && setMaps.count++);
             // find fallback definitions
             [def, detect, index] = await Promise.any(checks);
-            (def.ref instanceof Function) && (def = await def.ref({ ...maps, target }, index)) && setMaps(def);
+            (def.ref instanceof Function) && (def = await def.ref({ ...maps, target }, index)) && (def.ref = true) && setMaps(def);
             // fetch designated views
             if (def.fetchs) {
                 await Promise.all(
@@ -165,7 +167,7 @@ export async function findContract (target, action = '', maps = {}, mapNames = [
             maps.detect = detect;
             return (state.cache.def[key] = { ...def, ...fetchs, detect });
         } catch (err) {
-            errmsg = err.stack;
+            errmsg = err.stack ?? err;
         }
         //if (!con[detect.method]) throw Error('Method not in ABI');
         //if (err.code != 'UNPREDICTABLE_GAS_LIMIT') console.error(detect, err.code);
@@ -187,9 +189,9 @@ const isBN = ethers.BigNumber.isBigNumber;
 const toPow = (n) => toBN(10).pow(n);
 //const fmUnits = ethers.utils.formatUnits;
 //const abiEncode = ethers.utils.defaultAbiCoder.encode;
-const str = (a) => a.length ?
+const str = (a, s = 0) => a.length ?
     '[' + a.map(e => (e ?? '').toString()).join(', ') + ']' :
-    (a instanceof Object ? str(Object.values(a)) : a.toString());
+    (s <= 128 && a instanceof Object ? str(Object.values(a), ++s) : a.toString());
 
 // Parse amount
 const parseAmount = async (amount, token = null) => ethers.BigNumber.isBigNumber(amount) ? amount : ethers.utils.parseUnits('' + amount, IA(token) ? await getDecimals(token) : 18);
@@ -384,7 +386,7 @@ export async function getPrice (token, tobn = false, chain = state.chainId) {
         try {
             //
             const info = await getToken(token);
-            if (isNaN(info.price)) throw '';
+            if (isNaN(info.price)) throw null;
             price = info.price;
         } catch (err) {
             //

@@ -11,7 +11,7 @@ interface IERC721 is IERC20 {
 }
 
 abstract contract Context {
-    function _msgSender() internal view virtual returns (address) {
+    function _msgSender () internal view virtual returns (address) {
         return msg.sender;
     }
 }
@@ -78,37 +78,40 @@ contract DefiAggregator is Context {
 
     bool internal guard;
 
+    bool public paused;
+
 /*
     function initialize() external {
         require(owner == address(0));
-        owner = _msgSender();
+        owner = msg.sender;
     }
 */
 
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     modifier onlyOwner {
-        require(_msgSender() == owner, "Recover: not owner");
+        require(msg.sender == owner, "!owner");
         _;
     }
 
     modifier onlyStatic() {
         // only allow static call to pass
         try this.staticCheck() {
-            revert("Aggregate: prohibited");
+            revert("prohibited");
         } catch {}
         _;
     }
 
     function staticCheck() external {
-        require(_msgSender() == address(this));
+        require(msg.sender == address(this));
         // emit a event
         emit StaticCheck();
     }
 
     modifier guarded() {
+        require(!paused, "paused");
         // only allow EOA
-        require(!guard && tx.origin == _msgSender(), "Aggregate: guarded");
+        require(!guard && msg.sender == tx.origin, "guarded");
         guard = true;
         _;
         // final
@@ -189,12 +192,13 @@ contract DefiAggregator is Context {
         _transferOuts(outs);
 
         blockNumber = block.number;
-        emit Aggregated(_msgSender(), gas - gasleft());
+        emit Aggregated(msg.sender, gas - gasleft());
     }
 
     /**
      * Stop at first success, no state saved, only parallel calls allowed
      */
+/*
     function any(Call[] calldata calls) external view returns (uint256 blockNumber, bytes memory result, uint16 index) {
         bool success;
         blockNumber = block.number;
@@ -204,6 +208,7 @@ contract DefiAggregator is Context {
         }
         revert("Any: all: rejected");
     }
+*/
 
     /**
      * Simpler multicall for views
@@ -244,7 +249,7 @@ contract DefiAggregator is Context {
         require(ecrecover(keccak256(msg.data[0 : offset]), v, r, s) == owner, "Signature: invalid");
         // do the tests
         require(time <= 3600, "Signature: expired");
-        require(user == _msgSender(), "Signature: wrong sender");
+        require(user == msg.sender, "Signature: wrong sender");
     }
 */
 
@@ -328,6 +333,10 @@ contract DefiAggregator is Context {
         if (!success) {
             success = expecting == Expecting.FAIL;
         } else {
+            assembly {
+                switch expecting
+                case 1 {}
+            }
             if (expecting == Expecting.EQUAL) {
                 success = value == eval;
             } else if (expecting == Expecting.RANGE) {
@@ -361,7 +370,7 @@ contract DefiAggregator is Context {
             } else {
                 (success, ret) = asset.call(abi.encodePacked(
                     TRANSFERFROM_SIG,
-                    abi.encode(_msgSender(), address(this), amount)
+                    abi.encode(msg.sender, address(this), amount)
                 ));
                 // Safe ERC20 standard
                 if (ret.length == 32 && success) {
@@ -376,22 +385,29 @@ contract DefiAggregator is Context {
 
     function _transferOuts(address[] calldata assets) internal {
         for (uint256 i; i != assets.length; i++) {
+            bool success;
+            bytes memory ret;
+            uint256 amount;
+            //
             if (assets[i] == address(0)) {
-                uint256 amount = balance(address(this));
+                amount = balance(address(this));
                 if (amount != 0) {
-                    _eth(_msgSender(), amount);
+                    success = _eth(msg.sender, amount);
                 }
             } else {
-                (, uint256 amount, ) = _staticcall(Call(assets[i], abi.encodePacked(BALANCEOF_SIG, address(this)), 0), 0);
-                //IERC20(assets[i]).balanceOf(address(this));
-                if (amount != 0) {
-                    (bool success, bytes memory ret) = assets[i].call(abi.encodePacked(
+                (success, amount, ) = _staticcall(Call(assets[i], abi.encodePacked(BALANCEOF_SIG, abi.encode(address(this))), 0), 0);
+                //uint256 amount = IERC20(assets[i]).balanceOf(address(this));
+                if (success && amount != 0) {
+                    (success, ret) = assets[i].call(abi.encodePacked(
                         TRANSFER_SIG,
-                        abi.encode(address(this), _msgSender(), amount)
+                        abi.encode(msg.sender, amount)
                     ));
-                    _require(success, "TransferOut", i, ret);
+                } else {
+                    // skip when balanceOf fails
+                    success = true;
                 }
             }
+            _require(success, "TransferOut", i, ret);
         }
     }
 
@@ -400,6 +416,7 @@ contract DefiAggregator is Context {
     /**
      * Get block parameters
      */
+/*
     function getBlock(uint256 number) public view returns (uint256 blockNumber, bytes32 blockHash, bytes32 lastBlockHash, uint256 timestamp, uint256 difficulty, address coinbase) {
         blockNumber = (number == 0) ? block.number : number;
         blockHash = blockhash(blockNumber);
@@ -408,6 +425,7 @@ contract DefiAggregator is Context {
         difficulty = block.difficulty;
         coinbase = block.coinbase;
     }
+*/
 
     /**
      * Get ETH balance wrapper
@@ -446,26 +464,35 @@ contract DefiAggregator is Context {
     /**
      * Transfer owner
      */
+/*
     function transferOwnership(address _owner) external onlyOwner {
         owner = _owner;
         emit OwnerAction();
     }
+*/
 
     /**
      * Prevent further usage
      * Can not be undone
      */
+/*
     function destroy(uint256 confirm) external onlyOwner {
         require(confirm == 842917232);
         emit OwnerAction();
-        selfdestruct(payable(_msgSender()));
+        selfdestruct(payable(msg.sender));
+    }
+*/
+
+    function togglePaused() external onlyOwner {
+        paused = !paused;
+        emit OwnerAction();
     }
 
     receive() external payable {
         // allow eth to be send back by, by swap router
     }
 
-    fallback() external {
+    fallback() external payable {
         // do nothing on wrong calls
         revert();
     }

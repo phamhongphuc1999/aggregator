@@ -49,7 +49,7 @@ module.exports = async function (strategy, account, amount, args = {
         //price(addresses[0], helpers.contract(helpers.getAddress('swaps.factory'), 'swaps'), helpers.getAddress('token.usd'), true)
         (args.usd) && (amount = (amount / await helpers.getPrice(capitals[0])).toFixed(8));
         //
-        //amount = '0.5';
+        //amount = '1';
         //
         if (args.ensuretest) {
             const token = capitals[0];
@@ -60,7 +60,7 @@ module.exports = async function (strategy, account, amount, args = {
                 await common.getBalance(account, token)
             );
             if (balance.lt(1e8)) {
-                throw 'balance too small';
+                throw new Error('balance too small');
             }
             if (amount.gt(balance)) {
                 amount = balance;
@@ -70,7 +70,7 @@ module.exports = async function (strategy, account, amount, args = {
         //
         const views = {
             N: ['__aggregator__', 'name()', []],
-            BO: ['__token__', 'balanceOf(address)', ['__aggregator__']],
+            BO: ['0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c', 'balanceOf(address)', ['__aggregator__']],
             BA: ['__debttoken__', 'borrowAllowance(address,address)', ['__user__', '__aggregator__']]
         }
         debug('INPUT:', account, amount);
@@ -79,7 +79,7 @@ module.exports = async function (strategy, account, amount, args = {
             amount,
             test: args.debug ? {
                 //preViews: [ views.BO ],
-                //addViews: [ views.BO ]
+                addViews: [ views.BO ]
             } : null
         };
         res = await process(strategy, maps, args.test ? false : res, args.merge);
@@ -96,17 +96,18 @@ module.exports = async function (strategy, account, amount, args = {
         //
         if (args.test) {
             let ins = res.auto?.transfers?.ins;
-            if (ins && (ins = ins.filter(e => e.tx).map(e => [e.tx.to, e.tx.data, e.custom]))) {
-                const approved = ins.length === 0;
-                debug('TEST.IN:', res.auto?.transfers?.ins, 'eth =', res.auto?.call?.tx?.value);
+            if (ins && (ins = ins.filter(call => call.tx).map(call => [call.tx.to, call.tx.data, call.custom]))) {
+                const approved = (ins.length === 0);
+                debug('TEST.IN:', (res.auto?.transfers?.ins ?? []).map(a => helpers.str(Object.values(a))), 'eth =', res.auto?.call?.tx?.value);
                 //
                 try {
                     const con = res.auto.call.contract();
-                    debug.apply(null, ['TEST.SUCESS:'].concat(
+                    //
+                    debug.apply(null, ['TESTED:'].concat(
                         id,
-                        approved ?
-                            ['auto', 'GAS => ' + (await con.estimate()).toString() + ' <=', "\n", '-> ', await con.probe(), '<-'] :
-                            ['APPROVALS', ins, 'please send approve tx and test again'],
+                        res = approved ?
+                            ['auto', 'GAS ==> ' + (await con.estimate()).toString() + ' <==', "\n", '--->', await con.probe(), '<---'] :
+                            ['APPROVALS', ins, '?', 'please send APPROVE tx and test again', '?'],
                     ));
                 } catch (err) {
                     debug('TEST.FAILED:', id, err.code === 'UNPREDICTABLE_GAS_LIMIT' ? [err.reason, err.error] : err.stack);
@@ -115,7 +116,7 @@ module.exports = async function (strategy, account, amount, args = {
         }
     } catch (err) {
         args.error = err;
-        console.error("<----\n\tERROR:", err.stack, serialize(err), "\n---->");
+        console.error("<----\n\tERROR: ", err.stack, serialize(err), "\t\n---->");
     }
     try {
         //

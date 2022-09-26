@@ -338,8 +338,11 @@ Check.prototype = Object.freeze({
      * @return array tuple
      */
     encode() {
+        if (this.view.index < 0) {
+            throw new Error('inclusive view can not be encoded');
+        }
         // view should be already updated
-        return [this.view.encode(), isFinite(this.expecting) ? this.expecting : View[this.expecting], this.value, (this.view.index == -1) ? 0 : this.view.index];
+        return [this.view.encode(), isFinite(this.expecting) ? this.expecting : View[this.expecting], this.value, this.view.index];
     }
 });
 // enum constant = nulls

@@ -1,9 +1,10 @@
 {
   "name": "@ais-ltd/strategyen",
   "repository": "git+https://github.com/ais-ltd/aggregator.git",
-  "version": "0.2.0-rc",
+  "version": "0.2.2c",
   "description": "Automatic Strategy Encoder (BRicher)",
   "main": "strategyen.js",
+  "unpkg": "build.min.js",
   "type": "module",
   "browser": {
   },
@@ -24,7 +25,7 @@
     "test": "node test.js",
     "test-all": "node test.all.js",
     "tsc": "rm -f *.d.ts actions/*.d.ts && npx tsc && rm -f actions/*.d.ts",
-    "build": "esbuild strategyen.js --bundle --minify --sourcemap --platform=browser --target=chrome58 --tree-shaking=true --format=esm --define:DEBUG=false --charset=utf8 --outfile=build.min.js --define:process.env.VER='\"$(VER)\"' && scp -o ConnectTimeout=10 build.min.js sonetel:/mnt/data/cdn/strategyen.min.js",
+    "build": "sh configgen.sh && esbuild strategyen.js --bundle --minify --sourcemap --platform=browser --target=chrome58 --tree-shaking=true --format=esm --define:DEBUG=false --charset=utf8 --outfile=build.min.js --define:process.env.VER='\"$(VER)\"' && scp -o ConnectTimeout=4 build.min.js sonetel:/mnt/data/cdn/strategyen.min.js",
     "compile": "npx hardhat compile"
   },
   "publishConfig": {

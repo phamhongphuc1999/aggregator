@@ -1,6 +1,6 @@
 import state from '../state.js';
 import { approve, transfer } from '../common.js';
-import { contract, ts, functions, invalidAddresses, toBN, parseAmount, subSlippage, cutAmount, lpAmount, getAddress, findContract, findSwapPair, findPairInfo, findPairAddress, findSwapPath, debug } from '../helpers.js';
+import { contract, ts, str, functions, invalidAddresses, toBN, parseAmount, subSlippage, cutAmount, lpAmount, getAddress, findContract, findSwapPair, findPairInfo, findPairAddress, findSwapPath, debug } from '../helpers.js';
 
 const OA = Object.assign;
 
@@ -31,7 +31,8 @@ const swaps = {
         [maps.chain, maps.target, ...maps.tokens] = id.split('_');
         [maps.token, maps.otoken] = maps.tokens;
         //
-        [maps.path, maps.oamount] = await findSwapPath(maps.target, [maps.token, maps.otoken], maps.amount = await parseAmount(maps.amount, maps.token));
+        [maps.path, maps.oamount] = await findSwapPath(maps.target, maps.tokens, maps.amount = await parseAmount(maps.amount, maps.token));
+        // !temporarily
         maps.ts = ts() + state.timeout?.['swaps'];
         //
         maps.oamount = subSlippage(maps.oamount, 'swaps', auto);
@@ -46,7 +47,7 @@ const swaps = {
             maps.outs.push(maps.token);
             (def.delegate == 'transfer') && maps.outs.push(maps.otoken);
         } else if (auto) {
-            return null;
+            throw new Error('notimpl: ' + 'auto');
         }
         return calls;
     },
@@ -68,7 +69,7 @@ const swaps = {
                 const i_ = i-1;
                 maps.amounts = [aouts[i_], aouts[i]];
                 [maps.iamount, maps.oamount] = [maps.amounts[0], maps.amounts[1]];
-                (token0s[i].toLowerCase() == path[i]) && maps.amounts.reverse();
+                swaps.sameToken(token0s[i], path[i]) && maps.amounts.reverse();
                 [maps.target, maps.itoken, maps.otoken] = [pairs[i], path[i_], path[i]];
                 //
                 [].push.apply(calls, def.auto.map(call => call.update(maps)));
@@ -80,10 +81,14 @@ const swaps = {
                 maps.outs.push(maps.token);
                 (def.delegate == 'transfer') && maps.outs.push(maps.otoken);
             } else {
-                return null;
+                throw new Error('notimpl: ' + 'auto');
             }
             return calls;
         })() : swaps.calls(id, maps, parent, true);
+    },
+    sameToken: (token0, token1) => {
+        token0 = token0.toLowerCase(), token1 = token1.toLowerCase();
+        return token0 == token1 || (isEth(token0, true) && isEth(token1, true));
     }
 };
 
@@ -102,16 +107,17 @@ const providinglps = {
         try {
             // one input token, need to, swap half
             [maps.tokens, maps.reserves] = await findPairInfo(maps.pair);
-            maps.tokens[1] == (isEth(maps.token) ? getAddress('token.eth') : maps.token) && maps.tokens.reverse();
+            swaps.sameToken(maps.token, maps.tokens[1]) && maps.tokens.reverse();
             [maps.otoken, maps.split] = [maps.tokens[1], true];
         } catch (err) {
             [maps.pair, maps.otoken] = [await findSwapPair(maps.target, maps.tokens), maps.tokens[1]];
             //debug('!lps', err.message);
         }
         if (maps.split) {
-            const _id = id.replace(maps.pair, maps.otoken);
+            maps.totoken = maps.tokens.find(token => !swaps.sameToken(token, maps.token));
+            const _id = id.replace(maps.pair, maps.totoken);
             // inaccurate split due to unaccounted fee!
-            if (state.config.optimalSplit) throw 'noimpl';
+            if (state.config.optimalSplit) throw new Error('noimpl: ' + 'optimalsplit');
             else maps.amounts[0] = toBN(maps.amount).div(2);
             //
             const amount = toBN(maps.amount).sub(maps.amounts[0]);
@@ -121,8 +127,9 @@ const providinglps = {
             const swap = calls[calls.length - 1];
             // find swap calls output amount
             maps.amounts[1] = maps.oamount ?? swap.params[swap._params.indexOf('__oamount__')];
-            if (state.config.optimalSplit) throw 'noimpl';
-            else maps.amounts[0] = (await findSwapPath(maps.target, [maps.otoken, maps.token], maps.amounts[1]))[1];
+            if (state.config.optimalSplit) throw new Error('noimpl: ' + 'optimalsplit');
+            else maps.amounts[0] = (await findSwapPath(maps.target, maps.tokens.slice().reverse(), maps.amounts[1]))[1];
+            debug('swap.back', str(maps.tokens.concat(maps.amounts)));
         } else {
             // both tokens provided
             //maps.amounts[0] = maps.amount;
@@ -130,7 +137,7 @@ const providinglps = {
             //    findSwapPair(maps.target, [maps.token, maps.otoken]),
             //    findSwapPath(maps.target, [maps.token, maps.otoken], maps.amounts[0])
             //]);
-            throw 'pair not existed';
+            throw new Error('notimpl: ' + 'createpair');
         }
         //
         maps.minamounts = maps.amounts.map(amount => subSlippage(amount, 'providinglps', auto));
@@ -152,7 +159,7 @@ const providinglps = {
     auto: function (id, maps = {}, parent = {}) {
         return state.config.optimizeLPs ? (async () => {
             debug('providinglps', 'auto', id);
-            const funcs = await functions('providinglps');
+            const def = await functions('providinglps');
             const calls = [];
             // first half are almost same as normal calls
             [maps.chain, maps.target, ...maps.tokens] = id.split('_');
@@ -162,23 +169,24 @@ const providinglps = {
             try {
                 // one input token, need to, swap half
                 [maps.tokens, maps.reserves] = await findPairInfo(maps.otoken);
-                maps.token == maps.tokens[1] && maps.tokens.reverse();
+                swaps.sameToken(maps.token, maps.tokens[1]) && maps.tokens.reverse();
                 [maps.pair, maps.otoken] = [maps.otoken, maps.tokens[1]];
                 maps.split = true;
             } catch (err) {
                 // pair might not existed, rarely happen
                 debug('!lps', 'auto', err.stack);
                 if (false) {
-                    calls.push(funcs.create.update(maps));
+                    calls.push(def.create.update(maps));
                     maps.pair = await findPairAddress(maps.target, maps.tokens[0], maps.tokens[1]);
                 } else {
-                    throw 'noimpl';
+                    throw new Error('noimpl: ' + 'createpair');
                 }
             }
             if (maps.split) {
-                const _id = id.replace(maps.pair, maps.otoken);
+                maps.totoken = maps.tokens.find(token => !swaps.sameToken(token, maps.token));
+                const _id = id.replace(maps.pair, maps.totoken);
                 //
-                if (state.config.optimalSplit) throw 'noimpl';
+                if (state.config.optimalSplit) throw new Error('noimpl: ' + 'optimalsplit');
                 else maps.amounts[0] = toBN(maps.amount).div(2);
                 const amount = toBN(maps.amount).sub(maps.amounts[0]);
                 [].push.apply(calls,
@@ -188,18 +196,20 @@ const providinglps = {
                 const swap = calls[calls.length - 1];
                 maps.amounts[1] = maps.oamount ?? swap.params[swap._params.indexOf('__oamount__')];
                 //
-                if (state.config.optimalSplit) throw 'noimpl';
-                else maps.amounts[0] = (await findSwapPath(maps.target, [maps.otoken, maps.token], maps.amounts[1]))[1];
+                if (state.config.optimalSplit) throw new Error('noimpl' + '');
+                else maps.amounts[0] = (await findSwapPath(maps.target, maps.tokens.slice().reverse(), maps.amounts[1]))[1];
+                debug('swap.back', str(maps.tokens.concat(maps.amounts)));
             }
+            //
             maps.lpamount = await lpAmount(maps.pair, maps.amounts);
             maps.oamount = subSlippage(maps.lpamount, 'providinglps', true);
-            //
             maps.target = maps.pair;
+            //
             if (isEth(maps.token)) {
-                const _maps = { amount: maps.amounts[0] };
+                const _maps = { ...maps, amount: maps.amounts[0] };
                 [].push.apply(calls, await wraps.auto(`_${getAddress('token.eth')}_${maps.token}`, _maps, null));
             }
-            [].push.apply(calls, funcs.auto.map(call => call.update(maps)));
+            [].push.apply(calls, def.auto.map(call => call.update(maps)));
             //
             setAmount(maps);
             return calls;
@@ -212,15 +222,15 @@ const wraps = {
     abis: [],
     calls: async function (id, maps = {}, parent = {}) {
         debug('wraps', id);
-        const funcs = await functions('wraps');
+        const def = await functions('wraps');
         [maps.chain, maps.target, maps.token] = id.split('_');
         //
         maps.amount = await parseAmount(maps.amount, maps.token);
-        //if (maps.target != getAddress('token.eth')) throw 'noimpl';
+        //if (maps.target != getAddress('token.eth')) throw new Error('noimpl');
         if (def.delegate) (def.delegate == 'transfer') && maps.outs.push(maps.target);
-        else return null;
+        else throw new Error('notimpl: ' + 'auto');
         return [
-            funcs[maps.token == maps.target ? 'unwrap' : 'call'].update(maps)
+            def[maps.token == maps.target ? 'unwrap' : 'call'].update(maps)
         ];
     },
     get auto() {
@@ -261,10 +271,10 @@ const vaults = {
                     // aggregator -> address
                     call = call.update({ account: maps.user });
                 } else {
-                    throw 'notimpl';
+                    throw new Error('notimpl: ' + 'auto');
                 }
             } else if (auto) {
-                return null;
+                throw new Error('notimpl: ' + 'auto');
             }
             //
             calls.push(call.update(maps));
@@ -301,7 +311,7 @@ const lendings = {
                 maps.ins.push([maps.token, maps.amount]);
                 maps.outs.push([maps.outputtoken ?? maps.otoken, '0']);
             } else if (auto) {
-                return null;
+                throw new Error('notimpl: ' + 'auto');
             }
         }
         setAmount(maps, maps.amount);
@@ -320,7 +330,9 @@ const borrows = {
         debug('borrows', id);
         [maps.chain, maps.target, ...maps.tokens] = id.split('_');
         const _id = id;
+        maps._target = maps.target;
         const calls = await lendings.calls(_id, maps, { id });
+        maps.target = maps._target;
         const def = await findContract(maps.target, 'lendings', OA(maps, { token: maps.tokens[1] }), lendings.mapNames);
         // need a reset from previous lendings calls
         [maps.itoken, maps.otoken] = maps.tokens, maps.token = maps.otoken, maps.eth = '0';
@@ -347,7 +359,7 @@ const borrows = {
                     maps.outs.push([maps.token]);
                 }
             } else if (auto) {
-                return null;
+                throw new Error('notimpl: ' + 'auto');
             }
         }
         setAmount(maps, maps.amount);

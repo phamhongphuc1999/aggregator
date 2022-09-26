@@ -42,7 +42,7 @@ export { state, config, helpers, common };
 export async function getStrategy(id, amount = state.maps.amount) {
     const ib = 'includeBlacklist';
     return (await axios({ url: `${state.config.baseAPI}/strategies/${id}?amount=${amount}&${state.config[ib] ? ib+'=1' : ''}`, responseType: 'json' })).data;
-}
+};
 
 /**
  * Get all helper
@@ -82,7 +82,7 @@ async function allCalls (steps, funcname, maps, process = o=>o) {
             }
         }
     } catch(err) {
-        debug('!all.' + funcname, err.message, err.stack);
+        debug('!all.' + funcname, err.message ?? err, err.stack);
     }
     //
     if (process) {
@@ -163,7 +163,7 @@ async function processTransfer (maps, tx, i) {
     // native or token
     if (invalidAddresses.includes(res.token)) {
         if (res.amount.add(state.config.fixedGasEthLeft ?? '0').gte(maps.balance = await getProvider().getBalance(maps.user))) {
-            throw 'not enough eth left';
+            throw new Error('not enough eth left');
         }
         // send eth along
         res.tx = null, maps.send = res.amount;
@@ -246,7 +246,7 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
     // run analysis
     const logslen = state.logs.length;
     const ms = time();
-    const transfers = {ins: [], outs: []};
+    const transfers = { ins: [], outs: [] };
     const capitals = strategy.strategy?.capital ?? strategy.capital ?? {};
     const steps = strategy.steps ?? [];
     const auto = {};
@@ -311,11 +311,11 @@ export async function process(strategy, maps = {}, noauto = null, merge = true, 
         }
         try {
             // only last check is needed, must be a check available
-            debug('acalls', auto.calls.map(call => call?.method ?? call));
+            //debug('acalls', str(auto.calls.map(call => call?.method ?? call)));
             auto.checks = [
                 auto.calls.slice().reverse().find(call => {
                     if (!call) {
-                        throw 'auto is broken';
+                        throw new Error('auto is broken');
                     }
                     return call.check && call.check.encode;
                 }).check
@@ -414,9 +414,10 @@ export async function autoAvailability(strategy) {
     if (founds.length !== defs.length) {
         return null;
     }
-    const delegates = founds.map(def => def.delegate).filter(e => e);
+    const delegates = founds.map(def => def && def.delegate).filter(e => e);
+    //debug('finds', steps.length, founds.length, delegates.length, defs.length);
     avail = delegates.length === defs.length;
-    debug('availability', avail, logs, str(defs.map(def => def.title)), delegates);
+    debug('availability', avail, logs, str(defs.map(def => def?.title)), delegates);
     return avail;
 };
 
@@ -441,9 +442,9 @@ const Suggest = Object.freeze({
 const AutoPrefixs = Object.freeze([
     'Aggregate',
     'Expect',
-    'View',
     'TransferIn',
     'TransferOut'
+    //'View'
 ]);
 
 //

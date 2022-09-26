@@ -22,6 +22,8 @@ const args = process.argv.slice(2);
 const infile = 'cache/testIds.json';
 const outfile = 'cache/testIda.json';
 
+//for (let a of fs.readdirSync('logs')) arr=JSON.parse(fs.readFileSync('logs/'+a)).map(e=>e[1]).filter(e => e?.length && e.length>=1).reduce((o, e) => Object.assign(o, {[e[0][0]]: e[0][2]}), {});
+
 const fs = require('fs');
 
 //
