@@ -23,6 +23,7 @@ module.exports = async function (
 		serialize: true,
 		debug: true,
 		steps: null,
+		roi_history: false,
 	}
 ) {
 	// keep module instance
@@ -85,7 +86,7 @@ module.exports = async function (
 					: await common.getBalance(account, token)
 			);
 			if (balance.lt(1e8)) {
-				throw new Error('balance too small');
+				throw new Error('balance too small for ' + token);
 			}
 			if (amount.gt(balance)) {
 				amount = balance;
@@ -95,11 +96,7 @@ module.exports = async function (
 		//
 		const views = {
 			N: ['__aggregator__', 'name()', []],
-			BO: [
-				'0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c',
-				'balanceOf(address)',
-				['__aggregator__'],
-			],
+			BO: ['__token__', 'balanceOf(address)', ['__aggregator__']],
 			BA: [
 				'__debttoken__',
 				'borrowAllowance(address,address)',
@@ -112,8 +109,9 @@ module.exports = async function (
 			amount,
 			test: args.debug
 				? {
+						//swapFrom: '',
 						//preViews: [ views.BO ],
-						//addViews: [views.BO],
+						addViews: [views.BO],
 				  }
 				: null,
 		};
@@ -142,6 +140,11 @@ module.exports = async function (
 			res.ran + 'ms'
 		);
 		//
+		if (!args.roi_history) {
+			res.steps?.length &&
+				res.steps.forEach((step) => (step.roi_history = {}));
+		}
+		//
 		if (args.test) {
 			let ins = res.auto?.transfers?.ins;
 			if (
@@ -168,7 +171,7 @@ module.exports = async function (
 						['TESTED:'].concat(
 							id,
 							'\n',
-							(res = approved
+							(res.test = approved
 								? [
 										'AUTO',
 										`GAS ==> ${(
@@ -177,7 +180,9 @@ module.exports = async function (
 											res.auto.gas?.value ?? ''
 										).toString()} <==`,
 										'\n',
-										helpers.str(await con.probe()),
+										(await con.probe()).map((e) =>
+											helpers.isBN(e) ? e.toString() : e
+										),
 								  ]
 								: [
 										'APPROVAL',
@@ -231,7 +236,7 @@ if (process && require.main === module) {
 		'0x871dbce2b9923a35716e7e83ee402b535298538e',
 		'0xFf1D8eE7aCED36DB15669833D9F3aDc94213B3d1',
 	];
-	const aindex = 0;
+	const aindex = 3;
 	const amounts = ['1', '2', '3'];
 	const args = process.argv.slice(2);
 	// const amountInUSD = '1';
@@ -241,7 +246,9 @@ if (process && require.main === module) {
 		.exports(
 			args[0] ?? 'cache/test.json',
 			accounts[aindex],
-			args[1] ?? amounts[Math.floor(Math.random() * amounts.length)]
+			'1' ??
+				args[1] ??
+				amounts[Math.floor(Math.random() * amounts.length)]
 		)
 		.then(console.log);
 }

@@ -8,7 +8,7 @@ let temp;
 const vaults = [
 	{
 		id: '88952b043c344c38aa57c36fb392ccc4',
-		title: 'Aave/Trava compatible',
+		title: 'Aave/Trava staking compatible',
 		detect: [new View('REWARD_TOKEN()', [], 'address')],
 		delegate: true,
 		url: 'https://github.com/aave/aave-stake-v2',
@@ -46,24 +46,24 @@ const vaults = [
 		),
 	},
 	/*
-    {
-        id: '766a9d887b464cd0960b1fc4aab211d3',
-        title: 'Olympus compatible',
-        detect: [
-            new View('OHM()', [], 'address')
-        ],
-        delegate: true,
-        url: 'https://github.com/OlympusDAO/olympus-contracts',
-        fetchs: {
-            deposittoken: new View('gOHM()', [], 'address')
-        },
-        deposit: new Call(null, 'stake(address,uint256,bool,bool)', ['__account__', '__amount__', 'true', 'true'], '0', { title: 'Deposit native to pool', params: ['Receiver', 'Amount', 'Rebasing', 'Claim'], editable: 1, gas: '100000' }, new Check(
-            getBalanceView('__account__', '__deposittoken__'),
-            View.INCREASE,
-            '0'
-        )),
-        redeem: new Call(null, 'unstake(address,uint256,bool)', ['__account__', '__amount__', false], '0', { title: 'Unstake', params: ['Receiver', 'Amount', 'Trigger rebasing'], editable: 1, gas: '100000' })
-    },
+	{
+		id: '766a9d887b464cd0960b1fc4aab211d3',
+		title: 'Olympus compatible',
+		detect: [
+			new View('OHM()', [], 'address')
+		],
+		delegate: true,
+		url: 'https://github.com/OlympusDAO/olympus-contracts',
+		fetchs: {
+			deposittoken: new View('gOHM()', [], 'address')
+		},
+		deposit: new Call(null, 'stake(address,uint256,bool,bool)', ['__account__', '__amount__', 'true', 'true'], '0', { title: 'Deposit native to pool', params: ['Receiver', 'Amount', 'Rebasing', 'Claim'], editable: 1, gas: '100000' }, new Check(
+			getBalanceView('__account__', '__deposittoken__'),
+			View.INCREASE,
+			'0'
+		)),
+		redeem: new Call(null, 'unstake(address,uint256,bool)', ['__account__', '__amount__', false], '0', { title: 'Unstake', params: ['Receiver', 'Amount', 'Trigger rebasing'], editable: 1, gas: '100000' })
+	},
 */
 	{
 		id: 'cd7907a180b14082850be75bac891857',
@@ -163,6 +163,9 @@ const vaults = [
 			deposittoken: new View('token()', [], 'address'),
 			outputtoken: { get: (maps) => maps.target },
 		},
+		sanity: {
+			deposit: new View('paused()', [], 'bool'),
+		},
 		delegate: 'transfer',
 		url: 'https://github.com/alpaca-finance/bsc-alpaca-contract',
 		deposit: new Call(
@@ -193,19 +196,19 @@ const vaults = [
 		),
 	},
 	/*
-    {
-        id: '2665ef392a5d4cf2bb7a0b72ff9b43e8',
-        title: 'ALPACA Delta vault',
-        detect: [
-            new View('valueToShare(uint256)', ['100000000'], 'uint256')
-        ],
-        delegate: true,
-        url: 'https://github.com/alpaca-finance/bsc-alpaca-contract/tree/main/solidity/contracts/8.10/protocol',
-        fetchs: {
-        },
-        deposit: new Call(null, 'deposit(uint256,uint256,address,uint256,bytes)', [], '0', { title: 'Vault deposit', params: ['', '', '', '', '', ''], gas: '100000' }, new Check()),
-        redeem: new Call(null, 'withdraw(uint256,uint256,uint256,bytes)', [], '0', { title: 'Withdraw token', params: ['', '', '', ''], gas: '100000' }, new Check())
-    },
+	{
+		id: '2665ef392a5d4cf2bb7a0b72ff9b43e8',
+		title: 'ALPACA Delta vault',
+		detect: [
+			new View('valueToShare(uint256)', ['100000000'], 'uint256')
+		],
+		delegate: true,
+		url: 'https://github.com/alpaca-finance/bsc-alpaca-contract/tree/main/solidity/contracts/8.10/protocol',
+		fetchs: {
+		},
+		deposit: new Call(null, 'deposit(uint256,uint256,address,uint256,bytes)', [], '0', { title: 'Vault deposit', params: ['', '', '', '', '', ''], gas: '100000' }, new Check()),
+		redeem: new Call(null, 'withdraw(uint256,uint256,uint256,bytes)', [], '0', { title: 'Withdraw token', params: ['', '', '', ''], gas: '100000' }, new Check())
+	},
 */
 	{
 		id: '568623537d124769a4d00190fd7e35c5',
@@ -256,25 +259,25 @@ const vaults = [
 		}),
 	},
 	/*
-    {
-        id: 'ad9141c23e664dffb7635e5894f34bc0',
-        title: 'Curve Governance compatible',
-        detect: [
-            new View('user_point_epoch(uint256)', [1], 'uint256')
-        ],
-        delegate: false,
-        url: 'https://github.com/curvefi/curve-veBoost',
-        fetchs: {
-            deposittoken: new View('token()', [], 'address'),
-            outputtoken: { get: maps => maps.target }
-        },
-        deposit: new Call(null, 'create_lock(uint256,uint256)', ['__amount__', '__time__'], '0', { title: 'Lock token for voting power and rewards', params: ['Amount', 'Lock duration'], editable: 0, gas: '100000' }, new Check(
-            new View('locked(address)', ['__account__'], 'uint128,uint256', 0),
-            View.INCREASE,
-            '__amount__'
-        ), { time: { default: '31536000', title: 'Lock duration specifier', descs: 'In seconds: 604800 (a week), 2592000 (a month), 31536000 (a year), 126144000 (4 years)' } }),
-        redeem: new Call(null, 'withdraw()', [], '0', { title: 'Withdraw when lock has expired', gas: '100000' })
-    },
+	{
+		id: 'ad9141c23e664dffb7635e5894f34bc0',
+		title: 'Curve Governance compatible',
+		detect: [
+			new View('user_point_epoch(uint256)', [1], 'uint256')
+		],
+		delegate: false,
+		url: 'https://github.com/curvefi/curve-veBoost',
+		fetchs: {
+			deposittoken: new View('token()', [], 'address'),
+			outputtoken: { get: maps => maps.target }
+		},
+		deposit: new Call(null, 'create_lock(uint256,uint256)', ['__amount__', '__time__'], '0', { title: 'Lock token for voting power and rewards', params: ['Amount', 'Lock duration'], editable: 0, gas: '100000' }, new Check(
+			new View('locked(address)', ['__account__'], 'uint128,uint256', 0),
+			View.INCREASE,
+			'__amount__'
+		), { time: { default: '31536000', title: 'Lock duration specifier', descs: 'In seconds: 604800 (a week), 2592000 (a month), 31536000 (a year), 126144000 (4 years)' } }),
+		redeem: new Call(null, 'withdraw()', [], '0', { title: 'Withdraw when lock has expired', gas: '100000' })
+	},
 */
 	{
 		id: '7ab2efe0a8974153a773eef60172c839',

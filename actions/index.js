@@ -54,7 +54,7 @@ const swaps = {
 			maps.tokens,
 			(maps.amount = await parseAmount(maps.amount, maps.token))
 		);
-		// !temporarily
+		// ! temporarily
 		maps.ts = ts() + state.timeout?.['swaps'];
 		//
 		maps.oamount = subSlippage(maps.oamount, 'swaps', auto);
@@ -500,22 +500,26 @@ const borrows = {
 			//
 			const res = await def.available.get(maps);
 			[, maps.borrowable] = res;
-			calls.push(call.update(OA(maps, { amount: maps.borrowable })));
+			maps.amount = maps.borrowable;
+			calls.push(call.update(maps));
 			//debug('borrows', maps.targets ?? maps.target, maps.tokens, res, calls.map(call => call.target));
 			//
 			if (def.delegate) {
-				state.config.customApproveAdd &&
+				state.config.customApproveAdjust &&
 					(maps.borrowable = cutAmount(
 						maps.borrowable,
-						-state.config.customApproveAdd
+						-state.config.customApproveAdjust
 					));
 				// set user approve delegated borrows
 				def.approve &&
-					(maps.approve = def.approve.update({
-						...maps,
-						account: maps.user,
-					})) &&
-					(maps.approve.amount = maps.approve.params[1]);
+					(maps.approves = (maps.approves ?? []).concat([
+						def.approve.update({
+							...maps,
+							account: maps.user,
+						}),
+					])) &&
+					(maps.approves[maps.approves.length - 1].amount =
+						maps.approves[maps.approves.length - 1].params[1]);
 				maps.ins.push([maps.itoken, maps.iamount]);
 				if (def.delegate == 'transfer') {
 					maps.outs.push([maps.debttoken ?? maps.otoken, '0']);

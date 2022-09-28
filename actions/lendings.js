@@ -385,7 +385,7 @@ const lendings = [
 					//
 					Object.assign(def, {
 						...(isEth(maps.token ?? maps.tokens[0]) && this.ether),
-						// !prone to error!
+						// ! prone to error!
 						target:
 							maps.targets[tokens.indexOf(maps.token)] ??
 							maps.targets[0],

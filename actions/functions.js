@@ -123,6 +123,7 @@ const swaps = {
 		{
 			title: 'Shortcut to swap native to tokens',
 			params: ['Amount Out', 'Swap Path', 'Receiver', 'Deadline'],
+			formats: [{ type: 'amount', get: (maps) => maps.tokens[1] ?? maps.otoken }],
 			gas: '124000',
 		},
 		tokenOutCheck

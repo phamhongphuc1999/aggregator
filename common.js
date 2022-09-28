@@ -13,7 +13,11 @@ import {
 	sameToken,
 	str,
 	toBN,
+	toPow,
 } from './helpers.js';
+
+const A0 = ethers.constants.AddressZero;
+const IA = ethers.utils.isAddress;
 
 ethers.BigNumber.prototype.toJSON = function () {
 	return this.toString();
@@ -164,16 +168,22 @@ Call.prototype = Object.freeze({
 	async meta() {
 		//debug('meta', this.target, this.params);
 		const con = contract(this.target, 'token');
-		const m = this._maps;
+		const maps = this._maps;
 		//
 		const trimAddress = (address) =>
 			address.slice(0, 8) + '...' + address.slice(-6);
-		const printToken = (amount, token) =>
-			(amount.eq(ethers.constants.MaxUint256)
-				? 'MAX'
-				: ethers.utils.formatUnits(amount, token.decimals)) +
-			' ' +
-			token.symbol;
+		const printToken = (amount, token = {}) => {
+			if (amount.eq(ethers.constants.MaxUint256)) {
+				amount = 'MAX';
+			} else {
+				let d = token.decimals ?? 18;
+				state.config.formatHalfDecimals &&
+					(d = parseInt(d / 2)) &&
+					(amount = amount.div(toPow(d)));
+				amount = ethers.utils.formatUnits(amount, d);
+			}
+			return amount + ' ' + token.symbol;
+		};
 		const getName = async (target, name = 'name', temp = null) => {
 			try {
 				target = target.toLowerCase();
@@ -182,21 +192,29 @@ Call.prototype = Object.freeze({
 					(await getToken(target))?.name ??
 					(await con.attach(target)[name]())
 				);
-			} catch (err) {}
-			return '';
+			} catch (err) {
+				return Object.entries(getAddress(null)).find(([k, v]) => v == target)?.[0] ?? '';
+			}
 		};
+		//
+		const isAmount = (param) =>
+			(param ?? '')
+				.toString()
+				.match(/[a-z]?amount[a-z]?[0-9]?|eth|value|in|out/);
 		//
 		const formatParam = async (val, i) => {
 			const orig = val instanceof Object ? Object.assign({}, val) : val;
+			const cformat = this.descs.formats?.[i] ?? {};
+			debug('---------------------------->', cformat);
 			if (typeof val === 'string' && val.startsWith('__')) {
 				// ? not updated
 				val = val.slice(2, val.lastIndexOf('__')).toUpperCase();
-			} else if (ethers.utils.isAddress(val)) {
+			} else if (IA(val)) {
 				// ? address
-				let name;
-				sameToken(orig, m.user) && (name = 'YOU');
-				sameToken(orig, m.aggregator) && (name = 'CONTRACT');
-				!name && (name = await getName(orig));
+				const name =
+					(sameToken(orig, maps.user) && 'YOU') ||
+					(sameToken(orig, maps.aggregator) && 'CONTRACT') ||
+					(await getName(orig));
 				val = trimAddress(val);
 				name && (val += ` (${name})`);
 				state.config.formatHtml &&
@@ -204,31 +222,46 @@ Call.prototype = Object.freeze({
 						getChain().explorer?.url
 					}/address/${orig}">${val}</a>`);
 			} else if (isBN(val) || !isNaN(val)) {
-				if (
-					(this._params[i] ?? '')
-						.toString()
-						.match(/[a-z]?amount[a-z]?[0-9]?|eth|value|in|out/) ||
-					isBN(this._params[i])
-				) {
-					const A0 = ethers.constants.AddressZero;
+				const now = toBN(Date.now());
+				if (cformat.type == 'amount' || isAmount(this._params[i]) || isBN(this._params[i])) {
 					const tokens = [];
-					// !assumptions
+					// ! assumptions, tokens is reliably
 					tokens.push(
-						m.tokens?.[0] ??
-							m.token ??
-							m.itoken ??
-							m.deposittoken ??
+						maps.tokens?.[0] ??
+							maps.itoken ??
+							maps.deposittoken ??
+							maps.token ??
 							A0
 					);
 					tokens.push(
-						(m.tokens ?? []).find((e) => e != tokens[0]) ??
-							m.otoken ??
-							m.outputtoken ??
+						(maps.tokens ?? []).find((e) => e != tokens[0]) ??
+							maps.otoken ??
+							maps.outputtoken ??
+							maps.token ??
 							A0
 					);
-					if (formatParam.tmcount === undefined) {
-						formatParam.tmcount = 0;
+					if (state.config.formatPrevToken) {
+						// ! fix for single amount method
+						maps._token = cformat.get ? [await cformat.get(maps)] : this.params.filter(
+							(address) =>
+								IA(address) &&
+								!sameToken(address, maps.account) &&
+								getToken(address, true)
+						);
+						if (
+							maps._token.length === 1 &&
+							this._params.filter(isAmount).length === 1
+						) {
+							(maps._token =
+								maps._token[0] ??
+								maps.token ??
+								maps.otoken ??
+								maps.outputtoken) &&
+								tokens.unshift(maps._token);
+						}
 					}
+					formatParam.acount === undefined &&
+						(formatParam.acount = 0);
 					//debug('info.token', str([this._params[i], formatParam.tmcount, tokens]));
 					// ? token amount
 					val = printToken(
@@ -239,10 +272,16 @@ Call.prototype = Object.freeze({
 								this.method.startsWith('transfer')
 								? this.target
 								: tokens[
-										formatParam.tmcount++ % tokens.length
+										formatParam.acount++ % tokens.length
 								  ] ?? null
 						)
 					);
+				} else if (
+					toBN(val).gte(now.sub(state.config.formatDatetime ?? 0)) ||
+					toBN(val).lte(now.add(state.config.formatDatetime ?? 0))
+				) {
+					// ? timestamp
+					val = new Date(parseInt(val) * 1000).toLocaleString();
 				}
 			} else if (Array.isArray(val)) {
 				// ? recursion
@@ -365,7 +404,7 @@ View.prototype = Object.freeze({
 			(this.index instanceof Function && (res = this.index(res))) ||
 				(this.index != -1 && (res = res[this.index] ?? res));
 			// might
-			detect && debug('view', 'HIT', target, this.name());
+			detect && debug('view', 'hit', target, this.name());
 		} catch (err) {
 			if (!maps) {
 				throw err;
@@ -430,7 +469,7 @@ Check.prototype = Object.freeze({
 		const { view } = this;
 		!this.last &&
 			view &&
-			ethers.utils.isAddress(view.target) &&
+			IA(view.target) &&
 			view.params.filter((e) => e && e.startsWith && e.startsWith('__'))
 				.length == 0 &&
 			[View.INCREASE, View.DECREASE].includes(this.expecting) &&
@@ -617,10 +656,8 @@ const getBalanceView = (account = '__account__', token = '__token__') =>
 	new View('balanceOf(address)', [account], ['uint256'], -1, token);
 
 // get ERC balance
-const getBalance = (
-	account = '__account__',
-	token = ethers.constants.AddressZero
-) => getBalanceView(account, null).get({}, token);
+const getBalance = (account = '__account__', token = A0) =>
+	getBalanceView(account, null).get({}, token);
 
 export {
 	approve,

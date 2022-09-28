@@ -224,7 +224,7 @@ async function optimizeApproves(
  */
 async function processTransfer(maps, tx, i) {
 	const res = { token: null, amount: null, custom: false };
-	// !input
+	// ! input
 	if (tx.target) {
 		[res.token, res.tx, res.custom] = [tx.target, tx, true];
 		res.amount = tx.params[1];
@@ -247,7 +247,7 @@ async function processTransfer(maps, tx, i) {
 				.add(state.config.fixedGasEthLeft ?? '0')
 				.gte((maps.balance = await getProvider().getBalance(maps.user)))
 		) {
-			throw new Error('not enough eth left');
+			throw new Error('fund: ' + 'not enough eth left');
 		}
 		// send eth along
 		(res.tx = null), (maps.send = res.amount);
@@ -457,10 +457,13 @@ export async function process(
 			// tramsfer ins: from capital property and weth
 			if (capitals) {
 				transfers.ins = await Promise.all(
-					(auto.maps.approve ? [auto.maps.approve] : [])
+					(auto.maps.approves?.length ? auto.maps.approves : [])
 						.concat(Object.keys(capitals))
 						.map(processTransfer.bind(this, auto.maps))
 				);
+				state.config.autoApproveOrder &&
+					transfers.ins.sort((a) => (a.tx === null ? -1 : 0));
+				delete auto.maps.approves;
 			}
 			// transfer outs, NOT USED anymore, calls already has transfer or equivalent
 			const hasOuts =
@@ -530,7 +533,7 @@ export async function process(
 	}
 
 	// final result
-	res.ran = time() - ms;
+	res.ran = (time() - ms) / 1000;
 	return res;
 }
 

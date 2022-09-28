@@ -79,7 +79,7 @@ export async function findSwapPath(
 	tokens = tokens.map((token) =>
 		invalidAddresses.includes(token) ? mtokens[0] : token
 	);
-	// !try: direct, via weth, via usds, via mix of eth and first usd token (ordered)
+	// ! try: direct, via weth, via usds, via mix of eth and first usd token (ordered)
 	const paths = [
 		[],
 		...mtokens.map((token) => [token]),
@@ -343,7 +343,7 @@ const getChain = (id = state.chainId) =>
 
 //
 const getAddress = (name = 'aggregator', id = state.chainId) =>
-	config.addresses[id][name] ?? '';
+	name ? config.addresses[id][name] ?? '' : config.addresses[id];
 
 //
 const getToken = (address = A0, cacheOnly = false, id = state.chainId) =>
@@ -463,7 +463,10 @@ export {
 
 // general debugging
 export function debug() {
-	typeof arguments[0] === 'string' && (arguments[0] += ':');
+	typeof arguments[0] === 'string' &&
+		(arguments[0] += ':') &&
+		state.config.debugExtra &&
+		(arguments[0] = '\x1b[4m' + arguments[0] + '\x1b[0m');
 	state.logs.push([Date.now(), JSON.stringify(arguments)]);
 	if (state.config.debug) {
 		console.error.apply(console, arguments);
