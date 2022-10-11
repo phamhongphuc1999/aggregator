@@ -107,6 +107,7 @@ module.exports = async function (
 		const maps = {
 			account,
 			amount,
+			//locktime: 1,
 			test: args.debug
 				? {
 						//swapFrom: '',
@@ -236,19 +237,23 @@ if (process && require.main === module) {
 		'0x871dbce2b9923a35716e7e83ee402b535298538e',
 		'0xFf1D8eE7aCED36DB15669833D9F3aDc94213B3d1',
 	];
-	const aindex = 3;
+	const aindex = 0;
 	const amounts = ['1', '2', '3'];
+	amounts.length = 1;
 	const args = process.argv.slice(2);
 	// const amountInUSD = '1';
 	// fs.readFileSync('cache/error.json')
 	// single test
+	if (args[0] == '-i') {
+		args[0] = require('readline-sync').question('strategy:  ');
+	}
 	module
 		.exports(
 			args[0] ?? 'cache/test.json',
 			accounts[aindex],
-			'1' ??
-				args[1] ??
-				amounts[Math.floor(Math.random() * amounts.length)]
+			!isNaN(args[1])
+				? args[1]
+				: amounts[Math.floor(Math.random() * amounts.length)]
 		)
 		.then(console.log);
 }

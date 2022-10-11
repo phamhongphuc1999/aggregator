@@ -78,7 +78,7 @@ export async function getStrategy(id, amount = state.maps.amount) {
  * @param {number} i
  * @returns
  */
-async function allCalls(steps, funcname, maps, process = (o) => o) {
+async function allCalls(steps, funcname, maps, mutate = (o) => o) {
 	let calls = [];
 	// merge calls helper
 	const get = async (step, i, get) => {
@@ -120,8 +120,8 @@ async function allCalls(steps, funcname, maps, process = (o) => o) {
 		debug('!all.' + funcname, err.message ?? err, err.stack);
 	}
 	//
-	if (process) {
-		calls = await process(calls, maps);
+	if (mutate) {
+		calls = await mutate(calls, maps);
 	}
 	return calls;
 }
@@ -379,6 +379,11 @@ export async function process(
 				nonce: await getProvider().getTransactionCount(maps.account),
 			}),
 	};
+
+	if ((!maps.amount || maps.amount == 0) && !maps.amounts?.[0]) {
+		debug('!process', 'zero amount');
+		return res;
+	}
 
 	// initialize properties for calls/auto maps
 	res.maps = { ...state.maps, ...addmaps };

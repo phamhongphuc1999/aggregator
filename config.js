@@ -702,12 +702,87 @@ abis: Object.freeze({
 		"function withdraw()"
 	],
 	"vaults.a": [
-		"function REWARD_TOKEN() view returns (address)",
-		"function STAKED_TOKEN() view returns (address)",
-		"function claimRewards(address to, uint256 amount)",
-		"function cooldown()",
-		"function redeem(address to, uint256 amount)",
-		"function stake(address onBehalfOf, uint256 amount)"
+		"event AddCollateral(uint256 indexed id, uint256 amount, uint256 healthBefore, uint256 healthAfter)",
+		"event AddDebt(uint256 indexed id, uint256 debtShare)",
+		"event Approval(address indexed owner, address indexed spender, uint256 value)",
+		"event Kill(uint256 indexed id, address indexed killer, address owner, uint256 posVal, uint256 debt, uint256 prize, uint256 left)",
+		"event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)",
+		"event RemoveDebt(uint256 indexed id, uint256 debtShare)",
+		"event Transfer(address indexed from, address indexed to, uint256 value)",
+		"event Work(uint256 indexed id, uint256 loan)",
+		"function POSITION_ID() view returns (uint256)",
+		"function STRATEGY() view returns (address)",
+		"function _IN_EXEC_LOCK() view returns (uint256)",
+		"function addCollateral(uint256 id, uint256 amount, bool goRogue, bytes data) payable",
+		"function allowance(address owner, address spender) view returns (uint256)",
+		"function approve(address spender, uint256 amount) returns (bool)",
+		"function balanceOf(address account) view returns (uint256)",
+		"function config() view returns (address)",
+		"function debtShareToVal(uint256 debtShare) view returns (uint256)",
+		"function debtToken() view returns (address)",
+		"function debtValToShare(uint256 debtVal) view returns (uint256)",
+		"function decimals() view returns (uint8)",
+		"function decreaseAllowance(address spender, uint256 subtractedValue) returns (bool)",
+		"function deposit(uint256 amountToken) payable",
+		"function fairLaunchPoolId() view returns (uint256)",
+		"function increaseAllowance(address spender, uint256 addedValue) returns (bool)",
+		"function initialize(address _config, address _token, string _name, string _symbol, uint8 _decimals, address _debtToken)",
+		"function kill(uint256 id)",
+		"function lastAccrueTime() view returns (uint256)",
+		"function name() view returns (string)",
+		"function nextPositionID() view returns (uint256)",
+		"function owner() view returns (address)",
+		"function pendingInterest(uint256 value) view returns (uint256)",
+		"function positionInfo(uint256 id) view returns (uint256, uint256)",
+		"function positions(uint256) view returns (address worker, address owner, uint256 debtShare)",
+		"function reduceReserve(uint256 value)",
+		"function renounceOwnership()",
+		"function requestFunds(address targetedToken, uint256 amount)",
+		"function reservePool() view returns (uint256)",
+		"function setFairLaunchPoolId(uint256 _poolId)",
+		"function symbol() view returns (string)",
+		"function token() view returns (address)",
+		"function totalSupply() view returns (uint256)",
+		"function totalToken() view returns (uint256)",
+		"function transfer(address recipient, uint256 amount) returns (bool)",
+		"function transferFrom(address sender, address recipient, uint256 amount) returns (bool)",
+		"function transferOwnership(address newOwner)",
+		"function updateConfig(address _config)",
+		"function vaultDebtShare() view returns (uint256)",
+		"function vaultDebtVal() view returns (uint256)",
+		"function withdraw(uint256 share)",
+		"function withdrawReserve(address to, uint256 value)",
+		"function work(uint256 id, address worker, uint256 principalAmount, uint256 borrowAmount, uint256 maxReturn, bytes data) payable",
+		"event Deposit(address indexed user, uint256 indexed pid, uint256 amount)",
+		"event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount)",
+		"event Withdraw(address indexed user, uint256 indexed pid, uint256 amount)",
+		"function addPool(uint256 _allocPoint, address _stakeToken, bool _withUpdate)",
+		"function alpaca() view returns (address)",
+		"function alpacaPerBlock() view returns (uint256)",
+		"function bonusEndBlock() view returns (uint256)",
+		"function bonusLockUpBps() view returns (uint256)",
+		"function bonusMultiplier() view returns (uint256)",
+		"function deposit(address _for, uint256 _pid, uint256 _amount)",
+		"function devaddr() view returns (address)",
+		"function emergencyWithdraw(uint256 _pid)",
+		"function getMultiplier(uint256 _lastRewardBlock, uint256 _currentBlock) view returns (uint256)",
+		"function harvest(uint256 _pid)",
+		"function isDuplicatedPool(address _stakeToken) view returns (bool)",
+		"function manualMint(address _to, uint256 _amount)",
+		"function massUpdatePools()",
+		"function pendingAlpaca(uint256 _pid, address _user) view returns (uint256)",
+		"function poolInfo(uint256) view returns (address stakeToken, uint256 allocPoint, uint256 lastRewardBlock, uint256 accAlpacaPerShare, uint256 accAlpacaPerShareTilBonusEnd)",
+		"function poolLength() view returns (uint256)",
+		"function setAlpacaPerBlock(uint256 _alpacaPerBlock)",
+		"function setBonus(uint256 _bonusMultiplier, uint256 _bonusEndBlock, uint256 _bonusLockUpBps)",
+		"function setDev(address _devaddr)",
+		"function setPool(uint256 _pid, uint256 _allocPoint, bool _withUpdate)",
+		"function startBlock() view returns (uint256)",
+		"function totalAllocPoint() view returns (uint256)",
+		"function updatePool(uint256 _pid)",
+		"function userInfo(uint256, address) view returns (uint256 amount, uint256 rewardDebt, uint256 bonusDebt, address fundedBy)",
+		"function withdraw(address _for, uint256 _pid, uint256 _amount)",
+		"function withdrawAll(address _for, uint256 _pid)"
 	],
 	"vaults.c": [
 		"function convexPoolId() returns (uint256 _poolId)",
@@ -724,7 +799,6 @@ abis: Object.freeze({
 		"function withdraw(uint256 _amount)",
 		"function withdrawAndUnwrap(uint256 _amount)"
 	],
-	"vaults.l": [],
 	"vaults.o": [
 		"function claim(address _recipient, bool _rebasing) returns (uint256)",
 		"function forfeit() returns (uint256)",
@@ -792,6 +866,14 @@ abis: Object.freeze({
 		"function withdrawAll()",
 		"function withdrawFee() view returns (uint256)",
 		"function withdrawFeePeriod() view returns (uint256)"
+	],
+	"vaults.t": [
+		"function REWARD_TOKEN() view returns (address)",
+		"function STAKED_TOKEN() view returns (address)",
+		"function claimRewards(address to, uint256 amount)",
+		"function cooldown()",
+		"function redeem(address to, uint256 amount)",
+		"function stake(address onBehalfOf, uint256 amount)"
 	],
 	"vaults.ve": [
 		"event Approval(address indexed owner, address indexed approved, uint256 indexed tokenId)",
@@ -1049,7 +1131,7 @@ methods: Object.freeze({"lendings":"Deposit","vaults":"Stake","swaps":"Swap","pr
 package: Object.freeze({
 	"name": "@ais-ltd/strategyen",
 	"repository": "git+https://github.com/ais-ltd/aggregator.git",
-	"version": "0.3.0",
+	"version": "0.4.0-rc1",
 	"description": "Automatic Strategy Encoder (BRicher)",
 	"main": "strategyen.js",
 	"unpkg": "build.min.js",
@@ -1066,7 +1148,8 @@ package: Object.freeze({
 	},
 	"devDependencies": {
 		"@types/node": "^18.0.3",
-		"mocha": "^7.2.0"
+		"mocha": "^7.2.0",
+		"readline-sync": "^1.4.10"
 	},
 	"scripts": {
 		"test": "node test.js",
@@ -1102,7 +1185,7 @@ tokens: Object.freeze({
 		"symbol": "GMT/USDC",
 		"img_url": "/tokens_v2/GMT-USDC.png",
 		"decimals": 18,
-		"price": 210891.7695318656,
+		"price": 204380.1155908748,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1110,7 +1193,7 @@ tokens: Object.freeze({
 		"symbol": "UNI/BNB",
 		"img_url": "/tokens_v2/UNI-BNB.png",
 		"decimals": 18,
-		"price": 90.69259525144092,
+		"price": 88.47694094758673,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1118,7 +1201,7 @@ tokens: Object.freeze({
 		"symbol": "XRP/BNB",
 		"img_url": "/tokens_v2/XRP-BNB.png",
 		"decimals": 18,
-		"price": 24.512233023389417,
+		"price": 25.40961407536714,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1126,7 +1209,7 @@ tokens: Object.freeze({
 		"symbol": "VAI/BUSD",
 		"img_url": "/tokens_v2/VAI-BUSD.png",
 		"decimals": 18,
-		"price": 2.074912113760411,
+		"price": 2.0981368425026368,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1134,7 +1217,7 @@ tokens: Object.freeze({
 		"symbol": "SUSHI/ETH",
 		"img_url": "/tokens_v2/SUSHI-ETH.png",
 		"decimals": 18,
-		"price": 82.43962716749472,
+		"price": 86.81478575378226,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1142,7 +1225,7 @@ tokens: Object.freeze({
 		"symbol": "USDT/BNB",
 		"img_url": "/tokens_v2/USDT-BNB.png",
 		"decimals": 18,
-		"price": 46.622982869350494,
+		"price": 46.076241531456624,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1150,7 +1233,7 @@ tokens: Object.freeze({
 		"symbol": "USDC/BUSD",
 		"img_url": "/tokens_v2/USDC-BUSD.png",
 		"decimals": 18,
-		"price": 2.11561478490945,
+		"price": 2.113964697811726,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1158,7 +1241,7 @@ tokens: Object.freeze({
 		"symbol": "ADA/BNB",
 		"img_url": "/tokens_v2/ADA-BNB.png",
 		"decimals": 18,
-		"price": 25.12792605786937,
+		"price": 23.517776268848124,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1166,7 +1249,7 @@ tokens: Object.freeze({
 		"symbol": "TUSD/BUSD",
 		"img_url": "/tokens_v2/TUSD-BUSD.png",
 		"decimals": 18,
-		"price": 2.0200967090162174,
+		"price": 2.0196250463120644,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1174,7 +1257,7 @@ tokens: Object.freeze({
 		"symbol": "TWT/BNB",
 		"img_url": "/tokens_v2/TWT-BNB.png",
 		"decimals": 18,
-		"price": 38.55317025813175,
+		"price": 38.30950816036223,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1182,7 +1265,7 @@ tokens: Object.freeze({
 		"symbol": "CHR/BUSD",
 		"img_url": "/tokens_v2/CHR-BUSD.png",
 		"decimals": 18,
-		"price": 940669.3046276161,
+		"price": 948627.9522594925,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1190,7 +1273,7 @@ tokens: Object.freeze({
 		"symbol": "DAI/BUSD",
 		"img_url": "/tokens_v2/DAI-BUSD.png",
 		"decimals": 18,
-		"price": 2.108950243783465,
+		"price": 2.112822522686633,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1198,7 +1281,7 @@ tokens: Object.freeze({
 		"symbol": "LTC/BNB",
 		"img_url": "/tokens_v2/LTC-BNB.png",
 		"decimals": 18,
-		"price": 265.327218161155,
+		"price": 256.8475868039895,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1206,7 +1289,7 @@ tokens: Object.freeze({
 		"symbol": "XVS/BNB",
 		"img_url": "/tokens_v2/XVS-BNB.png",
 		"decimals": 18,
-		"price": 92.93124443811173,
+		"price": 90.91800783723019,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1214,7 +1297,7 @@ tokens: Object.freeze({
 		"symbol": "CAKE/BUSD",
 		"img_url": "/tokens_v2/CAKE-BUSD.png",
 		"decimals": 18,
-		"price": 7.143452353923307,
+		"price": 6.904551123399174,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1222,7 +1305,7 @@ tokens: Object.freeze({
 		"symbol": "LINK/BNB",
 		"img_url": "/tokens_v2/LINK-BNB.png",
 		"decimals": 18,
-		"price": 101.80686653573702,
+		"price": 95.65176295328669,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1230,7 +1313,7 @@ tokens: Object.freeze({
 		"symbol": "WOO/BNB",
 		"img_url": "/tokens_v2/WOO-BNB.png",
 		"decimals": 18,
-		"price": 14.366133039176951,
+		"price": 14.832321126886342,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1238,7 +1321,7 @@ tokens: Object.freeze({
 		"symbol": "BSW/BNB",
 		"img_url": "/tokens_v2/BSW-BNB.png",
 		"decimals": 18,
-		"price": 406.19321535517076,
+		"price": 382.6850322316678,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1246,7 +1329,7 @@ tokens: Object.freeze({
 		"symbol": "RACA/BUSD",
 		"img_url": "https://firebasestorage.googleapis.com/v0/b/token-c515a.appspot.com/o/tokens_v2%2FRACA-BUSD.png?alt=media&token=eba1d684-9aa4-4e70-8dc4-844b8a17ac91",
 		"decimals": 18,
-		"price": 0.05302867217855532,
+		"price": 0.04974869488002591,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1254,7 +1337,7 @@ tokens: Object.freeze({
 		"symbol": "CAKE/USDT",
 		"img_url": "/tokens_v2/CAKE-USDT.png",
 		"decimals": 18,
-		"price": 5.785963421094861,
+		"price": 5.5940795667508505,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1262,7 +1345,7 @@ tokens: Object.freeze({
 		"symbol": "DOGE/BNB",
 		"img_url": "/tokens_v2/DOGE-BNB.png",
 		"decimals": 18,
-		"price": 1004325.9122306263,
+		"price": 975554.7792725936,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1270,7 +1353,7 @@ tokens: Object.freeze({
 		"symbol": "ALPHA/BNB",
 		"img_url": "/tokens_v2/ALPHA-BNB.png",
 		"decimals": 18,
-		"price": 12.046586210824369,
+		"price": 12.143532928244577,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1278,7 +1361,7 @@ tokens: Object.freeze({
 		"symbol": "GAL/BNB",
 		"img_url": "/tokens_v2/GAL-BNB.png",
 		"decimals": 18,
-		"price": 60.24549280690863,
+		"price": 56.9662518472519,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1286,7 +1369,7 @@ tokens: Object.freeze({
 		"symbol": "IOTX/BUSD",
 		"img_url": "/tokens_v2/IOTX-BUSD.png",
 		"decimals": 18,
-		"price": 0.41192507426193364,
+		"price": 0.40451699237082167,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1294,7 +1377,7 @@ tokens: Object.freeze({
 		"symbol": "AXS/BNB",
 		"img_url": "/tokens_v2/AXS-BNB.png",
 		"decimals": 18,
-		"price": 141.26796802601206,
+		"price": 134.5688064339829,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1302,7 +1385,7 @@ tokens: Object.freeze({
 		"symbol": "BTCB/ETH",
 		"img_url": "/tokens_v2/BTCB-ETH.png",
 		"decimals": 18,
-		"price": 10860.557044375386,
+		"price": 10481.661032019038,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1310,7 +1393,7 @@ tokens: Object.freeze({
 		"symbol": "SXP/BNB",
 		"img_url": "/tokens_v2/SXP-BNB.png",
 		"decimals": 18,
-		"price": 23.212199499273662,
+		"price": 22.232470547532778,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1318,7 +1401,7 @@ tokens: Object.freeze({
 		"symbol": "DOT/BNB",
 		"img_url": "/tokens_v2/DOT-BNB.png",
 		"decimals": 18,
-		"price": 92.8812542433788,
+		"price": 89.65444497926588,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1326,7 +1409,7 @@ tokens: Object.freeze({
 		"symbol": "ETH/USDC",
 		"img_url": "/tokens_v2/ETH-USDC.png",
 		"decimals": 18,
-		"price": 81.49905350822031,
+		"price": 79.93713899084354,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1334,7 +1417,7 @@ tokens: Object.freeze({
 		"symbol": "USDC/USDT",
 		"img_url": "/tokens_v2/USDC-USDT.png",
 		"decimals": 18,
-		"price": 2.1113631081236153,
+		"price": 2.1142669637355818,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1342,7 +1425,7 @@ tokens: Object.freeze({
 		"symbol": "BTCB/BUSD",
 		"img_url": "/tokens_v2/BTCB-BUSD.png",
 		"decimals": 18,
-		"price": 315.98983299421843,
+		"price": 312.3727519751347,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1350,7 +1433,7 @@ tokens: Object.freeze({
 		"symbol": "TRAVA/BNB",
 		"img_url": "/tokens_v2/TRAVA-BNB.png",
 		"decimals": 18,
-		"price": 0.827259085941794,
+		"price": 0.7330273253467485,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1358,7 +1441,7 @@ tokens: Object.freeze({
 		"symbol": "USDT",
 		"img_url": "/tokens_v2/USDT.png",
 		"decimals": 18,
-		"price": 1.002,
+		"price": 0.99992,
 		"internal": true,
 		"name": "Tether USD"
 	},
@@ -1366,7 +1449,7 @@ tokens: Object.freeze({
 		"symbol": "USDC",
 		"img_url": "/tokens_v2/USDC.png",
 		"decimals": 18,
-		"price": 1.001,
+		"price": 0.99913,
 		"internal": true,
 		"name": "USD Coin"
 	},
@@ -1374,7 +1457,7 @@ tokens: Object.freeze({
 		"symbol": "BUSD",
 		"img_url": "/tokens_v2/BUSD.png",
 		"decimals": 18,
-		"price": 0.999786,
+		"price": 0.999952,
 		"internal": true,
 		"name": "BUSD Token"
 	},
@@ -1382,7 +1465,7 @@ tokens: Object.freeze({
 		"symbol": "DAI",
 		"img_url": "/tokens_v2/DAI.png",
 		"decimals": 18,
-		"price": 1.001,
+		"price": 0.999655,
 		"internal": true,
 		"name": "Dai Token"
 	},
@@ -1390,7 +1473,7 @@ tokens: Object.freeze({
 		"symbol": "MATIC",
 		"img_url": "/tokens_v2/MATIC.png",
 		"decimals": 18,
-		"price": 0.756632,
+		"price": 0.805407,
 		"internal": true,
 		"name": "Matic Token"
 	},
@@ -1398,7 +1481,7 @@ tokens: Object.freeze({
 		"symbol": "LINK",
 		"img_url": "/tokens_v2/LINK.png",
 		"decimals": 18,
-		"price": 7.93,
+		"price": 7.21,
 		"internal": true,
 		"name": "ChainLink Token"
 	},
@@ -1406,7 +1489,7 @@ tokens: Object.freeze({
 		"symbol": "ATOM",
 		"img_url": "/tokens_v2/ATOM.png",
 		"decimals": 18,
-		"price": 13.03,
+		"price": 12.31,
 		"internal": true,
 		"name": "Cosmos Token"
 	},
@@ -1414,7 +1497,7 @@ tokens: Object.freeze({
 		"symbol": "UNI",
 		"img_url": "/tokens_v2/UNI.png",
 		"decimals": 18,
-		"price": 6.41,
+		"price": 6.31,
 		"internal": true,
 		"name": "Uniswap"
 	},
@@ -1422,7 +1505,7 @@ tokens: Object.freeze({
 		"symbol": "AXS",
 		"img_url": "/tokens_v2/AXS.png",
 		"decimals": 18,
-		"price": 12.46,
+		"price": 11.62,
 		"internal": false,
 		"name": "Axie Infinity Shard"
 	},
@@ -1430,7 +1513,7 @@ tokens: Object.freeze({
 		"symbol": "MIM",
 		"img_url": "/tokens_v2/MIM.png",
 		"decimals": 18,
-		"price": 0.998798,
+		"price": 0.993402,
 		"internal": false,
 		"name": "Magic Internet Money"
 	},
@@ -1438,7 +1521,7 @@ tokens: Object.freeze({
 		"symbol": "GMT",
 		"img_url": "/tokens_v2/GMT.png",
 		"decimals": 8,
-		"price": 0.62284,
+		"price": 0.625634,
 		"internal": false,
 		"name": "Green Metaverse Token"
 	},
@@ -1446,7 +1529,7 @@ tokens: Object.freeze({
 		"symbol": "DFI",
 		"img_url": "/tokens_v2/DFI.png",
 		"decimals": 18,
-		"price": 0.837199,
+		"price": 0.643923,
 		"internal": false,
 		"name": "DFI (DefiChain)"
 	},
@@ -1454,7 +1537,7 @@ tokens: Object.freeze({
 		"symbol": "FRAX",
 		"img_url": "/tokens_v2/FRAX.png",
 		"decimals": 18,
-		"price": 0,
+		"price": 0.996437,
 		"internal": false,
 		"name": "Frax"
 	},
@@ -1462,7 +1545,7 @@ tokens: Object.freeze({
 		"symbol": "Cake",
 		"img_url": "/tokens_v2/CAKE.png",
 		"decimals": 18,
-		"price": 4.82,
+		"price": 4.48,
 		"internal": false,
 		"name": "PancakeSwap Token"
 	},
@@ -1470,7 +1553,7 @@ tokens: Object.freeze({
 		"symbol": "ETH",
 		"img_url": "/tokens_v2/ETH.png",
 		"decimals": 18,
-		"price": 1334.85,
+		"price": 1277.83,
 		"internal": true,
 		"name": "Ethereum Token"
 	},
@@ -1478,7 +1561,7 @@ tokens: Object.freeze({
 		"symbol": "FTM",
 		"img_url": "/tokens_v2/FTM.png",
 		"decimals": 18,
-		"price": 0.229175,
+		"price": 0.205332,
 		"internal": false,
 		"name": "Fantom"
 	},
@@ -1486,7 +1569,7 @@ tokens: Object.freeze({
 		"symbol": "TUSD",
 		"img_url": "https://firebasestorage.googleapis.com/v0/b/token-c515a.appspot.com/o/tokens_v2%2FTUSD.png?alt=media&token=ce5a5772-abcd-4d9f-b19c-07a613745c96",
 		"decimals": 18,
-		"price": 1.001,
+		"price": 0.998997,
 		"internal": true,
 		"name": "TrueUSD"
 	},
@@ -1494,7 +1577,7 @@ tokens: Object.freeze({
 		"symbol": "AAVE",
 		"img_url": "/tokens_v2/AAVE.png",
 		"decimals": 18,
-		"price": 75.75,
+		"price": 72.85,
 		"internal": true,
 		"name": "Aave Token"
 	},
@@ -1502,7 +1585,7 @@ tokens: Object.freeze({
 		"symbol": "GALA",
 		"img_url": "/tokens_v2/GALA.png",
 		"decimals": 18,
-		"price": 0.04029477,
+		"price": 0.03956577,
 		"internal": false,
 		"name": "pTokens GALA"
 	},
@@ -1510,7 +1593,7 @@ tokens: Object.freeze({
 		"symbol": "ZIL",
 		"img_url": "/tokens_v2/ZIL.png",
 		"decimals": 12,
-		"price": 0.03167648,
+		"price": 0.03060416,
 		"internal": false,
 		"name": "Zilliqa"
 	},
@@ -1518,7 +1601,7 @@ tokens: Object.freeze({
 		"symbol": "FXS",
 		"img_url": "/tokens_v2/FXS.png",
 		"decimals": 18,
-		"price": 5.32,
+		"price": 5.04,
 		"internal": false,
 		"name": "Frax Share"
 	},
@@ -1526,7 +1609,7 @@ tokens: Object.freeze({
 		"symbol": "COMP",
 		"img_url": "/tokens_v2/COMP.png",
 		"decimals": 18,
-		"price": 52.22,
+		"price": 56.6,
 		"internal": false,
 		"name": "Compound Coin"
 	},
@@ -1534,7 +1617,7 @@ tokens: Object.freeze({
 		"symbol": "USDD",
 		"img_url": "/tokens_v2/USDD.png",
 		"decimals": 18,
-		"price": 0.999546,
+		"price": 0.999029,
 		"internal": false,
 		"name": "Decentralized USD"
 	},
@@ -1542,7 +1625,7 @@ tokens: Object.freeze({
 		"symbol": "1INCH",
 		"img_url": "/tokens_v2/1INCH.png",
 		"decimals": 18,
-		"price": 0.588925,
+		"price": 0.565021,
 		"internal": false,
 		"name": "1INCH Token"
 	},
@@ -1550,7 +1633,7 @@ tokens: Object.freeze({
 		"symbol": "XIDO",
 		"img_url": "/tokens_v2/XIDO.png",
 		"decimals": 18,
-		"price": 2.6,
+		"price": 2,
 		"internal": false,
 		"name": "XIDO FINANCE"
 	},
@@ -1558,7 +1641,7 @@ tokens: Object.freeze({
 		"symbol": "SUSHI",
 		"img_url": "/tokens_v2/SUSHI.png",
 		"decimals": 18,
-		"price": 1.071,
+		"price": 1.24,
 		"internal": true,
 		"name": "SushiToken"
 	},
@@ -1566,7 +1649,7 @@ tokens: Object.freeze({
 		"symbol": "ANKR",
 		"img_url": "/tokens_v2/ANKR.png",
 		"decimals": 18,
-		"price": 0.03055647,
+		"price": 0.02846523,
 		"internal": false,
 		"name": "Ankr"
 	},
@@ -1574,7 +1657,7 @@ tokens: Object.freeze({
 		"symbol": "DOME",
 		"img_url": "/tokens_v2/DOME.png",
 		"decimals": 18,
-		"price": 0.00169512,
+		"price": 0.00253871,
 		"internal": false,
 		"name": "Everdome"
 	},
@@ -1582,7 +1665,7 @@ tokens: Object.freeze({
 		"symbol": "IOTX",
 		"img_url": "/tokens_v2/IOTX.png",
 		"decimals": 18,
-		"price": 0.02853865,
+		"price": 0.02738037,
 		"internal": true,
 		"name": "IoTeX Network"
 	},
@@ -1590,7 +1673,7 @@ tokens: Object.freeze({
 		"symbol": "NFT",
 		"img_url": "/tokens_v2/NFT.png",
 		"decimals": 6,
-		"price": 5.42535e-7,
+		"price": 5.46913e-7,
 		"internal": false,
 		"name": "APENFT"
 	},
@@ -1598,7 +1681,7 @@ tokens: Object.freeze({
 		"symbol": "WEVER",
 		"img_url": "/tokens_v2/WEVER.png",
 		"decimals": 9,
-		"price": 0,
+		"price": 0.055989,
 		"internal": false,
 		"name": "Wrapped Ever"
 	},
@@ -1606,7 +1689,7 @@ tokens: Object.freeze({
 		"symbol": "SYN",
 		"img_url": "/tokens_v2/SYN.png",
 		"decimals": 18,
-		"price": 1.39,
+		"price": 1.1,
 		"internal": false,
 		"name": "Synapse"
 	},
@@ -1614,7 +1697,7 @@ tokens: Object.freeze({
 		"symbol": "WBNB",
 		"img_url": "/tokens_v2/BNB.png",
 		"decimals": 18,
-		"price": 280.13,
+		"price": 270.87,
 		"internal": true,
 		"name": "Wrapped BNB"
 	},
@@ -1622,7 +1705,7 @@ tokens: Object.freeze({
 		"symbol": "SXP",
 		"img_url": "/tokens_v2/SXP.png",
 		"decimals": 18,
-		"price": 0.34882,
+		"price": 0.329658,
 		"internal": true,
 		"name": "Swipe"
 	},
@@ -1630,7 +1713,7 @@ tokens: Object.freeze({
 		"symbol": "MAI",
 		"img_url": "/tokens_v2/MAI.png",
 		"decimals": 18,
-		"price": 0.995004,
+		"price": 0.993868,
 		"internal": false,
 		"name": "Mai Stablecoin"
 	},
@@ -1638,7 +1721,7 @@ tokens: Object.freeze({
 		"symbol": "SFM",
 		"img_url": "/tokens_v2/SFM.png",
 		"decimals": 9,
-		"price": 0.00030012,
+		"price": 0.00026537,
 		"internal": false,
 		"name": "SafeMoon"
 	},
@@ -1646,7 +1729,7 @@ tokens: Object.freeze({
 		"symbol": "SAFEMOON",
 		"img_url": "/tokens_v2/SAFEMOON.png",
 		"decimals": 9,
-		"price": 5.544e-9,
+		"price": 5.472e-9,
 		"internal": false,
 		"name": "SafeMoon"
 	},
@@ -1654,7 +1737,7 @@ tokens: Object.freeze({
 		"symbol": "GAL",
 		"img_url": "/tokens_v2/GAL.png",
 		"decimals": 18,
-		"price": 2.5,
+		"price": 2.43,
 		"internal": false,
 		"name": "Project Galaxy"
 	},
@@ -1662,7 +1745,7 @@ tokens: Object.freeze({
 		"symbol": "TWT",
 		"img_url": "/tokens_v2/TWT.png",
 		"decimals": 18,
-		"price": 0.916004,
+		"price": 0.924823,
 		"internal": true,
 		"name": "Trust Wallet"
 	},
@@ -1670,7 +1753,7 @@ tokens: Object.freeze({
 		"symbol": "WOO",
 		"img_url": "/tokens_v2/WOO.png",
 		"decimals": 18,
-		"price": 0.136104,
+		"price": 0.1496,
 		"internal": false,
 		"name": "Wootrade Network"
 	},
@@ -1678,7 +1761,7 @@ tokens: Object.freeze({
 		"symbol": "10SET",
 		"img_url": "/tokens_v2/10SET.png",
 		"decimals": 18,
-		"price": 1.28,
+		"price": 1.21,
 		"internal": false,
 		"name": "10Set Token"
 	},
@@ -1686,7 +1769,7 @@ tokens: Object.freeze({
 		"symbol": "renBTC",
 		"img_url": "/tokens_v2/RENBTC.png",
 		"decimals": 8,
-		"price": 19660.59,
+		"price": 19134.64,
 		"internal": true,
 		"name": "renBTC"
 	},
@@ -1694,7 +1777,7 @@ tokens: Object.freeze({
 		"symbol": "RACA",
 		"img_url": "/tokens_v2/RACA.png",
 		"decimals": 18,
-		"price": 0.0002953,
+		"price": 0.00026091,
 		"internal": false,
 		"name": "Radio Caca V2"
 	},
@@ -1702,7 +1785,7 @@ tokens: Object.freeze({
 		"symbol": "CHR",
 		"img_url": "/tokens_v2/CHR.png",
 		"decimals": 6,
-		"price": 0.150948,
+		"price": 0.153001,
 		"internal": false,
 		"name": "Chroma"
 	},
@@ -1710,7 +1793,7 @@ tokens: Object.freeze({
 		"symbol": "DAO",
 		"img_url": "/tokens_v2/DAO.png",
 		"decimals": 18,
-		"price": 1.44,
+		"price": 1.29,
 		"internal": false,
 		"name": "DAO Maker [via ChainPort.io]"
 	},
@@ -1718,7 +1801,7 @@ tokens: Object.freeze({
 		"symbol": "KNC",
 		"img_url": "/tokens_v2/KNC.png",
 		"decimals": 18,
-		"price": 1.35,
+		"price": 1.039,
 		"internal": false,
 		"name": "Kyber Network Crystal"
 	},
@@ -1726,7 +1809,7 @@ tokens: Object.freeze({
 		"symbol": "CRTS",
 		"img_url": "/tokens_v2/CRTS.png",
 		"decimals": 18,
-		"price": 0.00059353,
+		"price": 0.00026986,
 		"internal": false,
 		"name": "Cratos BEP20"
 	},
@@ -1734,7 +1817,7 @@ tokens: Object.freeze({
 		"symbol": "VLX",
 		"img_url": "/tokens_v2/VLX.png",
 		"decimals": 18,
-		"price": 0.04597608,
+		"price": 0.04552814,
 		"internal": false,
 		"name": "Velas"
 	},
@@ -1742,7 +1825,7 @@ tokens: Object.freeze({
 		"symbol": "BSW",
 		"img_url": "/tokens_v2/BSW.png",
 		"decimals": 18,
-		"price": 0.270672,
+		"price": 0.245415,
 		"internal": false,
 		"name": "Biswap"
 	},
@@ -1750,7 +1833,7 @@ tokens: Object.freeze({
 		"symbol": "XRP",
 		"img_url": "/tokens_v2/XRP.png",
 		"decimals": 18,
-		"price": 0.438862,
+		"price": 0.487381,
 		"internal": true,
 		"name": "XRP Token"
 	},
@@ -1758,7 +1841,7 @@ tokens: Object.freeze({
 		"symbol": "ADA",
 		"img_url": "/tokens_v2/ADA.png",
 		"decimals": 18,
-		"price": 0.438414,
+		"price": 0.396509,
 		"internal": true,
 		"name": "Cardano Token"
 	},
@@ -1766,7 +1849,7 @@ tokens: Object.freeze({
 		"symbol": "DOT",
 		"img_url": "/tokens_v2/DOT.png",
 		"decimals": 18,
-		"price": 6.44,
+		"price": 6.18,
 		"internal": true,
 		"name": "Polkadot Token"
 	},
@@ -1774,7 +1857,7 @@ tokens: Object.freeze({
 		"symbol": "BTCB",
 		"img_url": "/tokens_v2/BTCB.png",
 		"decimals": 18,
-		"price": 19605.76,
+		"price": 19063.34,
 		"internal": true,
 		"name": "BTCB Token"
 	},
@@ -1782,7 +1865,7 @@ tokens: Object.freeze({
 		"symbol": "DOGE",
 		"img_url": "/tokens_v2/DOGE.png",
 		"decimals": 8,
-		"price": 0.060829,
+		"price": 0.059121,
 		"internal": true,
 		"name": "Dogecoin"
 	},
@@ -1790,7 +1873,7 @@ tokens: Object.freeze({
 		"symbol": "XVS",
 		"img_url": "/tokens_v2/XVS.png",
 		"decimals": 18,
-		"price": 4.86,
+		"price": 4.77,
 		"internal": false,
 		"name": "Venus"
 	},
@@ -1798,7 +1881,7 @@ tokens: Object.freeze({
 		"symbol": "TRAVA",
 		"img_url": "/tokens_v2/TRAVA.png",
 		"decimals": 18,
-		"price": 0.0004705,
+		"price": 0.00038687,
 		"internal": false,
 		"name": "TravaFinance Token"
 	},
@@ -1806,7 +1889,7 @@ tokens: Object.freeze({
 		"symbol": "rTRAVA",
 		"img_url": "/tokens_v2/RTRAVA.png",
 		"decimals": 18,
-		"price": 0.00045201,
+		"price": 0.00038687,
 		"internal": false,
 		"name": "Royalty Trava"
 	},
@@ -1814,7 +1897,7 @@ tokens: Object.freeze({
 		"symbol": "BNB",
 		"img_url": "/tokens_v2/BNB.png",
 		"decimals": 18,
-		"price": 279.5,
+		"price": 270.82,
 		"internal": true,
 		"name": "Native token"
 	},
@@ -1822,7 +1905,7 @@ tokens: Object.freeze({
 		"symbol": "FIL",
 		"img_url": "/tokens_v2/FIL.png",
 		"decimals": 18,
-		"price": 5.89,
+		"price": 5.15,
 		"internal": true,
 		"name": "Filecoin"
 	},
@@ -1830,7 +1913,7 @@ tokens: Object.freeze({
 		"symbol": "LUNA",
 		"img_url": "/tokens_v2/LUNA.png",
 		"decimals": 6,
-		"price": 0.00029462,
+		"price": 0.00027548,
 		"internal": true,
 		"name": "LUNA"
 	},
@@ -1838,7 +1921,7 @@ tokens: Object.freeze({
 		"symbol": "BETH",
 		"img_url": "/tokens_v2/BETH.png",
 		"decimals": 18,
-		"price": 1327.66,
+		"price": 1252.25,
 		"internal": true,
 		"name": "Binance Beacon ETH"
 	},
@@ -1846,7 +1929,7 @@ tokens: Object.freeze({
 		"symbol": "UST",
 		"img_url": "/tokens_v2/UST.png",
 		"decimals": 6,
-		"price": 0.03376505,
+		"price": 0.055774,
 		"internal": true,
 		"name": "UST"
 	},
@@ -1854,7 +1937,7 @@ tokens: Object.freeze({
 		"symbol": "LTC",
 		"img_url": "/tokens_v2/LTC.png",
 		"decimals": 18,
-		"price": 53.49,
+		"price": 51.83,
 		"internal": true,
 		"name": "Litecoin Token"
 	},
@@ -1862,7 +1945,7 @@ tokens: Object.freeze({
 		"symbol": "TRX",
 		"img_url": "https://firebasestorage.googleapis.com/v0/b/token-c515a.appspot.com/o/tokens_v2%2FTRX.png?alt=media&token=a72eda76-064b-48e9-9157-cfa993ebff10",
 		"decimals": 18,
-		"price": 0.060532,
+		"price": 0.061682,
 		"internal": true,
 		"name": "TRON"
 	},
@@ -1870,7 +1953,7 @@ tokens: Object.freeze({
 		"symbol": "BCH",
 		"img_url": "/tokens_v2/BCH.png",
 		"decimals": 18,
-		"price": 114.81,
+		"price": 111.92,
 		"internal": true,
 		"name": "Bitcoin Cash Token"
 	},
@@ -1878,7 +1961,7 @@ tokens: Object.freeze({
 		"symbol": "Cake/BNB",
 		"img_url": "/tokens_v2/CAKE-BNB.png",
 		"decimals": 18,
-		"price": 77.61611130302491,
+		"price": 73.65315569113031,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1886,7 +1969,7 @@ tokens: Object.freeze({
 		"symbol": "BAT",
 		"img_url": "/tokens_v2/BAT.png",
 		"decimals": 18,
-		"price": 0.304,
+		"price": 0.285047,
 		"internal": true,
 		"name": "Basic Attention Token"
 	},
@@ -1894,7 +1977,7 @@ tokens: Object.freeze({
 		"symbol": "XTZ",
 		"img_url": "/tokens_v2/XTZ.png",
 		"decimals": 18,
-		"price": 1.5,
+		"price": 1.35,
 		"internal": true,
 		"name": "Tezos Token"
 	},
@@ -1910,7 +1993,7 @@ tokens: Object.freeze({
 		"symbol": "VAI",
 		"img_url": "/tokens_v2/VAI.png",
 		"decimals": 18,
-		"price": 0.944863,
+		"price": 0.962756,
 		"internal": true,
 		"name": "VAI Stablecoin"
 	},
@@ -1918,7 +2001,7 @@ tokens: Object.freeze({
 		"symbol": "EOS",
 		"img_url": "/tokens_v2/EOS.png",
 		"decimals": 18,
-		"price": 1.14,
+		"price": 1.047,
 		"internal": true,
 		"name": "EOS Token"
 	},
@@ -1926,7 +2009,7 @@ tokens: Object.freeze({
 		"symbol": "BUSD/BNB",
 		"img_url": "/tokens_v2/BUSD-BNB.png",
 		"decimals": 18,
-		"price": 44.37605389053767,
+		"price": 43.809314025518944,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1934,7 +2017,7 @@ tokens: Object.freeze({
 		"symbol": "BTCB/BNB",
 		"img_url": "/tokens_v2/BTCB-BNB.png",
 		"decimals": 18,
-		"price": 5063.588623061121,
+		"price": 4919.9071517703715,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1942,7 +2025,7 @@ tokens: Object.freeze({
 		"symbol": "renZEC",
 		"img_url": "/tokens_v2/RENZEC.png",
 		"decimals": 8,
-		"price": 54.88,
+		"price": 54.47,
 		"internal": true,
 		"name": "renZEC"
 	},
@@ -1958,7 +2041,7 @@ tokens: Object.freeze({
 		"symbol": "ETH/BNB",
 		"img_url": "/tokens_v2/ETH-BNB.png",
 		"decimals": 18,
-		"price": 1359.9972504683474,
+		"price": 1311.227236680876,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1966,7 +2049,7 @@ tokens: Object.freeze({
 		"symbol": "BTCB/BNB",
 		"img_url": "/tokens/BTCB-BNB.png",
 		"decimals": 18,
-		"price": 5306.607622931034,
+		"price": 5165.026345907608,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1974,7 +2057,7 @@ tokens: Object.freeze({
 		"symbol": "USDT/BUSD",
 		"img_url": "/tokens_v2/USDT-BUSD.png",
 		"decimals": 18,
-		"price": 2.1340920027677703,
+		"price": 2.138995431755295,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1982,7 +2065,7 @@ tokens: Object.freeze({
 		"symbol": "YFI",
 		"img_url": "/tokens_v2/YFI.png",
 		"decimals": 18,
-		"price": 8428.54,
+		"price": 7796.17,
 		"internal": true,
 		"name": "yearn.finance"
 	},
@@ -1990,7 +2073,7 @@ tokens: Object.freeze({
 		"symbol": "AUTO",
 		"img_url": "/tokens_v2/AUTO.png",
 		"decimals": 18,
-		"price": 228.39,
+		"price": 223.59,
 		"internal": true,
 		"name": "AUTOv2"
 	},
@@ -1998,7 +2081,7 @@ tokens: Object.freeze({
 		"symbol": "ALPHA",
 		"img_url": "/tokens_v2/ALPHA.png",
 		"decimals": 18,
-		"price": 0.107591,
+		"price": 0.112534,
 		"internal": true,
 		"name": "AlphaToken"
 	},
@@ -2006,7 +2089,7 @@ tokens: Object.freeze({
 		"symbol": "Cake/BNB",
 		"img_url": "/tokens/CAKE-BNB.png",
 		"decimals": 18,
-		"price": 89.78455043885153,
+		"price": 85.18861397210101,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -2014,7 +2097,7 @@ tokens: Object.freeze({
 		"symbol": "BAND",
 		"img_url": "/tokens_v2/BAND.png",
 		"decimals": 18,
-		"price": 1.16,
+		"price": 1.12,
 		"internal": true,
 		"name": "Band Protocol Token"
 	},
@@ -2022,7 +2105,7 @@ tokens: Object.freeze({
 		"symbol": "USDT/BUSD",
 		"img_url": "/tokens/USDT-BUSD.png",
 		"decimals": 18,
-		"price": 2.185646948310933,
+		"price": 2.1858137053157827,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -2030,7 +2113,7 @@ tokens: Object.freeze({
 		"symbol": "CREAM",
 		"img_url": "/tokens_v2/CREAM.png",
 		"decimals": 18,
-		"price": 15.67,
+		"price": 13.25,
 		"internal": false,
 		"name": "Cream"
 	},
@@ -2038,9 +2121,25 @@ tokens: Object.freeze({
 		"symbol": "ORAI",
 		"img_url": "/tokens_v2/ORAI.png",
 		"decimals": 18,
-		"price": 1.56,
+		"price": 1.4,
 		"internal": true,
 		"name": "Oraichain Token"
+	},
+	"0xb1ebdd56729940089ecc3ad0bbeeb12b6842ea6f": {
+		"symbol": "VALAS",
+		"img_url": "/tokens_v2/VALAS.png",
+		"decimals": 18,
+		"price": 0.0003675,
+		"internal": false,
+		"name": "Valas Finance Protocol Token"
+	},
+	"0x8f0528ce5ef7b51152a59745befdd91d97091d2f": {
+		"symbol": "ALPACA",
+		"img_url": "/tokens_v2/ALPACA.png",
+		"decimals": 18,
+		"price": 0.280078,
+		"internal": false,
+		"name": "AlpacaToken"
 	}
 }),
 }

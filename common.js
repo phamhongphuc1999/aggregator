@@ -68,7 +68,7 @@ const methodName = (str) => str.slice(0, str.indexOf('('));
  * @param {number=} eth
  * @param {Object=} descs
  * @param {Check=} check
- * @param {Array=} inputs
+ * @param {Array=} uinputs
  * @return {Object}
  */
 function Call(
@@ -78,7 +78,7 @@ function Call(
 	eth = '0',
 	descs = { title: '', params: [] },
 	check = null,
-	inputs = undefined
+	uinputs = undefined
 ) {
 	// this.constructor === Call
 	console.assert(this, 'must-using-new');
@@ -95,7 +95,7 @@ function Call(
 		eth,
 		descs,
 		check,
-		inputs,
+		uinputs,
 		targetName: '',
 		fee: '0',
 	});
@@ -115,14 +115,14 @@ Call.prototype = Object.freeze({
 		// only saved once when updating
 		const _params = this.params.slice();
 		// fill-in additional inputs
-		Object.keys(this.inputs ?? {}).map(
+		Object.keys(this.uinputs ?? {}).map(
 			(name) =>
 				maps[name] === undefined &&
-				(maps[name] = this.inputs[name]?.default)
+				(maps[name] = this.uinputs[name].default)
 		);
 		// updates
 		params = update(params, maps).map((param) =>
-			param instanceof Function ? param(maps) : param
+			param instanceof Function ? param(maps, this.target) : param
 		);
 		const [target, eth] = update([this.target, this.eth], maps);
 		const check =
@@ -193,7 +193,11 @@ Call.prototype = Object.freeze({
 					(await con.attach(target)[name]())
 				);
 			} catch (err) {
-				return Object.entries(getAddress(null)).find(([k, v]) => v == target)?.[0] ?? '';
+				return (
+					Object.entries(getAddress(null)).find(
+						([k, v]) => v == target
+					)?.[0] ?? ''
+				);
 			}
 		};
 		//
@@ -205,7 +209,6 @@ Call.prototype = Object.freeze({
 		const formatParam = async (val, i) => {
 			const orig = val instanceof Object ? Object.assign({}, val) : val;
 			const cformat = this.descs.formats?.[i] ?? {};
-			debug('---------------------------->', cformat);
 			if (typeof val === 'string' && val.startsWith('__')) {
 				// ? not updated
 				val = val.slice(2, val.lastIndexOf('__')).toUpperCase();
@@ -222,8 +225,12 @@ Call.prototype = Object.freeze({
 						getChain().explorer?.url
 					}/address/${orig}">${val}</a>`);
 			} else if (isBN(val) || !isNaN(val)) {
-				const now = toBN(Date.now());
-				if (cformat.type == 'amount' || isAmount(this._params[i]) || isBN(this._params[i])) {
+				const now = toBN(Date.now()).div(1000);
+				if (
+					cformat.type == 'amount' ||
+					isAmount(this._params[i]) ||
+					isBN(this._params[i])
+				) {
 					const tokens = [];
 					// ! assumptions, tokens is reliably
 					tokens.push(
@@ -242,12 +249,14 @@ Call.prototype = Object.freeze({
 					);
 					if (state.config.formatPrevToken) {
 						// ! fix for single amount method
-						maps._token = cformat.get ? [await cformat.get(maps)] : this.params.filter(
-							(address) =>
-								IA(address) &&
-								!sameToken(address, maps.account) &&
-								getToken(address, true)
-						);
+						maps._token = cformat.get
+							? [await cformat.get(maps)]
+							: this.params.filter(
+									(address) =>
+										IA(address) &&
+										!sameToken(address, maps.account) &&
+										getToken(address, true)
+							  );
 						if (
 							maps._token.length === 1 &&
 							this._params.filter(isAmount).length === 1
@@ -277,7 +286,7 @@ Call.prototype = Object.freeze({
 						)
 					);
 				} else if (
-					toBN(val).gte(now.sub(state.config.formatDatetime ?? 0)) ||
+					toBN(val).gte(now.sub(state.config.formatDatetime ?? 0)) &&
 					toBN(val).lte(now.add(state.config.formatDatetime ?? 0))
 				) {
 					// ? timestamp

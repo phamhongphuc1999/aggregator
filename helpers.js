@@ -12,13 +12,15 @@ import config from './config.js';
 // Get contract instance
 export function contract(
 	address = ethers.constants.AddressZero,
-	abi = 'token'
+	abi = 'token',
+	readonly = false
 ) {
-	return new ethers.Contract(
+	const con = new ethers.Contract(
 		address,
 		typeof abi == 'string' ? getABI(abi) : abi,
 		getProvider()
 	);
+	return readonly ? con.callStatic : con;
 }
 
 // Get function definitions
@@ -108,7 +110,13 @@ export async function findSwapPath(
 		);
 		return res;
 	} catch (err) {
-		debug.apply(null, ['!path', router, tokens].concat(paths));
+		debug.apply(
+			null,
+			['!path', router, str(tokens)]
+				.concat(paths.map(str))
+				.concat([err.message ?? err])
+				.concat([amount])
+		);
 		return null;
 	}
 }

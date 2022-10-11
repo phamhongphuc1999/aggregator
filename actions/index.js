@@ -1,5 +1,5 @@
 import state from '../state.js';
-import { approve, transfer } from '../common.js';
+import { update, approve, transfer } from '../common.js';
 import {
 	contract,
 	cutAmount,
@@ -401,7 +401,8 @@ const vaults = {
 					maps.outs.push([maps.otoken, maps.oamount ?? '0']);
 				} else if (maps.lastStep) {
 					// aggregator -> address
-					call = call.update({ account: maps.user });
+					//call = call.update({ account: maps.user });
+					call.params = update(call.params, { account: maps.user });
 				} else {
 					throw new Error('notimpl: ' + 'auto');
 				}

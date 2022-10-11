@@ -7,10 +7,10 @@ export type Transaction = any;
  * @param {number=} eth
  * @param {Object=} descs
  * @param {Check=} check
- * @param {Array=} inputs
+ * @param {Array=} uinputs
  * @return {Object}
  */
-export function Call(target: string, method?: string, params?: any[], eth?: number | undefined, descs?: any | undefined, check?: typeof Check | undefined, inputs?: any[] | undefined): any;
+export function Call(target: string, method?: string, params?: any[], eth?: number | undefined, descs?: any | undefined, check?: typeof Check | undefined, uinputs?: any[] | undefined): any;
 export const Expecting: Readonly<{
     PASS: number;
     EQUAL: number;
