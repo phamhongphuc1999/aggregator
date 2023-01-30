@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
-//pragma solidity ^0.7.0;
+pragma solidity ^0.7.0;
 
 contract Proxy {
+	event Upgraded(address indexed implementation);
     bytes32 private constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
     bytes32 private constant _ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
     modifier ifAdmin() {
@@ -14,15 +15,19 @@ contract Proxy {
     constructor () {
         _setAdmin(msg.sender);
     }
-    function implementation() external view  returns (address) {
-//        return _implementation();
+    function implementation() external view returns (address) {
+        return _implementation();
     }
-    function upgradeToAndCall(address impl, bytes calldata data) public ifAdmin {
+    function upgradeTo(address impl) public {
+        upgradeToAndCall(impl, new bytes(0));
+    }
+    function upgradeToAndCall(address impl, bytes memory data) public ifAdmin {
         _setImplementation(impl);
         if(data.length != 0) {
             (bool success,) = impl.delegatecall(data);
             require(success);
         }
+        emit Upgraded(impl);
     }
     function changeAdmin(address admin) external ifAdmin {
         require(admin != address(0), "!address");

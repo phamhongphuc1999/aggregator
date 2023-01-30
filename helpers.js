@@ -10,16 +10,8 @@ import config from './config.js';
  */
 
 // Get contract instance
-export function contract(
-	address = ethers.constants.AddressZero,
-	abi = 'token',
-	readonly = false
-) {
-	const con = new ethers.Contract(
-		address,
-		typeof abi == 'string' ? getABI(abi) : abi,
-		getProvider()
-	);
+export function contract(address = ethers.constants.AddressZero, abi = 'token', readonly = false) {
+	const con = new ethers.Contract(address, typeof abi == 'string' ? getABI(abi) : abi, getProvider());
 	return readonly ? con.callStatic : con;
 }
 
@@ -36,13 +28,7 @@ export async function swapsdk() {
 		// init uniswap sdk
 		swapsdk.ChainId = state.chainId;
 		swapsdk.FACTORY_ADDRESS = getAddress('swaps.factory');
-		swapsdk.WETH[state.chainId] = new swapsdk.Token(
-			state.chainId,
-			getAddress('token.eth'),
-			18,
-			'WETH',
-			'Wrapped'
-		);
+		swapsdk.WETH[state.chainId] = new swapsdk.Token(state.chainId, getAddress('token.eth'), 18, 'WETH', 'Wrapped');
 		return swapsdk;
 	} catch (err) {
 		return null;
@@ -67,27 +53,15 @@ export async function axios(args = null) {
  * @param {boolean=} final
  * @returns [path, amounts]
  */
-export async function findSwapPath(
-	router,
-	tokens = [],
-	amount = toBN(10000),
-	final = true
-) {
+export async function findSwapPath(router, tokens = [], amount = toBN(10000), final = true) {
 	const con = contract(router, 'swaps');
 	const mtokens = [getAddress('token.eth')]
 		.concat(getAddress('token.usd'))
 		.map((a) => a.toLowerCase())
 		.filter((token) => !tokens.includes(token));
-	tokens = tokens.map((token) =>
-		invalidAddresses.includes(token) ? mtokens[0] : token
-	);
+	tokens = tokens.map((token) => (invalidAddresses.includes(token) ? mtokens[0] : token));
 	// ! try: direct, via weth, via usds, via mix of eth and first usd token (ordered)
-	const paths = [
-		[],
-		...mtokens.map((token) => [token]),
-		mtokens.slice(0, 2),
-		mtokens.slice(0, 2).reverse(),
-	];
+	const paths = [[], ...mtokens.map((token) => [token]), mtokens.slice(0, 2), mtokens.slice(0, 2).reverse()];
 	//toBN(amount).eq(0) && (amount = toBN(10000));
 	//swapsdk.Trade.bestTradeExactIn(apairs, new swapsdk.TokenAmount(new swapsdk.Token(), maps.amount.toHexString()), new swapsdk.Token(), { maxHops: 3, maxNumResults: 1 })[0];
 	try {
@@ -97,10 +71,7 @@ export async function findSwapPath(
 				.map(async (path) => {
 					const amounts = await con.getAmountsOut(amount, path);
 					//if (path[0] != tokens[0] || path[path.length - 1] != tokens[1]) throw new Error('not work');
-					return [
-						path,
-						final ? amounts[amounts.length - 1] : amounts,
-					];
+					return [path, final ? amounts[amounts.length - 1] : amounts];
 				})
 		);
 		debug(
@@ -125,9 +96,7 @@ export async function findSwapPath(
 export async function findSwapPair(router, tokens = []) {
 	let con = contract(router, 'swaps');
 	con = con.attach(
-		router.toLowerCase() == getAddress('swaps.router')
-			? getAddress('swaps.factory')
-			: await con.factory()
+		router.toLowerCase() == getAddress('swaps.router') ? getAddress('swaps.factory') : await con.factory()
 	);
 	return await con.getPair.apply(con, tokens);
 }
@@ -135,20 +104,14 @@ export async function findSwapPair(router, tokens = []) {
 // get pair tokens
 export async function findPairInfo(pair) {
 	const con = contract(pair, 'swaps');
-	const res = await Promise.all([
-		Promise.all([con.token0(), con.token1()]),
-		con.getReserves(),
-	]);
+	const res = await Promise.all([Promise.all([con.token0(), con.token1()]), con.getReserves()]);
 	res[0] = res[0].map((token) => token.toLowerCase(token));
 	return res;
 }
 
 export async function findPairAddress(router, token0, token1) {
 	const con = contract(router, 'swaps');
-	const [factory, pair0] = await Promise.all([
-		con.factory(),
-		con.allPairs(0),
-	]);
+	const [factory, pair0] = await Promise.all([con.factory(), con.allPairs(0)]);
 	const codehash =
 		ethers.utils.keccak256(await getProvider().getCode(pair0)) ??
 		'0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f';
@@ -172,12 +135,7 @@ export async function findPairAddress(router, token0, token1) {
  * @param {Object} maps
  * @returns {Object}
  */
-export async function findContract(
-	target,
-	action = '',
-	maps = {},
-	mapNames = []
-) {
+export async function findContract(target, action = '', maps = {}, mapNames = []) {
 	//const findAbis = (match) => Object.keys(ABIS).filter((e) => e.match(new RegExp(match))).map(e => ABIS[e]);
 	//const con = contract(address, findAbis(type).reduce((o, e) => o.concat(e), []));
 	const key = target + '_' + maps.token;
@@ -201,11 +159,7 @@ export async function findContract(
 								new Promise((resolve, reject) =>
 									detect
 										.get(maps, target, true)
-										.then((ret) =>
-											ret == null
-												? reject('')
-												: resolve([{ ...app }, ret, i])
-										)
+										.then((ret) => (ret == null ? reject('') : resolve([{ ...app }, ret, i])))
 								)
 						)
 					),
@@ -213,13 +167,7 @@ export async function findContract(
 			);
 			// Sometimes target needs to be set
 			const setMaps = (obj) =>
-				mapNames.forEach(
-					(name) =>
-						obj &&
-						obj[name] &&
-						(maps[name] = obj[name]) &&
-						setMaps.count++
-				);
+				mapNames.forEach((name) => obj && obj[name] && (maps[name] = obj[name]) && setMaps.count++);
 			// find fallback definitions
 			[def, detect, index] = await Promise.any(checks);
 			def.ref instanceof Function &&
@@ -233,10 +181,7 @@ export async function findContract(
 						if (
 							(view = await Promise.any(
 								(view.length ? view : [view]).map(
-									(view) =>
-										view &&
-										view.get &&
-										view.get(maps, def.target ?? target)
+									(view) => view && view.get && view.get(maps, def.target ?? target)
 								)
 							))
 						) {
@@ -260,14 +205,7 @@ export async function findContract(
 				);
 			}
 			//
-			debug(
-				'find',
-				key,
-				def.title,
-				setMaps.count,
-				str(fetchs),
-				def.target
-			);
+			debug('find', key, def.title, setMaps.count, str(fetchs), def.target);
 			maps.detect = detect;
 			return (state.cache.def[key] = { ...def, ...fetchs, detect });
 		} catch (err) {
@@ -304,16 +242,11 @@ const str = (a, s = 0) =>
 const parseAmount = async (amount, token = null) =>
 	ethers.BigNumber.isBigNumber(amount)
 		? amount
-		: ethers.utils.parseUnits(
-				'' + amount,
-				IA(token) ? await getDecimals(token) : 18
-		  );
+		: ethers.utils.parseUnits('' + amount, IA(token) ? await getDecimals(token) : 18);
 
 // Check if address is special
 const isEth = (address, erc = false) =>
-	invalidAddresses
-		.concat(erc ? [getAddress('token.eth')] : [])
-		.includes(address.toLowerCase());
+	invalidAddresses.concat(erc ? [getAddress('token.eth')] : []).includes(address.toLowerCase());
 
 //
 const sameToken = (token0, token1) => {
@@ -321,41 +254,26 @@ const sameToken = (token0, token1) => {
 	return token0 == token1 || (isEth(token0, true) && isEth(token1, true));
 };
 
-export {
-	ts,
-	invalidAddresses,
-	toBN,
-	isBN,
-	parseAmount,
-	toPow,
-	IA,
-	str,
-	isEth,
-	sameToken,
-};
+export { ts, invalidAddresses, toBN, isBN, parseAmount, toPow, IA, str, isEth, sameToken };
 
 // stateful getters
 
 //
 const getDecimals = (address) =>
-	invalidAddresses.includes(address)
-		? 18
-		: getToken(address)?.decimals ?? contract(address).decimals();
+	invalidAddresses.includes(address) ? 18 : getToken(address)?.decimals ?? contract(address).decimals();
 
 //
 const getABI = (name) => config.abis[name] ?? [];
 
 //
-const getChain = (id = state.chainId) =>
-	config.chains.filter((chain) => chain.chainId == id).pop();
+const getChain = (id = state.chainId) => config.chains.filter((chain) => chain.chainId == id).pop();
 
 //
 const getAddress = (name = 'aggregator', id = state.chainId) =>
 	name ? config.addresses[id][name] ?? '' : config.addresses[id];
 
 //
-const getToken = (address = A0, cacheOnly = false, id = state.chainId) =>
-	config.tokens[address.toLowerCase()] ?? null;
+const getToken = (address = A0, cacheOnly = false, id = state.chainId) => config.tokens[address.toLowerCase()] ?? null;
 // (!cacheOnly || debug('tokens', 'unknown = ' + address)
 
 /**
@@ -366,21 +284,19 @@ const getToken = (address = A0, cacheOnly = false, id = state.chainId) =>
 const getProvider = (id = state.chainId) =>
 	state.cache.provider[id] ??
 	(() => {
+		const url = getChain(id).rpc[0];
+		//
 		const network = ethers.providers.getNetwork(id) ?? {
 			chainId: id,
 			name: getChain(id).shortName,
-			ensAddress: null,
+			ensAddress: null
 		};
 		//
-		const provider = new ethers.providers[
-			getChain(id).rpc[0].startsWith('wss:')
-				? 'WebSocketProvider'
-				: 'JsonRpcBatchProvider'
-		](
+		const provider = new ethers.providers[url.startsWith('wss:') ? 'WebSocketProvider' : 'JsonRpcBatchProvider'](
 			{
-				url: getChain(id).rpc[0],
+				url,
 				timeout: (state.timeout?.network ?? 20) * 1000,
-				allowGzip: true,
+				allowGzip: true
 			},
 			network
 		);
@@ -395,10 +311,7 @@ const getProvider = (id = state.chainId) =>
  * @returns {ethers.Wallet}
  */
 const getSigner = (a, id = state.chainId) =>
-	new ethers[IA(a) ? 'VoidSigner' : 'Wallet'](
-		a ?? '0'.repeat(63) + '1',
-		getProvider(id)
-	);
+	new ethers[IA(a) ? 'VoidSigner' : 'Wallet'](a ?? '0'.repeat(63) + '1', getProvider(id));
 
 /**
  * Get transaction simulation/backtracing API instance
@@ -411,12 +324,9 @@ const getScanApi = (maps = {}, id = state.chainId) => {
 	return axios({
 		url:
 			`${chain.explorer?.api_url}?apikey=${chain.explorer?.api_key}` +
-			Object.entries(maps).reduce(
-				(o, [name, val]) => o + name + '=' + val + '&',
-				'&'
-			),
+			Object.entries(maps).reduce((o, [name, val]) => o + name + '=' + val + '&', '&'),
 		method: 'get',
-		headers: {},
+		headers: {}
 	});
 };
 
@@ -429,7 +339,7 @@ const getSimulateApi = (maps = {}) => {
 	const env = {
 		ENDPOINT: 'https://api.tenderly.co/api/v1',
 		USER: '0x',
-		PROJECT: '',
+		PROJECT: ''
 	};
 	const data = {
 		// standard TX fields
@@ -443,29 +353,20 @@ const getSimulateApi = (maps = {}) => {
 		// simulation config (tenderly specific)
 		save_if_fails: true,
 		save: false,
-		simulation_type: 'quick',
+		simulation_type: 'quick'
 	};
 	return axios.bind(null, {
 		url: `${env.ENDPOINT}/account/${env.USER}/project/${env.PROJECT}/simulate`,
 		method: 'post',
 		headers: {
 			'X-Access-Key': env.KEY ?? '',
-			'Content-Type': 'application/json',
+			'Content-Type': 'application/json'
 		},
-		data,
+		data
 	});
 };
 
-export {
-	getABI,
-	getChain,
-	getAddress,
-	getToken,
-	getProvider,
-	getSigner,
-	getScanApi,
-	getDecimals,
-};
+export { getABI, getChain, getAddress, getToken, getProvider, getSigner, getScanApi, getDecimals };
 
 // debug print
 
@@ -493,19 +394,13 @@ export async function rans(get = () => null) {
 
 // json helper
 export function serialize(obj, pretty = true) {
-	return JSON.stringify(
-		obj,
-		(key, value) => (key.startsWith('_') ? undefined : value),
-		pretty ? '\t' : ''
-	);
+	return JSON.stringify(obj, (key, value) => (key.startsWith('_') ? undefined : value), pretty ? '\t' : '');
 }
 
 //
 const slippage = function (name, maps = {}) {
 	const n = state.slippage[name] ?? 0.0001;
-	return state.config.autoSlippage &&
-		maps.auto &&
-		state.config.autoSlippageActions.includes(maps.action)
+	return state.config.autoSlippage && maps.auto && state.config.autoSlippageActions.includes(maps.action)
 		? n * (1.0 - (state.slippage['autoAdj'] ?? 0.5))
 		: n;
 };
@@ -528,15 +423,9 @@ export async function lpAmount(pair, amounts, auto = false) {
 	debug('lpa', pair, amounts.join());
 	const min = (a, b) => (a.gt(b) ? b : a);
 	const con = contract(pair, 'swaps');
-	const [ts, reserves] = await Promise.all([
-		con.totalSupply(),
-		con.getReserves(),
-	]);
+	const [ts, reserves] = await Promise.all([con.totalSupply(), con.getReserves()]);
 	return subSlippage(
-		min(
-			amounts[0].mul(ts).div(reserves[0]),
-			amounts[1].mul(ts).div(reserves[1])
-		),
+		min(amounts[0].mul(ts).div(reserves[0]), amounts[1].mul(ts).div(reserves[1])),
 		slippage('mintlps') ?? slippage('providinglps', auto)
 	);
 }
@@ -552,8 +441,7 @@ export async function getPrice(token, tobn = false, chain = state.chainId) {
 			const res = (
 				await axios(
 					invalidAddresses.includes(token.toLowerCase())
-						? cfg.endpoint +
-								`/simple/price?vs_currencies=${cfg.to}&ids=${cfg.platform[chain][1]}`
+						? cfg.endpoint + `/simple/price?vs_currencies=${cfg.to}&ids=${cfg.platform[chain][1]}`
 						: cfg.endpoint +
 								`/simple/token_price/${cfg.platform[chain][0]}?vs_currencies=${cfg.to}&contract_addresses=${token}`,
 					{ responseType: 'json' }
@@ -593,8 +481,7 @@ export async function getPrice(token, tobn = false, chain = state.chainId) {
 const merge = function (obj, ...srcs) {
 	if (!srcs.length) return obj;
 	const src = srcs.shift();
-	const isObject = (item) =>
-		item && typeof item === 'object' && !Array.isArray(item);
+	const isObject = (item) => item && typeof item === 'object' && !Array.isArray(item);
 	//
 	if (isObject(obj) && isObject(src)) {
 		for (const key in src) {

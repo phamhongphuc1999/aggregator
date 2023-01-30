@@ -104,7 +104,7 @@ const vaults = [
 		deposit: new Call(
 			null,
 			'deposit(uint256,uint256)',
-			['__amount__', '__account__'],
+			['__poolid__', '__amount__'],
 			'0',
 			{
 				title: 'Deposit token to pool',
