@@ -71,7 +71,7 @@ env node << EOM
 	const fs = require('fs');
 	const files = fs.readdirSync('.').filter(e => e.endsWith('.json'));
 	const save = 'config.js';
-	const excludes = ['test','a','tsconfig','all'];
+	const excludes = ['test','a','tsconfig','all','package-lock'];
 	const names = [];
 	//
 	let code = "export default {\n";
@@ -79,7 +79,7 @@ env node << EOM
 		const name = file.split('.')[0];
 		if (!excludes.includes(name)) {
 			//code += 'import { default as '+name+' } from "'+'./'+file+'"'+"\n";
-			code += name+': Object.freeze('+fs.readFileSync(file)+"),\n";
+			code += '"'+name+'": Object.freeze('+fs.readFileSync(file)+"),\n";
 			names.push(name);
 		}
 	}

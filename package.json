@@ -19,13 +19,14 @@
 	"devDependencies": {
 		"@types/node": "^18.0.3",
 		"mocha": "^7.2.0",
-		"readline-sync": "^1.4.10"
+		"readline-sync": "^1.4.10",
+		"esbuild": "^0.14.53"
 	},
 	"scripts": {
 		"test": "node test.js",
 		"test-all": "node test.all.js",
 		"tsc": "rm -f *.d.ts actions/*.d.ts && npx tsc && rm -f actions/*.d.ts",
-		"build": "sh configgen.sh && esbuild strategyen.js --bundle --minify --sourcemap --platform=browser --target=chrome58 --tree-shaking=true --format=esm --define:DEBUG=false --charset=utf8 --outfile=build.min.js --define:process.env.VER='\"$(VER)\"' && scp -o ConnectTimeout=4 build.min.js sonetel:/mnt/data/cdn/strategyen.min.js",
+		"build": "sh configgen.sh && esbuild strategyen.js --bundle --minify --sourcemap --platform=browser --target=chrome58 --tree-shaking=true --format=esm --define:DEBUG=false --charset=utf8 --outfile=build.min.js --define:process.env.VER='\"$(VER)\"'",
 		"deploy": "npm publish",
 		"compile": "npx hardhat compile"
 	},
