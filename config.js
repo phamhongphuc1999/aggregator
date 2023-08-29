@@ -998,132 +998,123 @@ export default {
 }
 ),
 "chains": Object.freeze([
-	{
-		"name": "Ethereum Mainnet",
-		"chainId": 1,
-		"shortName": "eth",
-		"networkId": 1,
-		"nativeCurrency": {
-			"name": "Ether",
-			"symbol": "ETH",
-			"decimals": 18
-		},
-		"rpc": [
-			"https://cloudflare-eth.com",
-			"https://mainnet.infura.io/v3/${INFURA_API_KEY}",
-			"wss://mainnet.infura.io/ws/v3/${INFURA_API_KEY}",
-			"https://api.mycryptoapi.com/eth"
-		],
-		"faucets": [],
-		"infoURL": "https://ethereum.org",
-		"avgBlockTime": 12,
-		"explorer": {
-			"url": "https://etherscan.io",
-			"api_url": "https://api.etherscan.io/api",
-			"api_key": "2MHE4CTGBBYHK56GM52PBEH1HSGQNSBA47"
-		}
-	},
-	{
-		"name": "Binance Smart Chain Mainnet",
-		"chainId": 56,
-		"shortName": "bnb",
-		"networkId": 56,
-		"nativeCurrency": {
-			"name": "Binance Chain Native Token",
-			"symbol": "BNB",
-			"decimals": 18
-		},
-		"rpc": [
-			"https://nd-233-026-729.p2pify.com/4d072eb4598e7a592b8d18c5ac7b2d61",
-			"wss://ws-nd-233-026-729.p2pify.com/4d072eb4598e7a592b8d18c5ac7b2d61",
-			"https://bsc-dataseed1.binance.org",
-			"https://bsc-dataseed2.binance.org",
-			"https://bsc-dataseed3.binance.org",
-			"https://bsc-dataseed4.binance.org",
-			"https://bsc-dataseed1.defibit.io",
-			"https://bsc-dataseed2.defibit.io",
-			"https://bsc-dataseed3.defibit.io",
-			"https://bsc-dataseed4.defibit.io",
-			"https://bsc-dataseed1.ninicoin.io",
-			"https://bsc-dataseed2.ninicoin.io",
-			"https://bsc-dataseed3.ninicoin.io",
-			"https://bsc-dataseed4.ninicoin.io",
-			"wss://bsc-ws-node.nariox.org"
-		],
-		"faucets": ["https://free-online-app.com/faucet-for-eth-evm-chains/"],
-		"infoURL": "https://www.binance.org",
-		"avgBlockTime": 3,
-		"explorer": {
-			"url": "https://bscscan.com",
-			"api_url": "https://api.bscscan.com/api",
-			"api_key": "BI4KGXG8B75WEK1D22MH73NYQMZJR5EV6T"
-		}
-	},
-	{
-		"name": "Binance Smart Chain Testnet",
-		"chainId": 97,
-		"shortName": "bnbt",
-		"networkId": 97,
-		"nativeCurrency": {
-			"name": "Binance Chain Native Token",
-			"symbol": "tBNB",
-			"decimals": 18
-		},
-		"rpc": [
-			"https://nd-006-375-626.p2pify.com/7d7fc1a2b5dd8f7a51697c940dd6fe33",
-			"wss://ws-nd-006-375-626.p2pify.com/7d7fc1a2b5dd8f7a51697c940dd6fe33",
-			"https://data-seed-prebsc-1-s1.binance.org:8545",
-			"https://data-seed-prebsc-2-s1.binance.org:8545",
-			"https://data-seed-prebsc-1-s2.binance.org:8545",
-			"https://data-seed-prebsc-2-s2.binance.org:8545",
-			"https://data-seed-prebsc-1-s3.binance.org:8545",
-			"https://data-seed-prebsc-2-s3.binance.org:8545"
-		],
-		"faucets": ["https://testnet.binance.org/faucet-smart"],
-		"infoURL": "https://testnet.binance.org/"
-	}
+  {
+    "name": "Ethereum Mainnet",
+    "chainId": 1,
+    "shortName": "eth",
+    "networkId": 1,
+    "nativeCurrency": {
+      "name": "Ether",
+      "symbol": "ETH",
+      "decimals": 18
+    },
+    "rpc": ["https://cloudflare-eth.com", "https://mainnet.infura.io/v3/${INFURA_API_KEY}", "wss://mainnet.infura.io/ws/v3/${INFURA_API_KEY}", "https://api.mycryptoapi.com/eth"],
+    "faucets": [],
+    "infoURL": "https://ethereum.org",
+    "avgBlockTime": 12,
+    "explorer": {
+      "url": "https://etherscan.io",
+      "api_url": "https://api.etherscan.io/api",
+      "api_key": "2MHE4CTGBBYHK56GM52PBEH1HSGQNSBA47"
+    }
+  },
+  {
+    "name": "Binance Smart Chain Mainnet",
+    "chainId": 56,
+    "shortName": "bnb",
+    "networkId": 56,
+    "nativeCurrency": {
+      "name": "Binance Chain Native Token",
+      "symbol": "BNB",
+      "decimals": 18
+    },
+    "rpc": [
+      "https://bsc-dataseed1.binance.org",
+      "https://bsc-dataseed2.binance.org",
+      "https://bsc-dataseed3.binance.org",
+      "https://bsc-dataseed4.binance.org",
+      "https://bsc-dataseed1.defibit.io",
+      "https://bsc-dataseed2.defibit.io",
+      "https://bsc-dataseed3.defibit.io",
+      "https://bsc-dataseed4.defibit.io",
+      "https://bsc-dataseed1.ninicoin.io",
+      "https://bsc-dataseed2.ninicoin.io",
+      "https://bsc-dataseed3.ninicoin.io",
+      "https://bsc-dataseed4.ninicoin.io",
+      "wss://bsc-ws-node.nariox.org"
+    ],
+    "faucets": ["https://free-online-app.com/faucet-for-eth-evm-chains/"],
+    "infoURL": "https://www.binance.org",
+    "avgBlockTime": 3,
+    "explorer": {
+      "url": "https://bscscan.com",
+      "api_url": "https://api.bscscan.com/api",
+      "api_key": "BI4KGXG8B75WEK1D22MH73NYQMZJR5EV6T"
+    }
+  },
+  {
+    "name": "Binance Smart Chain Testnet",
+    "chainId": 97,
+    "shortName": "bnbt",
+    "networkId": 97,
+    "nativeCurrency": {
+      "name": "Binance Chain Native Token",
+      "symbol": "tBNB",
+      "decimals": 18
+    },
+    "rpc": [
+      "https://data-seed-prebsc-1-s1.binance.org:8545",
+      "https://data-seed-prebsc-2-s1.binance.org:8545",
+      "https://data-seed-prebsc-1-s2.binance.org:8545",
+      "https://data-seed-prebsc-2-s2.binance.org:8545",
+      "https://data-seed-prebsc-1-s3.binance.org:8545",
+      "https://data-seed-prebsc-2-s3.binance.org:8545"
+    ],
+    "faucets": ["https://testnet.binance.org/faucet-smart"],
+    "infoURL": "https://testnet.binance.org/"
+  }
 ]
 ),
 "methods": Object.freeze({"lendings":"Deposit","vaults":"Stake","swaps":"Swap","providinglps":"Add Liquidity Pair","borrows":"Borrow"}),
 "package": Object.freeze({
-	"name": "@ais-ltd/strategyen",
-	"repository": "git+https://github.com/ais-ltd/aggregator.git",
-	"version": "0.4.0",
-	"description": "Automatic Strategy Encoder (BRicher)",
-	"main": "strategyen.js",
-	"unpkg": "build.min.js",
-	"type": "module",
-	"browser": {},
-	"exports": {
-		".": "./strategyen.js"
-	},
-	"dependencies": {
-		"axios": "^0.27.2",
-		"ethers": "^5.6.0",
-		"ethers-multisend": "^2.0.0",
-		"@uniswap/sdk": "2.0.6"
-	},
-	"devDependencies": {
-		"@types/node": "^18.0.3",
-		"mocha": "^7.2.0",
-		"readline-sync": "^1.4.10",
-		"esbuild": "^0.14.53"
-	},
-	"scripts": {
-		"test": "node test.js",
-		"test-all": "node test.all.js",
-		"tsc": "rm -f *.d.ts actions/*.d.ts && npx tsc && rm -f actions/*.d.ts",
-		"build": "sh configgen.sh && esbuild strategyen.js --bundle --minify --sourcemap --platform=browser --target=chrome58 --tree-shaking=true --format=esm --define:DEBUG=false --charset=utf8 --outfile=build.min.js --define:process.env.VER='\"$(VER)\"'",
-		"deploy": "npm publish",
-		"compile": "npx hardhat compile"
-	},
-	"publishConfig": {
-		"_registry": "https://npm.pkg.github.com"
-	},
-	"bugs": "https://github.com/ais-ltd/aggregator/issues",
-	"author": "buikhoa40",
-	"contributes": {},
-	"license": "CC0-1.0"
+  "name": "@peter-present/strategyen",
+  "repository": "https://github.com/phamhongphuc1999/aggregator",
+  "version": "0.0.1",
+  "description": "Automatic Strategy Encoder (BRicher)",
+  "main": "strategyen.js",
+  "unpkg": "build.min.js",
+  "type": "module",
+  "browser": {},
+  "exports": {
+    ".": "./strategyen.js"
+  },
+  "dependencies": {
+    "axios": "^0.27.2",
+    "ethers": "^5.6.0",
+    "ethers-multisend": "^2.0.0",
+    "@uniswap/sdk": "2.0.6"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.3",
+    "mocha": "^7.2.0",
+    "readline-sync": "^1.4.10",
+    "esbuild": "^0.14.53"
+  },
+  "scripts": {
+    "test": "node test.js",
+    "test-all": "node test.all.js",
+    "tsc": "rm -f *.d.ts actions/*.d.ts && npx tsc && rm -f actions/*.d.ts",
+    "build": "sh configgen.sh && esbuild strategyen.js --bundle --minify --sourcemap --platform=browser --target=chrome58 --tree-shaking=true --format=esm --define:DEBUG=false --charset=utf8 --outfile=build.min.js --define:process.env.VER='\"$(VER)\"'",
+    "deploy": "npm publish",
+    "compile": "npx hardhat compile"
+  },
+  "publishConfig": {
+    "_registry": "https://npm.pkg.github.com"
+  },
+  "bugs": "https://github.com/phamhongphuc1999/aggregator/issues",
+  "author": "bricher",
+  "contributes": {},
+  "license": "CC0-1.0"
 }
 ),
 "tokens": Object.freeze({
@@ -1143,7 +1134,7 @@ export default {
 		"symbol": "GMT/USDC",
 		"img_url": "/tokens_v2/GMT-USDC.png",
 		"decimals": 18,
-		"price": 193462.38339069745,
+		"price": 111199.03471439231,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1151,7 +1142,7 @@ export default {
 		"symbol": "UNI/BNB",
 		"img_url": "/tokens_v2/UNI-BNB.png",
 		"decimals": 18,
-		"price": 96.43351647392777,
+		"price": 70.64526655251613,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1159,7 +1150,7 @@ export default {
 		"symbol": "XRP/BNB",
 		"img_url": "/tokens_v2/XRP-BNB.png",
 		"decimals": 18,
-		"price": 24.889843461800417,
+		"price": 25.377299347537015,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1167,7 +1158,7 @@ export default {
 		"symbol": "VAI/BUSD",
 		"img_url": "/tokens_v2/VAI-BUSD.png",
 		"decimals": 18,
-		"price": 2.115874344003898,
+		"price": 2.1725339849905594,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1175,7 +1166,7 @@ export default {
 		"symbol": "SUSHI/ETH",
 		"img_url": "/tokens_v2/SUSHI-ETH.png",
 		"decimals": 18,
-		"price": 98.71770883151935,
+		"price": 72.85591351660108,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1183,7 +1174,7 @@ export default {
 		"symbol": "USDT/BNB",
 		"img_url": "/tokens_v2/USDT-BNB.png",
 		"decimals": 18,
-		"price": 50.56256766590975,
+		"price": 44.73747258615282,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1191,7 +1182,7 @@ export default {
 		"symbol": "USDC/BUSD",
 		"img_url": "/tokens_v2/USDC-BUSD.png",
 		"decimals": 18,
-		"price": 2.1220382314154302,
+		"price": 2.1403364757152983,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1199,7 +1190,7 @@ export default {
 		"symbol": "ADA/BNB",
 		"img_url": "/tokens_v2/ADA-BNB.png",
 		"decimals": 18,
-		"price": 24.791160989909976,
+		"price": 17.84206156388109,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1207,7 +1198,7 @@ export default {
 		"symbol": "TUSD/BUSD",
 		"img_url": "/tokens_v2/TUSD-BUSD.png",
 		"decimals": 18,
-		"price": 2.021443652378475,
+		"price": 2.0439992524582093,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1215,7 +1206,7 @@ export default {
 		"symbol": "TWT/BNB",
 		"img_url": "/tokens_v2/TWT-BNB.png",
 		"decimals": 18,
-		"price": 60.15173430703796,
+		"price": 37.66135218038616,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1223,7 +1214,7 @@ export default {
 		"symbol": "CHR/BUSD",
 		"img_url": "/tokens_v2/CHR-BUSD.png",
 		"decimals": 18,
-		"price": 1004864.4898295145,
+		"price": 757703.1806891867,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1231,7 +1222,7 @@ export default {
 		"symbol": "DAI/BUSD",
 		"img_url": "/tokens_v2/DAI-BUSD.png",
 		"decimals": 18,
-		"price": 2.1217916486361474,
+		"price": 2.1682119150664763,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1239,7 +1230,7 @@ export default {
 		"symbol": "LTC/BNB",
 		"img_url": "/tokens_v2/LTC-BNB.png",
 		"decimals": 18,
-		"price": 378.25329937491796,
+		"price": 275.6932636091516,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1247,7 +1238,7 @@ export default {
 		"symbol": "XVS/BNB",
 		"img_url": "/tokens_v2/XVS-BNB.png",
 		"decimals": 18,
-		"price": 101.88633507815706,
+		"price": 74.6646713372295,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1255,7 +1246,7 @@ export default {
 		"symbol": "CAKE/BUSD",
 		"img_url": "/tokens_v2/CAKE-BUSD.png",
 		"decimals": 18,
-		"price": 6.600505959291271,
+		"price": 3.8368222536893506,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1263,7 +1254,7 @@ export default {
 		"symbol": "LINK/BNB",
 		"img_url": "/tokens_v2/LINK-BNB.png",
 		"decimals": 18,
-		"price": 99.74777532310212,
+		"price": 80.33227544260836,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1271,7 +1262,7 @@ export default {
 		"symbol": "WOO/BNB",
 		"img_url": "/tokens_v2/WOO-BNB.png",
 		"decimals": 18,
-		"price": 17.313667492240675,
+		"price": 14.67434895853912,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1279,7 +1270,7 @@ export default {
 		"symbol": "BSW/BNB",
 		"img_url": "/tokens_v2/BSW-BNB.png",
 		"decimals": 18,
-		"price": 388.1055952242579,
+		"price": 197.37651926940416,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1287,7 +1278,7 @@ export default {
 		"symbol": "RACA/BUSD",
 		"img_url": "https://firebasestorage.googleapis.com/v0/b/token-c515a.appspot.com/o/tokens_v2%2FRACA-BUSD.png?alt=media&token=eba1d684-9aa4-4e70-8dc4-844b8a17ac91",
 		"decimals": 18,
-		"price": 0.046032479458485445,
+		"price": 0.03153414423419835,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1295,7 +1286,7 @@ export default {
 		"symbol": "CAKE/USDT",
 		"img_url": "/tokens_v2/CAKE-USDT.png",
 		"decimals": 18,
-		"price": 5.343156833574614,
+		"price": 3.1688317220810474,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1303,7 +1294,7 @@ export default {
 		"symbol": "DOGE/BNB",
 		"img_url": "/tokens_v2/DOGE-BNB.png",
 		"decimals": 18,
-		"price": 1355294.7616005973,
+		"price": 994306.0372380868,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1311,7 +1302,7 @@ export default {
 		"symbol": "ALPHA/BNB",
 		"img_url": "/tokens_v2/ALPHA-BNB.png",
 		"decimals": 18,
-		"price": 14.051699471560518,
+		"price": 9.747642854294922,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1319,7 +1310,7 @@ export default {
 		"symbol": "GAL/BNB",
 		"img_url": "/tokens_v2/GAL-BNB.png",
 		"decimals": 18,
-		"price": 58.81694952835052,
+		"price": 37.80775375448554,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1327,7 +1318,7 @@ export default {
 		"symbol": "IOTX/BUSD",
 		"img_url": "/tokens_v2/IOTX-BUSD.png",
 		"decimals": 18,
-		"price": 0.4153635463828648,
+		"price": 0.2988446586201446,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1335,7 +1326,7 @@ export default {
 		"symbol": "AXS/BNB",
 		"img_url": "/tokens_v2/AXS-BNB.png",
 		"decimals": 18,
-		"price": 139.59900951755523,
+		"price": 81.92299092689015,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1343,7 +1334,7 @@ export default {
 		"symbol": "BTCB/ETH",
 		"img_url": "/tokens_v2/BTCB-ETH.png",
 		"decimals": 18,
-		"price": 12810.164460802205,
+		"price": 14073.239497954904,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1351,7 +1342,7 @@ export default {
 		"symbol": "SXP/BNB",
 		"img_url": "/tokens_v2/SXP-BNB.png",
 		"decimals": 18,
-		"price": 21.930596460994018,
+		"price": 11.083315914507907,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1359,7 +1350,7 @@ export default {
 		"symbol": "DOT/BNB",
 		"img_url": "/tokens_v2/DOT-BNB.png",
 		"decimals": 18,
-		"price": 96.13195053835682,
+		"price": 71.86890902642915,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1367,7 +1358,7 @@ export default {
 		"symbol": "ETH/USDC",
 		"img_url": "/tokens_v2/ETH-USDC.png",
 		"decimals": 18,
-		"price": 89.74582723036023,
+		"price": 93.54215753468003,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1375,7 +1366,7 @@ export default {
 		"symbol": "USDC/USDT",
 		"img_url": "/tokens_v2/USDC-USDT.png",
 		"decimals": 18,
-		"price": 2.121681845628513,
+		"price": 2.148627058206027,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1383,7 +1374,7 @@ export default {
 		"symbol": "BTCB/BUSD",
 		"img_url": "/tokens_v2/BTCB-BUSD.png",
 		"decimals": 18,
-		"price": 346.235353667434,
+		"price": 374.51716600950266,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1391,7 +1382,7 @@ export default {
 		"symbol": "TRAVA/BNB",
 		"img_url": "/tokens_v2/TRAVA-BNB.png",
 		"decimals": 18,
-		"price": 1.1122289421640132,
+		"price": 0.6177409374949175,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1399,7 +1390,7 @@ export default {
 		"symbol": "USDT",
 		"img_url": "/tokens_v2/USDT.png",
 		"decimals": 18,
-		"price": 0.999937,
+		"price": 0.999159,
 		"internal": true,
 		"name": "Tether USD"
 	},
@@ -1407,7 +1398,7 @@ export default {
 		"symbol": "USDC",
 		"img_url": "/tokens_v2/USDC.png",
 		"decimals": 18,
-		"price": 1.001,
+		"price": 1,
 		"internal": true,
 		"name": "USD Coin"
 	},
@@ -1415,7 +1406,7 @@ export default {
 		"symbol": "BUSD",
 		"img_url": "/tokens_v2/BUSD.png",
 		"decimals": 18,
-		"price": 1,
+		"price": 0.999824,
 		"internal": true,
 		"name": "BUSD Token"
 	},
@@ -1423,7 +1414,7 @@ export default {
 		"symbol": "DAI",
 		"img_url": "/tokens_v2/DAI.png",
 		"decimals": 18,
-		"price": 0.999832,
+		"price": 0.999079,
 		"internal": true,
 		"name": "Dai Token"
 	},
@@ -1431,7 +1422,7 @@ export default {
 		"symbol": "MATIC",
 		"img_url": "/tokens_v2/MATIC.png",
 		"decimals": 18,
-		"price": 1.084,
+		"price": 0.562146,
 		"internal": true,
 		"name": "Matic Token"
 	},
@@ -1439,7 +1430,7 @@ export default {
 		"symbol": "LINK",
 		"img_url": "/tokens_v2/LINK.png",
 		"decimals": 18,
-		"price": 6.82,
+		"price": 5.98,
 		"internal": true,
 		"name": "ChainLink Token"
 	},
@@ -1447,7 +1438,7 @@ export default {
 		"symbol": "ATOM",
 		"img_url": "/tokens_v2/ATOM.png",
 		"decimals": 18,
-		"price": 13.57,
+		"price": 7.29,
 		"internal": true,
 		"name": "Cosmos Token"
 	},
@@ -1455,7 +1446,7 @@ export default {
 		"symbol": "UNI",
 		"img_url": "/tokens_v2/UNI.png",
 		"decimals": 18,
-		"price": 6.48,
+		"price": 4.67,
 		"internal": true,
 		"name": "Uniswap"
 	},
@@ -1463,7 +1454,7 @@ export default {
 		"symbol": "AXS",
 		"img_url": "/tokens_v2/AXS.png",
 		"decimals": 18,
-		"price": 10.56,
+		"price": 4.82,
 		"internal": false,
 		"name": "Axie Infinity Shard"
 	},
@@ -1471,7 +1462,7 @@ export default {
 		"symbol": "MIM",
 		"img_url": "/tokens_v2/MIM.png",
 		"decimals": 18,
-		"price": 0.999011,
+		"price": 0.997544,
 		"internal": false,
 		"name": "Magic Internet Money"
 	},
@@ -1479,7 +1470,7 @@ export default {
 		"symbol": "GMT",
 		"img_url": "/tokens_v2/GMT.png",
 		"decimals": 8,
-		"price": 0.529421,
+		"price": 0.162425,
 		"internal": false,
 		"name": "Green Metaverse Token"
 	},
@@ -1487,7 +1478,7 @@ export default {
 		"symbol": "DFI",
 		"img_url": "/tokens_v2/DFI.png",
 		"decimals": 18,
-		"price": 0.613968,
+		"price": 0.286335,
 		"internal": false,
 		"name": "DFI (DefiChain)"
 	},
@@ -1495,7 +1486,7 @@ export default {
 		"symbol": "FRAX",
 		"img_url": "/tokens_v2/FRAX.png",
 		"decimals": 18,
-		"price": 0.998105,
+		"price": 0.997776,
 		"internal": false,
 		"name": "Frax"
 	},
@@ -1503,7 +1494,7 @@ export default {
 		"symbol": "Cake",
 		"img_url": "/tokens_v2/CAKE.png",
 		"decimals": 18,
-		"price": 3.97,
+		"price": 1.27,
 		"internal": false,
 		"name": "PancakeSwap Token"
 	},
@@ -1511,7 +1502,7 @@ export default {
 		"symbol": "ETH",
 		"img_url": "/tokens_v2/ETH.png",
 		"decimals": 18,
-		"price": 1569.49,
+		"price": 1654.81,
 		"internal": true,
 		"name": "Ethereum Token"
 	},
@@ -1519,7 +1510,7 @@ export default {
 		"symbol": "FTM",
 		"img_url": "/tokens_v2/FTM.png",
 		"decimals": 18,
-		"price": 0.525845,
+		"price": 0.203041,
 		"internal": false,
 		"name": "Fantom"
 	},
@@ -1527,7 +1518,7 @@ export default {
 		"symbol": "TUSD",
 		"img_url": "https://firebasestorage.googleapis.com/v0/b/token-c515a.appspot.com/o/tokens_v2%2FTUSD.png?alt=media&token=ce5a5772-abcd-4d9f-b19c-07a613745c96",
 		"decimals": 18,
-		"price": 1.001,
+		"price": 0.998495,
 		"internal": true,
 		"name": "TrueUSD"
 	},
@@ -1535,7 +1526,7 @@ export default {
 		"symbol": "AAVE",
 		"img_url": "/tokens_v2/AAVE.png",
 		"decimals": 18,
-		"price": 80.71,
+		"price": 58.28,
 		"internal": true,
 		"name": "Aave Token"
 	},
@@ -1543,7 +1534,7 @@ export default {
 		"symbol": "GALA",
 		"img_url": "/tokens_v2/GALA.png",
 		"decimals": 18,
-		"price": 0.052724,
+		"price": 0.01950391,
 		"internal": false,
 		"name": "pTokens GALA"
 	},
@@ -1551,7 +1542,7 @@ export default {
 		"symbol": "ZIL",
 		"img_url": "/tokens_v2/ZIL.png",
 		"decimals": 12,
-		"price": 0.02647595,
+		"price": 0.01667123,
 		"internal": false,
 		"name": "Zilliqa"
 	},
@@ -1559,7 +1550,7 @@ export default {
 		"symbol": "FXS",
 		"img_url": "/tokens_v2/FXS.png",
 		"decimals": 18,
-		"price": 10.09,
+		"price": 5.93,
 		"internal": false,
 		"name": "Frax Share"
 	},
@@ -1567,7 +1558,7 @@ export default {
 		"symbol": "COMP",
 		"img_url": "/tokens_v2/COMP.png",
 		"decimals": 18,
-		"price": 51.11,
+		"price": 41.75,
 		"internal": false,
 		"name": "Compound Coin"
 	},
@@ -1575,7 +1566,7 @@ export default {
 		"symbol": "USDD",
 		"img_url": "/tokens_v2/USDD.png",
 		"decimals": 18,
-		"price": 0.991472,
+		"price": 0.997864,
 		"internal": false,
 		"name": "Decentralized USD"
 	},
@@ -1583,7 +1574,7 @@ export default {
 		"symbol": "1INCH",
 		"img_url": "/tokens_v2/1INCH.png",
 		"decimals": 18,
-		"price": 0.502071,
+		"price": 0.247583,
 		"internal": false,
 		"name": "1INCH Token"
 	},
@@ -1591,7 +1582,7 @@ export default {
 		"symbol": "XIDO",
 		"img_url": "/tokens_v2/XIDO.png",
 		"decimals": 18,
-		"price": 2.88,
+		"price": 2.08,
 		"internal": false,
 		"name": "XIDO FINANCE"
 	},
@@ -1599,7 +1590,7 @@ export default {
 		"symbol": "SUSHI",
 		"img_url": "/tokens_v2/SUSHI.png",
 		"decimals": 18,
-		"price": 1.24,
+		"price": 0.600861,
 		"internal": true,
 		"name": "SushiToken"
 	},
@@ -1607,7 +1598,7 @@ export default {
 		"symbol": "ANKR",
 		"img_url": "/tokens_v2/ANKR.png",
 		"decimals": 18,
-		"price": 0.02656214,
+		"price": 0.01965851,
 		"internal": false,
 		"name": "Ankr"
 	},
@@ -1615,7 +1606,7 @@ export default {
 		"symbol": "DOME",
 		"img_url": "/tokens_v2/DOME.png",
 		"decimals": 18,
-		"price": 0.00296395,
+		"price": 0.00077335,
 		"internal": false,
 		"name": "Everdome"
 	},
@@ -1623,7 +1614,7 @@ export default {
 		"symbol": "IOTX",
 		"img_url": "/tokens_v2/IOTX.png",
 		"decimals": 18,
-		"price": 0.02830271,
+		"price": 0.01388975,
 		"internal": true,
 		"name": "IoTeX Network"
 	},
@@ -1631,7 +1622,7 @@ export default {
 		"symbol": "NFT",
 		"img_url": "/tokens_v2/NFT.png",
 		"decimals": 6,
-		"price": 4.62514e-7,
+		"price": 3.23144e-7,
 		"internal": false,
 		"name": "APENFT"
 	},
@@ -1639,7 +1630,7 @@ export default {
 		"symbol": "WEVER",
 		"img_url": "/tokens_v2/WEVER.png",
 		"decimals": 9,
-		"price": 0.124556,
+		"price": 0.052525,
 		"internal": false,
 		"name": "Wrapped Ever"
 	},
@@ -1647,7 +1638,7 @@ export default {
 		"symbol": "SYN",
 		"img_url": "/tokens_v2/SYN.png",
 		"decimals": 18,
-		"price": 0.841054,
+		"price": 0.418596,
 		"internal": false,
 		"name": "Synapse"
 	},
@@ -1655,7 +1646,7 @@ export default {
 		"symbol": "WBNB",
 		"img_url": "/tokens_v2/BNB.png",
 		"decimals": 18,
-		"price": 307.15,
+		"price": 218.8,
 		"internal": true,
 		"name": "Wrapped BNB"
 	},
@@ -1663,7 +1654,7 @@ export default {
 		"symbol": "SXP",
 		"img_url": "/tokens_v2/SXP.png",
 		"decimals": 18,
-		"price": 0.276603,
+		"price": 0.258966,
 		"internal": true,
 		"name": "Swipe"
 	},
@@ -1671,7 +1662,7 @@ export default {
 		"symbol": "MAI",
 		"img_url": "/tokens_v2/MAI.png",
 		"decimals": 18,
-		"price": 0.996481,
+		"price": 0.948793,
 		"internal": false,
 		"name": "Mai Stablecoin"
 	},
@@ -1679,7 +1670,7 @@ export default {
 		"symbol": "SFM",
 		"img_url": "/tokens_v2/SFM.png",
 		"decimals": 9,
-		"price": 0.00025188,
+		"price": 0.00013835,
 		"internal": false,
 		"name": "SafeMoon"
 	},
@@ -1687,7 +1678,7 @@ export default {
 		"symbol": "SAFEMOON",
 		"img_url": "/tokens_v2/SAFEMOON.png",
 		"decimals": 9,
-		"price": 6.309e-9,
+		"price": 5.13e-9,
 		"internal": false,
 		"name": "SafeMoon"
 	},
@@ -1695,7 +1686,7 @@ export default {
 		"symbol": "GAL",
 		"img_url": "/tokens_v2/GAL.png",
 		"decimals": 18,
-		"price": 2.22,
+		"price": 1.22,
 		"internal": false,
 		"name": "Project Galaxy"
 	},
@@ -1703,7 +1694,7 @@ export default {
 		"symbol": "TWT",
 		"img_url": "/tokens_v2/TWT.png",
 		"decimals": 18,
-		"price": 1.67,
+		"price": 0.835243,
 		"internal": true,
 		"name": "Trust Wallet"
 	},
@@ -1711,7 +1702,7 @@ export default {
 		"symbol": "WOO",
 		"img_url": "/tokens_v2/WOO.png",
 		"decimals": 18,
-		"price": 0.174596,
+		"price": 0.162107,
 		"internal": false,
 		"name": "Wootrade Network"
 	},
@@ -1719,7 +1710,7 @@ export default {
 		"symbol": "10SET",
 		"img_url": "/tokens_v2/10SET.png",
 		"decimals": 18,
-		"price": 0.703051,
+		"price": 0.213285,
 		"internal": false,
 		"name": "10Set Token"
 	},
@@ -1727,7 +1718,7 @@ export default {
 		"symbol": "renBTC",
 		"img_url": "/tokens_v2/RENBTC.png",
 		"decimals": 8,
-		"price": 24052,
+		"price": 27236,
 		"internal": true,
 		"name": "renBTC"
 	},
@@ -1735,7 +1726,7 @@ export default {
 		"symbol": "RACA",
 		"img_url": "/tokens_v2/RACA.png",
 		"decimals": 18,
-		"price": 0.00021763,
+		"price": 0.0000971,
 		"internal": false,
 		"name": "Radio Caca V2"
 	},
@@ -1743,7 +1734,7 @@ export default {
 		"symbol": "CHR",
 		"img_url": "/tokens_v2/CHR.png",
 		"decimals": 6,
-		"price": 0.16774,
+		"price": 0.090545,
 		"internal": false,
 		"name": "Chroma"
 	},
@@ -1751,7 +1742,7 @@ export default {
 		"symbol": "DAO",
 		"img_url": "/tokens_v2/DAO.png",
 		"decimals": 18,
-		"price": 1.13,
+		"price": 0.77674,
 		"internal": false,
 		"name": "DAO Maker [via ChainPort.io]"
 	},
@@ -1759,7 +1750,7 @@ export default {
 		"symbol": "KNC",
 		"img_url": "/tokens_v2/KNC.png",
 		"decimals": 18,
-		"price": 0.776318,
+		"price": 0.521388,
 		"internal": false,
 		"name": "Kyber Network Crystal"
 	},
@@ -1767,7 +1758,7 @@ export default {
 		"symbol": "CRTS",
 		"img_url": "/tokens_v2/CRTS.png",
 		"decimals": 18,
-		"price": 0.00080487,
+		"price": 0.00016297,
 		"internal": false,
 		"name": "Cratos BEP20"
 	},
@@ -1775,7 +1766,7 @@ export default {
 		"symbol": "VLX",
 		"img_url": "/tokens_v2/VLX.png",
 		"decimals": 18,
-		"price": 0.02910466,
+		"price": 0.00679437,
 		"internal": false,
 		"name": "Velas"
 	},
@@ -1783,7 +1774,7 @@ export default {
 		"symbol": "BSW",
 		"img_url": "/tokens_v2/BSW.png",
 		"decimals": 18,
-		"price": 0.202641,
+		"price": 0.06299,
 		"internal": false,
 		"name": "Biswap"
 	},
@@ -1791,7 +1782,7 @@ export default {
 		"symbol": "XRP",
 		"img_url": "/tokens_v2/XRP.png",
 		"decimals": 18,
-		"price": 0.401655,
+		"price": 0.521182,
 		"internal": true,
 		"name": "XRP Token"
 	},
@@ -1799,7 +1790,7 @@ export default {
 		"symbol": "ADA",
 		"img_url": "/tokens_v2/ADA.png",
 		"decimals": 18,
-		"price": 0.380138,
+		"price": 0.266357,
 		"internal": true,
 		"name": "Cardano Token"
 	},
@@ -1807,7 +1798,7 @@ export default {
 		"symbol": "DOT",
 		"img_url": "/tokens_v2/DOT.png",
 		"decimals": 18,
-		"price": 6.16,
+		"price": 4.67,
 		"internal": true,
 		"name": "Polkadot Token"
 	},
@@ -1815,7 +1806,7 @@ export default {
 		"symbol": "BTCB",
 		"img_url": "/tokens_v2/BTCB.png",
 		"decimals": 18,
-		"price": 22962,
+		"price": 26102,
 		"internal": true,
 		"name": "BTCB Token"
 	},
@@ -1823,7 +1814,7 @@ export default {
 		"symbol": "DOGE",
 		"img_url": "/tokens_v2/DOGE.png",
 		"decimals": 8,
-		"price": 0.091878,
+		"price": 0.063427,
 		"internal": true,
 		"name": "Dogecoin"
 	},
@@ -1831,7 +1822,7 @@ export default {
 		"symbol": "XVS",
 		"img_url": "/tokens_v2/XVS.png",
 		"decimals": 18,
-		"price": 5.05,
+		"price": 3.43,
 		"internal": false,
 		"name": "Venus"
 	},
@@ -1839,7 +1830,7 @@ export default {
 		"symbol": "TRAVA",
 		"img_url": "/tokens_v2/TRAVA.png",
 		"decimals": 18,
-		"price": 0.00072792,
+		"price": 0.00029306,
 		"internal": false,
 		"name": "TravaFinance Token"
 	},
@@ -1847,7 +1838,7 @@ export default {
 		"symbol": "rTRAVA",
 		"img_url": "/tokens_v2/RTRAVA.png",
 		"decimals": 18,
-		"price": 0.00072792,
+		"price": 0.00029306,
 		"internal": false,
 		"name": "Royalty Trava"
 	},
@@ -1855,7 +1846,7 @@ export default {
 		"symbol": "BNB",
 		"img_url": "/tokens_v2/BNB.png",
 		"decimals": 18,
-		"price": 306.71,
+		"price": 218.58,
 		"internal": true,
 		"name": "Native token"
 	},
@@ -1863,7 +1854,7 @@ export default {
 		"symbol": "FIL",
 		"img_url": "/tokens_v2/FIL.png",
 		"decimals": 18,
-		"price": 5.1,
+		"price": 3.38,
 		"internal": true,
 		"name": "Filecoin"
 	},
@@ -1871,7 +1862,7 @@ export default {
 		"symbol": "LUNA",
 		"img_url": "/tokens_v2/LUNA.png",
 		"decimals": 6,
-		"price": 0.00017097,
+		"price": 0.0000614,
 		"internal": true,
 		"name": "LUNA"
 	},
@@ -1879,7 +1870,7 @@ export default {
 		"symbol": "BETH",
 		"img_url": "/tokens_v2/BETH.png",
 		"decimals": 18,
-		"price": 1540.06,
+		"price": 1654.33,
 		"internal": true,
 		"name": "Binance Beacon ETH"
 	},
@@ -1887,7 +1878,7 @@ export default {
 		"symbol": "UST",
 		"img_url": "/tokens_v2/UST.png",
 		"decimals": 6,
-		"price": 0.02426393,
+		"price": 0.01217259,
 		"internal": true,
 		"name": "UST"
 	},
@@ -1895,7 +1886,7 @@ export default {
 		"symbol": "LTC",
 		"img_url": "/tokens_v2/LTC.png",
 		"decimals": 18,
-		"price": 95.64,
+		"price": 65.5,
 		"internal": true,
 		"name": "Litecoin Token"
 	},
@@ -1903,7 +1894,7 @@ export default {
 		"symbol": "TRX",
 		"img_url": "https://firebasestorage.googleapis.com/v0/b/token-c515a.appspot.com/o/tokens_v2%2FTRX.png?alt=media&token=a72eda76-064b-48e9-9157-cfa993ebff10",
 		"decimals": 18,
-		"price": 0.061938,
+		"price": 0.081878,
 		"internal": true,
 		"name": "TRON"
 	},
@@ -1911,7 +1902,7 @@ export default {
 		"symbol": "BCH",
 		"img_url": "/tokens_v2/BCH.png",
 		"decimals": 18,
-		"price": 131.16,
+		"price": 189.79,
 		"internal": true,
 		"name": "Bitcoin Cash Token"
 	},
@@ -1919,7 +1910,7 @@ export default {
 		"symbol": "Cake/BNB",
 		"img_url": "/tokens_v2/CAKE-BNB.png",
 		"decimals": 18,
-		"price": 73.76699306583994,
+		"price": 35.532156694336805,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1927,7 +1918,7 @@ export default {
 		"symbol": "BAT",
 		"img_url": "/tokens_v2/BAT.png",
 		"decimals": 18,
-		"price": 0.25109,
+		"price": 0.172678,
 		"internal": true,
 		"name": "Basic Attention Token"
 	},
@@ -1935,7 +1926,7 @@ export default {
 		"symbol": "XTZ",
 		"img_url": "/tokens_v2/XTZ.png",
 		"decimals": 18,
-		"price": 1.041,
+		"price": 0.705786,
 		"internal": true,
 		"name": "Tezos Token"
 	},
@@ -1951,7 +1942,7 @@ export default {
 		"symbol": "VAI",
 		"img_url": "/tokens_v2/VAI.png",
 		"decimals": 18,
-		"price": 0.983498,
+		"price": 0.994772,
 		"internal": true,
 		"name": "VAI Stablecoin"
 	},
@@ -1959,7 +1950,7 @@ export default {
 		"symbol": "EOS",
 		"img_url": "/tokens_v2/EOS.png",
 		"decimals": 18,
-		"price": 1.045,
+		"price": 0.590669,
 		"internal": true,
 		"name": "EOS Token"
 	},
@@ -1967,7 +1958,7 @@ export default {
 		"symbol": "BUSD/BNB",
 		"img_url": "/tokens_v2/BUSD-BNB.png",
 		"decimals": 18,
-		"price": 47.64520797890851,
+		"price": 41.30308225020085,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1975,7 +1966,7 @@ export default {
 		"symbol": "BTCB/BNB",
 		"img_url": "/tokens_v2/BTCB-BNB.png",
 		"decimals": 18,
-		"price": 5791.051690153381,
+		"price": 5272.62914835158,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -1983,7 +1974,7 @@ export default {
 		"symbol": "renZEC",
 		"img_url": "/tokens_v2/RENZEC.png",
 		"decimals": 8,
-		"price": 53,
+		"price": 55.91,
 		"internal": true,
 		"name": "renZEC"
 	},
@@ -1999,7 +1990,7 @@ export default {
 		"symbol": "ETH/BNB",
 		"img_url": "/tokens_v2/ETH-BNB.png",
 		"decimals": 18,
-		"price": 1562.9503299287887,
+		"price": 1377.5828147478614,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -2007,7 +1998,7 @@ export default {
 		"symbol": "BTCB/BNB",
 		"img_url": "/tokens/BTCB-BNB.png",
 		"decimals": 18,
-		"price": 6058.189632056048,
+		"price": 5487.84919764749,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -2015,7 +2006,7 @@ export default {
 		"symbol": "USDT/BUSD",
 		"img_url": "/tokens_v2/USDT-BUSD.png",
 		"decimals": 18,
-		"price": 2.1570497702972546,
+		"price": 2.2919268038825926,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -2023,7 +2014,7 @@ export default {
 		"symbol": "YFI",
 		"img_url": "/tokens_v2/YFI.png",
 		"decimals": 18,
-		"price": 7152.81,
+		"price": 5678.52,
 		"internal": true,
 		"name": "yearn.finance"
 	},
@@ -2031,7 +2022,7 @@ export default {
 		"symbol": "AUTO",
 		"img_url": "/tokens_v2/AUTO.png",
 		"decimals": 18,
-		"price": 288.18,
+		"price": 11.73,
 		"internal": true,
 		"name": "AUTOv2"
 	},
@@ -2039,7 +2030,7 @@ export default {
 		"symbol": "ALPHA",
 		"img_url": "/tokens_v2/ALPHA.png",
 		"decimals": 18,
-		"price": 0.129794,
+		"price": 0.080355,
 		"internal": true,
 		"name": "AlphaToken"
 	},
@@ -2047,7 +2038,7 @@ export default {
 		"symbol": "Cake/BNB",
 		"img_url": "/tokens/CAKE-BNB.png",
 		"decimals": 18,
-		"price": 85.38143472170277,
+		"price": 41.19418810813413,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -2055,7 +2046,7 @@ export default {
 		"symbol": "BAND",
 		"img_url": "/tokens_v2/BAND.png",
 		"decimals": 18,
-		"price": 2.16,
+		"price": 1.074,
 		"internal": true,
 		"name": "Band Protocol Token"
 	},
@@ -2063,7 +2054,7 @@ export default {
 		"symbol": "USDT/BUSD",
 		"img_url": "/tokens/USDT-BUSD.png",
 		"decimals": 18,
-		"price": 2.1884771014422295,
+		"price": 2.1899264902846465,
 		"internal": true,
 		"name": "Pancake LPs"
 	},
@@ -2071,7 +2062,7 @@ export default {
 		"symbol": "CREAM",
 		"img_url": "/tokens_v2/CREAM.png",
 		"decimals": 18,
-		"price": 12.37,
+		"price": 11.31,
 		"internal": false,
 		"name": "Cream"
 	},
@@ -2079,7 +2070,7 @@ export default {
 		"symbol": "ORAI",
 		"img_url": "/tokens_v2/ORAI.png",
 		"decimals": 18,
-		"price": 3.95,
+		"price": 1.84,
 		"internal": true,
 		"name": "Oraichain Token"
 	},
@@ -2087,7 +2078,7 @@ export default {
 		"symbol": "VALAS",
 		"img_url": "/tokens_v2/VALAS.png",
 		"decimals": 18,
-		"price": 0.00051922,
+		"price": 0.000226,
 		"internal": false,
 		"name": "Valas Finance Protocol Token"
 	},
@@ -2095,7 +2086,7 @@ export default {
 		"symbol": "ALPACA",
 		"img_url": "/tokens_v2/ALPACA.png",
 		"decimals": 18,
-		"price": 0.283869,
+		"price": 0.134919,
 		"internal": false,
 		"name": "AlpacaToken"
 	}
