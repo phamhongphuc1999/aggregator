@@ -1,40 +1,40 @@
 {
-	"name": "@ais-ltd/strategyen",
-	"repository": "git+https://github.com/ais-ltd/aggregator.git",
-	"version": "0.4.0",
-	"description": "Automatic Strategy Encoder (BRicher)",
-	"main": "strategyen.js",
-	"unpkg": "build.min.js",
-	"type": "module",
-	"browser": {},
-	"exports": {
-		".": "./strategyen.js"
-	},
-	"dependencies": {
-		"axios": "^0.27.2",
-		"ethers": "^5.6.0",
-		"ethers-multisend": "^2.0.0",
-		"@uniswap/sdk": "2.0.6"
-	},
-	"devDependencies": {
-		"@types/node": "^18.0.3",
-		"mocha": "^7.2.0",
-		"readline-sync": "^1.4.10",
-		"esbuild": "^0.14.53"
-	},
-	"scripts": {
-		"test": "node test.js",
-		"test-all": "node test.all.js",
-		"tsc": "rm -f *.d.ts actions/*.d.ts && npx tsc && rm -f actions/*.d.ts",
-		"build": "sh configgen.sh && esbuild strategyen.js --bundle --minify --sourcemap --platform=browser --target=chrome58 --tree-shaking=true --format=esm --define:DEBUG=false --charset=utf8 --outfile=build.min.js --define:process.env.VER='\"$(VER)\"'",
-		"deploy": "npm publish",
-		"compile": "npx hardhat compile"
-	},
-	"publishConfig": {
-		"_registry": "https://npm.pkg.github.com"
-	},
-	"bugs": "https://github.com/ais-ltd/aggregator/issues",
-	"author": "buikhoa40",
-	"contributes": {},
-	"license": "CC0-1.0"
+  "name": "@peter-present/strategyen",
+  "repository": "https://github.com/phamhongphuc1999/aggregator",
+  "version": "0.0.1",
+  "description": "Automatic Strategy Encoder (BRicher)",
+  "main": "strategyen.js",
+  "unpkg": "build.min.js",
+  "type": "module",
+  "browser": {},
+  "exports": {
+    ".": "./strategyen.js"
+  },
+  "dependencies": {
+    "axios": "^0.27.2",
+    "ethers": "^5.6.0",
+    "ethers-multisend": "^2.0.0",
+    "@uniswap/sdk": "2.0.6"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.3",
+    "mocha": "^7.2.0",
+    "readline-sync": "^1.4.10",
+    "esbuild": "^0.14.53"
+  },
+  "scripts": {
+    "test": "node test.js",
+    "test-all": "node test.all.js",
+    "tsc": "rm -f *.d.ts actions/*.d.ts && npx tsc && rm -f actions/*.d.ts",
+    "build": "sh configgen.sh && esbuild strategyen.js --bundle --minify --sourcemap --platform=browser --target=chrome58 --tree-shaking=true --format=esm --define:DEBUG=false --charset=utf8 --outfile=build.min.js --define:process.env.VER='\"$(VER)\"'",
+    "deploy": "npm publish",
+    "compile": "npx hardhat compile"
+  },
+  "publishConfig": {
+    "_registry": "https://npm.pkg.github.com"
+  },
+  "bugs": "https://github.com/phamhongphuc1999/aggregator/issues",
+  "author": "bricher",
+  "contributes": {},
+  "license": "CC0-1.0"
 }
